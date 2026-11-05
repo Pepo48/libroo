@@ -3,11 +3,13 @@ import * as z from 'zod'
 import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
 import { booleanConfigValue } from '~~/shared/utils/runtime-config'
 
+const { t } = useI18n()
+
 definePageMeta({
   auth: false
 })
 
-usePageTitle('Reset Password')
+usePageTitle(() => t('ui.resetPasswordText'))
 
 const toast = useToast()
 const config = useRuntimeConfig()
@@ -25,7 +27,7 @@ const fields: AuthFormField[] = [
   {
     name: 'email',
     type: 'email',
-    label: 'Email',
+    label: t('ui.email'),
     placeholder: 'Enter your email',
     required: true
   }
@@ -73,8 +75,8 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
     })
     requestSent.value = true
     toast.add({
-      title: 'Reset email sent',
-      description: 'If this email exists in Libroo, a reset link has been sent.',
+      title: t('ui.resetEmailSent'),
+      description: t('ui.ifThisEmailExistsInLibrooA'),
       color: 'success'
     })
   } catch (err: unknown) {
@@ -97,8 +99,8 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
   <UContainer class="py-12 max-w-md">
     <AuthStateCard
       v-if="!emailCapabilities.passwordResetEnabled"
-      title="Reset password"
-      description="Password reset email is unavailable. Contact your administrator to reset your password."
+      :title="$t('ui.resetPassword')"
+      :description="$t('ui.passwordResetEmailIsUnavailableContactYour')"
       icon="i-lucide-mail-x"
       action-label="Back to sign in"
       action-to="/login"
@@ -107,8 +109,8 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
 
     <AuthStateCard
       v-else-if="requestSent"
-      title="Reset email sent"
-      description="If this email exists in Libroo, a reset link has been sent."
+      :title="$t('ui.resetEmailSent')"
+      :description="$t('ui.ifThisEmailExistsInLibrooA')"
       icon="i-lucide-send"
       action-label="Back to sign in"
       action-to="/login"
@@ -121,18 +123,18 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
         :schema="schema"
         :fields="fields"
         :loading="isSubmitting"
-        title="Reset password"
+        :title="$t('ui.resetPassword')"
         icon="i-lucide-key-round"
         submit-label="Send reset email"
         @submit="onSubmit"
       >
         <template #description>
-          Remember your password?
+          {{ $t('ui.rememberYourPassword') }}
           <ULink
             to="/login"
             class="text-primary font-medium"
           >
-            Sign in
+            {{ $t('ui.signIn') }}
           </ULink>
         </template>
 
@@ -154,13 +156,13 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
             color="warning"
             variant="subtle"
             icon="i-lucide-shield-alert"
-            title="Bot protection is not configured"
+            :title="$t('ui.botProtectionIsNotConfigured')"
           />
         </template>
 
         <template #footer>
           <p class="text-center text-sm text-muted">
-            Libroo - Your Library, Managed
+            {{ $t('ui.librooYourLibraryManaged') }}
           </p>
         </template>
       </UAuthForm>

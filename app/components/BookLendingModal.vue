@@ -13,6 +13,7 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
+const { t } = useI18n()
 const { data: emailCapabilities } = await useEmailCapabilities()
 
 const borrowerDisplayName = ref('')
@@ -34,7 +35,7 @@ const canEmailInvite = computed(() => Boolean(emailCapabilities.value?.inviteEma
 
 const borrowerSuggestionItems = computed(() => borrowerSuggestions.value.map(suggestion => ({
   label: suggestion.displayName,
-  description: suggestion.email ?? 'No email saved',
+  description: suggestion.email ?? t('lending.noEmail'),
   email: suggestion.email,
   onSelect: () => selectBorrowerSuggestion(suggestion)
 })))
@@ -144,19 +145,19 @@ async function lendBook() {
     copiedAutomatically.value = await copyInvite({ showToast: false })
     emit('saved', { ...result.loan, inviteUrl: result.inviteUrl })
     toast.add({
-      title: 'Book marked as lent out',
+      title: t('lending.saved'),
       description: result.deliveryStatus === 'sent'
-        ? 'An invitation email was sent. The share link is also ready below.'
+        ? t('lending.sentWithLink')
         : result.deliveryStatus === 'failed'
-          ? 'The email could not be sent. The share link is ready below.'
-          : copiedAutomatically.value ? 'The share link was copied to your clipboard.' : 'The share link is ready below.',
+          ? t('lending.failedWithLink')
+          : copiedAutomatically.value ? t('lending.copied') : t('lending.linkReady'),
       color: result.deliveryStatus === 'failed' ? 'warning' : 'success'
     })
   } catch (err: unknown) {
     const message = (err as { data?: { message?: string } })?.data?.message
-      ?? (err instanceof Error ? err.message : 'Unable to lend this book')
+      ?? (err instanceof Error ? err.message : t('lending.saveFailed'))
     toast.add({
-      title: 'Could not lend book',
+      title: t('lending.saveFailed'),
       description: message,
       color: 'error'
     })
@@ -172,9 +173,9 @@ async function resendEmail() {
   try {
     const result = await $fetch<{ deliveryStatus: LoanInviteDeliveryStatus }>(`/api/loans/${loanId.value}/invite-email`, { method: 'POST', body: { token } })
     deliveryStatus.value = result.deliveryStatus
-    toast.add({ title: result.deliveryStatus === 'sent' ? 'Invitation email sent' : 'Email is unavailable', color: result.deliveryStatus === 'sent' ? 'success' : 'warning' })
+    toast.add({ title: result.deliveryStatus === 'sent' ? t('lending.sent') : t('lending.emailUnavailable'), color: result.deliveryStatus === 'sent' ? 'success' : 'warning' })
   } catch {
-    toast.add({ title: 'Could not resend email', description: 'Your share link remains available below.', color: 'error' })
+    toast.add({ title: t('lending.resendFailed'), description: t('lending.linkReady'), color: 'error' })
   } finally {
     isResending.value = false
   }
@@ -187,7 +188,7 @@ async function copyInvite(options: { showToast?: boolean } = {}) {
     await navigator.clipboard.writeText(inviteUrl.value)
     if (options.showToast !== false) {
       toast.add({
-        title: 'Invite link copied',
+        title: t('admin.invites.copied'),
         color: 'success'
       })
     }
@@ -195,8 +196,8 @@ async function copyInvite(options: { showToast?: boolean } = {}) {
   } catch {
     if (options.showToast !== false) {
       toast.add({
-        title: 'Could not copy link',
-        description: 'The share link is ready below.',
+        title: t('admin.invites.copyFailed'),
+        description: t('lending.linkReady'),
         color: 'warning'
       })
     }
@@ -208,8 +209,8 @@ async function copyInvite(options: { showToast?: boolean } = {}) {
 <template>
   <UModal
     v-model:open="modalOpen"
-    title="Record a book loan"
-    description="Save who has this book."
+    :title="$t('ui.recordABookLoan')"
+    :description="$t('ui.saveWhoHasThisBook')"
     :ui="{ content: 'sm:max-w-xl', footer: 'justify-end gap-2' }"
   >
     <template #body>
@@ -222,12 +223,12 @@ async function copyInvite(options: { showToast?: boolean } = {}) {
           color="neutral"
           variant="subtle"
           icon="i-lucide-link"
-          title="A share link will be created"
-          :description="canEmailInvite ? 'An invitation will be emailed after you save. A private copyable link will also be created.' : 'Email is optional. After you save, Libroo copies a private link you can send however you like.'"
+          :title="$t('ui.aShareLinkWillBeCreated')"
+          :description="canEmailInvite ? $t('lending.shareByEmail') : $t('lending.shareByLink')"
         />
 
         <UFormField
-          label="Borrower name"
+          :label="$t('ui.borrowerName')"
           required
         >
           <UInputMenu
@@ -237,34 +238,34 @@ async function copyInvite(options: { showToast?: boolean } = {}) {
             value-key="label"
             ignore-filter
             :loading="suggestionsLoading"
-            placeholder="Who has the book?"
+            :placeholder="$t('ui.whoHasTheBook')"
             icon="i-lucide-user"
             class="w-full"
             :disabled="isSaved"
           >
             <template #empty>
               <span v-if="!suggestionsLoading && borrowerDisplayName.trim().length >= 2">
-                No previous borrowers found.
+                {{ $t('ui.noPreviousBorrowersFound') }}
               </span>
             </template>
           </UInputMenu>
         </UFormField>
 
         <UFormField
-          :label="canEmailInvite ? 'Email (invitation will be sent)' : 'Email (optional)'"
-          :help="canEmailInvite ? 'Libroo will email this borrower an invitation link.' : 'Only for your private reference.'"
+          :label="canEmailInvite ? $t('lending.inviteEmail') : $t('lending.optionalEmail')"
+          :help="canEmailInvite ? $t('lending.inviteEmailHelp') : $t('lending.optionalEmailHelp')"
         >
           <UInput
             v-model="borrowerEmail"
             type="email"
-            placeholder="Optional"
+            :placeholder="$t('ui.optional')"
             icon="i-lucide-mail"
             class="w-full"
             :disabled="isSaved"
           />
         </UFormField>
 
-        <UFormField label="Due date">
+        <UFormField :label="$t('ui.dueDate')">
           <UInput
             v-model="dueAt"
             type="date"
@@ -276,12 +277,12 @@ async function copyInvite(options: { showToast?: boolean } = {}) {
         </UFormField>
 
         <UFormField
-          label="Private note"
-          help="Only you can see this note."
+          :label="$t('ui.privateNote')"
+          :help="$t('ui.onlyYouCanSeeThisNote')"
         >
           <UTextarea
             v-model="note"
-            placeholder="Optional"
+            :placeholder="$t('ui.optional')"
             :disabled="isSaved"
             class="w-full"
           />
@@ -292,11 +293,11 @@ async function copyInvite(options: { showToast?: boolean } = {}) {
           color="neutral"
           variant="subtle"
           icon="i-lucide-link"
-          title="Share link copied"
+          :title="$t('ui.shareLinkCopied')"
         >
           <template #description>
             <div class="min-w-0 space-y-1">
-              <p>Invite URL:</p>
+              <p>{{ $t('ui.inviteUrl') }}</p>
               <button
                 type="button"
                 class="block w-full min-w-0 text-left"
@@ -316,7 +317,7 @@ async function copyInvite(options: { showToast?: boolean } = {}) {
               icon="i-lucide-copy"
               @click="() => { void copyInvite() }"
             >
-              Copy link
+              {{ $t('ui.copyLink') }}
             </UButton>
             <UButton
               v-if="deliveryStatus === 'failed'"
@@ -326,7 +327,7 @@ async function copyInvite(options: { showToast?: boolean } = {}) {
               :loading="isResending"
               @click="() => { void resendEmail() }"
             >
-              Resend email
+              {{ $t('ui.resendEmail') }}
             </UButton>
           </template>
         </UAlert>
@@ -339,7 +340,7 @@ async function copyInvite(options: { showToast?: boolean } = {}) {
         variant="soft"
         @click="() => { modalOpen = false }"
       >
-        Close
+        {{ $t('ui.close') }}
       </UButton>
       <UButton
         v-if="!isSaved"
@@ -348,7 +349,7 @@ async function copyInvite(options: { showToast?: boolean } = {}) {
         :disabled="!canSave"
         @click="lendBook"
       >
-        Save loan
+        {{ $t('ui.saveLoan') }}
       </UButton>
     </template>
   </UModal>

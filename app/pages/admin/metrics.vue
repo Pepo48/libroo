@@ -2,7 +2,9 @@
 import type { AdminMetrics } from '~~/shared/types/admin'
 import { formatAdminDateTime } from '~/utils/admin-date-format'
 
-usePageTitle('Admin Metrics')
+const { t, locale } = useI18n()
+
+usePageTitle(() => t('ui.adminMetrics'))
 
 const requestFetch = useRequestFetch()
 const { data: metrics, status, error } = await useAsyncData<AdminMetrics>(
@@ -21,8 +23,8 @@ function formatBytes(totalBytes: number) {
 <template>
   <UContainer>
     <UPageHeader
-      title="Metrics"
-      description="Aggregate operational metadata for this Libroo instance."
+      :title="$t('ui.metrics')"
+      :description="$t('ui.aggregateOperationalMetadataForThisLibrooInstance')"
     />
 
     <UPageBody>
@@ -41,19 +43,19 @@ function formatBytes(totalBytes: number) {
         color="error"
         variant="subtle"
         icon="i-lucide-circle-alert"
-        title="Could not load metrics"
+        :title="$t('ui.couldNotLoadMetrics')"
         :description="error.message"
       />
 
       <template v-else-if="metrics">
         <section class="space-y-3">
           <h2 class="text-lg font-semibold">
-            Users
+            {{ $t('ui.users') }}
           </h2>
           <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <UCard>
               <p class="text-sm text-muted">
-                Total users
+                {{ $t('ui.totalUsers') }}
               </p>
               <p class="mt-1 text-3xl font-semibold">
                 {{ metrics.users }}
@@ -64,12 +66,12 @@ function formatBytes(totalBytes: number) {
 
         <section class="mt-8 space-y-3">
           <h2 class="text-lg font-semibold">
-            Library
+            {{ $t('ui.library') }}
           </h2>
           <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <UCard>
               <p class="text-sm text-muted">
-                Canonical books
+                {{ $t('ui.canonicalBooks') }}
               </p>
               <p class="mt-1 text-3xl font-semibold">
                 {{ metrics.library.canonicalBooks }}
@@ -77,7 +79,7 @@ function formatBytes(totalBytes: number) {
             </UCard>
             <UCard>
               <p class="text-sm text-muted">
-                Active library entries
+                {{ $t('ui.activeLibraryEntries') }}
               </p>
               <p class="mt-1 text-3xl font-semibold">
                 {{ metrics.library.activeUserBooks }}
@@ -85,7 +87,7 @@ function formatBytes(totalBytes: number) {
             </UCard>
             <UCard>
               <p class="text-sm text-muted">
-                Active loans
+                {{ $t('ui.activeLoans') }}
               </p>
               <p class="mt-1 text-3xl font-semibold">
                 {{ metrics.library.activeLoans }}
@@ -93,7 +95,7 @@ function formatBytes(totalBytes: number) {
             </UCard>
             <UCard>
               <p class="text-sm text-muted">
-                Locations
+                {{ $t('ui.locations') }}
               </p>
               <p class="mt-1 text-3xl font-semibold">
                 {{ metrics.library.locations }}
@@ -101,7 +103,7 @@ function formatBytes(totalBytes: number) {
             </UCard>
             <UCard>
               <p class="text-sm text-muted">
-                Tags
+                {{ $t('ui.tags') }}
               </p>
               <p class="mt-1 text-3xl font-semibold">
                 {{ metrics.library.tags }}
@@ -112,27 +114,27 @@ function formatBytes(totalBytes: number) {
 
         <section class="mt-8 space-y-3">
           <h2 class="text-lg font-semibold">
-            Storage
+            {{ $t('ui.storage') }}
           </h2>
           <UCard v-if="storageUsage?.state === 'unavailable'">
             <p class="text-sm text-muted">
-              Approximate cover storage
+              {{ $t('ui.approximateCoverStorage') }}
             </p>
             <p class="mt-1 text-lg font-semibold">
-              Not available
+              {{ $t('ui.notAvailable') }}
             </p>
           </UCard>
           <UCard v-else-if="storageUsage">
             <div class="flex flex-wrap items-center gap-2">
               <p class="text-sm text-muted">
-                Approximate cover storage
+                {{ $t('ui.approximateCoverStorage') }}
               </p>
               <UBadge
                 v-if="storageUsage.state === 'stale'"
                 color="warning"
                 variant="subtle"
               >
-                Stale
+                {{ $t('ui.stale') }}
               </UBadge>
             </div>
             <p class="mt-1 text-3xl font-semibold">
@@ -142,7 +144,7 @@ function formatBytes(totalBytes: number) {
               {{ storageUsage.objectCount }} cover blobs
             </p>
             <p class="mt-1 text-sm text-muted">
-              Last calculated: {{ formatAdminDateTime(storageUsage.lastCalculatedAt) }}
+              {{ $t('ui.lastCalculated') }} {{ formatAdminDateTime(storageUsage.lastCalculatedAt, locale, $t('admin.never')) }}
             </p>
           </UCard>
         </section>

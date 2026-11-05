@@ -15,6 +15,8 @@ const emit = defineEmits<{
   delete: [location: BookLocationWithCount]
 }>()
 
+const { t } = useI18n()
+
 const isAdding = ref(false)
 const isRenaming = ref(false)
 const newChildName = ref('')
@@ -29,7 +31,7 @@ const selectedParentLocationId = computed(() =>
   selectedParentId.value === TOP_LEVEL_VALUE ? null : selectedParentId.value
 )
 const moveOptions = computed(() => [
-  { label: 'Top level', value: TOP_LEVEL_VALUE },
+  { label: t('ui.topLevelLocation'), value: TOP_LEVEL_VALUE },
   ...props.locations
     .filter(location => location.id !== props.node.id && !location.path.startsWith(`${props.node.path} - `))
     .map(location => ({ label: location.path, value: location.id }))
@@ -87,19 +89,19 @@ watch(
               color="neutral"
               variant="soft"
             >
-              {{ node.directBookCount }} direct
+              {{ $t('library.directBookCount', node.directBookCount) }}
             </UBadge>
             <UBadge
               color="neutral"
               variant="soft"
             >
-              {{ node.descendantBookCount }} nested
+              {{ $t('library.nestedBookCount', node.descendantBookCount) }}
             </UBadge>
             <UBadge
               :color="affectedBookCount === 0 ? 'success' : 'primary'"
               variant="soft"
             >
-              {{ affectedBookCount }} total {{ affectedBookCount === 1 ? 'book' : 'books' }}
+              {{ $t('library.totalBookCount', affectedBookCount) }}
             </UBadge>
           </div>
         </div>
@@ -112,7 +114,7 @@ watch(
             icon="i-lucide-plus"
             @click="() => { isAdding = !isAdding }"
           >
-            Add
+            {{ $t('ui.add') }}
           </UButton>
           <UButton
             color="neutral"
@@ -121,7 +123,7 @@ watch(
             icon="i-lucide-pencil"
             @click="() => { isRenaming = !isRenaming }"
           >
-            Rename
+            {{ $t('ui.rename') }}
           </UButton>
           <UButton
             color="error"
@@ -130,7 +132,7 @@ watch(
             icon="i-lucide-trash-2"
             @click="emit('delete', node)"
           >
-            Delete
+            {{ $t('ui.delete') }}
           </UButton>
         </div>
       </div>
@@ -142,7 +144,7 @@ watch(
         <UInput
           v-model="newChildName"
           icon="i-lucide-map-pin-plus"
-          placeholder="Sub-location name"
+          :placeholder="$t('ui.subLocationName')"
           class="flex-1"
           @keyup.enter="addChild"
         />
@@ -151,7 +153,7 @@ watch(
           :disabled="!canSubmitChild"
           @click="addChild"
         >
-          Add
+          {{ $t('ui.add') }}
         </UButton>
       </div>
 
@@ -162,7 +164,7 @@ watch(
         <UInput
           v-model="renameName"
           icon="i-lucide-pencil"
-          placeholder="Location name"
+          :placeholder="$t('ui.locationName')"
           @keyup.enter="renameLocation"
         />
         <UButton
@@ -170,7 +172,7 @@ watch(
           :disabled="!canSubmitRename"
           @click="renameLocation"
         >
-          Save
+          {{ $t('ui.save') }}
         </UButton>
       </div>
 
@@ -188,7 +190,7 @@ watch(
           :disabled="selectedParentLocationId === node.parentLocationId"
           @click="moveLocation"
         >
-          Move
+          {{ $t('ui.move') }}
         </UButton>
       </div>
     </div>

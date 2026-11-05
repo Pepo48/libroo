@@ -111,7 +111,7 @@ function getStatusText(status: ScannedBook['status']) {
           {{ lookupProgress.completed }} completed · {{ lookupProgress.inProgress }} in progress · {{ lookupProgress.queued }} queued
         </template>
         <template v-else>
-          All ISBNs looked up
+          {{ $t('ui.allIsbnsLookedUp') }}
         </template>
       </p>
     </div>
@@ -156,7 +156,7 @@ function getStatusText(status: ScannedBook['status']) {
           size="sm"
           @click="$emit('selectAll')"
         >
-          Select All
+          {{ $t('ui.selectAll') }}
         </UButton>
         <UButton
           v-if="counts.selected > 0"
@@ -165,7 +165,7 @@ function getStatusText(status: ScannedBook['status']) {
           size="sm"
           @click="$emit('deselectAll')"
         >
-          Deselect All
+          {{ $t('ui.deselectAllText') }}
         </UButton>
         <UButton
           color="neutral"
@@ -173,7 +173,7 @@ function getStatusText(status: ScannedBook['status']) {
           size="sm"
           @click="$emit('clearAll')"
         >
-          Clear All
+          {{ $t('ui.clearAll') }}
         </UButton>
       </div>
     </div>
@@ -239,7 +239,7 @@ function getStatusText(status: ScannedBook['status']) {
                     class="w-full h-full flex items-center justify-center"
                     role="status"
                   >
-                    <span class="sr-only">Preparing book cover</span>
+                    <span class="sr-only">{{ $t('ui.preparingBookCover') }}</span>
                     <UIcon
                       name="i-lucide-loader-2"
                       class="animate-spin text-primary text-xl"
@@ -342,7 +342,7 @@ function getStatusText(status: ScannedBook['status']) {
               icon="i-lucide-rotate-cw"
               @click.stop="$emit('retry', book.isbn)"
             >
-              Retry
+              {{ $t('ui.retry') }}
             </UButton>
             <UButton
               color="neutral"
@@ -367,7 +367,7 @@ function getStatusText(status: ScannedBook['status']) {
           <!-- Description -->
           <div v-if="book.result.description">
             <p class="text-sm font-medium mb-1">
-              Description
+              {{ $t('ui.description') }}
             </p>
             <p class="text-sm text-muted">
               {{ book.result.description }}
@@ -398,7 +398,7 @@ function getStatusText(status: ScannedBook['status']) {
                 name="i-lucide-book-open"
                 class="mr-1"
               />
-              {{ book.result.numberOfPages }} pages
+              {{ book.result.numberOfPages }} {{ $t('ui.pagesText') }}
             </UBadge>
             <UBadge
               v-if="book.result.publishers && book.result.publishers.length > 0"
@@ -426,12 +426,12 @@ function getStatusText(status: ScannedBook['status']) {
         name="i-lucide-scan-barcode"
         class="text-4xl mb-2 opacity-50"
       />
-      <p>No books scanned yet</p>
+      <p>{{ $t('ui.noBooksScannedYet') }}</p>
     </div>
 
     <nav
       v-if="action.visible"
-      aria-label="Add selected books"
+      :aria-label="$t('ui.addSelectedBooks')"
       class="fixed inset-x-0 bottom-0 z-30 border-t border-default bg-default"
       :style="{ paddingBottom: 'env(safe-area-inset-bottom)' }"
     >

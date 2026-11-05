@@ -3,6 +3,8 @@ import type { FormSubmitEvent } from '@nuxt/ui'
 import type { LibraryBook, LibraryState, ReadingStatus } from '~~/shared/types/book'
 import { MANUAL_COVER_MAX_BYTES, manualBookCreateSchema, type ManualBookCreateSchema } from '~~/shared/utils/schemas'
 
+const { t } = useI18n()
+
 const toast = useToast()
 const dashboardStore = useLibraryDashboardStore()
 const { addBook, getLoadedPages, markNeedsSync } = dashboardStore
@@ -30,9 +32,9 @@ const formState = reactive({
 })
 
 const readingStatusItems = [
-  { label: 'Unread', value: 'unread' },
-  { label: 'Reading', value: 'reading' },
-  { label: 'Read', value: 'read' }
+  { label: t('ui.unread'), value: 'unread' },
+  { label: t('ui.reading'), value: 'reading' },
+  { label: t('ui.read'), value: 'read' }
 ]
 
 const ratingItems = [
@@ -214,7 +216,7 @@ defineExpose({ reset })
           name="i-lucide-pencil-line"
           class="text-lg"
         />
-        <span class="font-semibold">Manual Entry</span>
+        <span class="font-semibold">{{ $t('ui.manualEntry') }}</span>
       </div>
     </template>
 
@@ -225,20 +227,20 @@ defineExpose({ reset })
       @submit="createBook"
     >
       <UFormField
-        label="Title"
+        :label="$t('ui.title')"
         name="title"
         required
       >
         <UInput
           v-model="formState.title"
           class="w-full"
-          placeholder="Book title"
+          :placeholder="$t('ui.bookTitle')"
         />
       </UFormField>
 
       <div class="space-y-2">
         <div class="flex items-center justify-between gap-3">
-          <label class="text-sm font-medium">Authors</label>
+          <label class="text-sm font-medium">{{ $t('ui.authors') }}</label>
           <UButton
             type="button"
             color="neutral"
@@ -247,7 +249,7 @@ defineExpose({ reset })
             icon="i-lucide-plus"
             @click="addAuthor"
           >
-            Author
+            {{ $t('ui.author') }}
           </UButton>
         </div>
         <UFormField name="authors">
@@ -283,12 +285,12 @@ defineExpose({ reset })
           <UInput
             v-model="formState.isbn"
             class="w-full"
-            placeholder="Optional"
+            :placeholder="$t('ui.optional')"
           />
         </UFormField>
 
         <UFormField
-          label="Book state"
+          :label="$t('ui.bookState')"
           name="libraryState"
         >
           <USelect
@@ -301,31 +303,31 @@ defineExpose({ reset })
 
       <div class="grid gap-4 sm:grid-cols-2">
         <UFormField
-          label="Publish date"
+          :label="$t('ui.publishDate')"
           name="publishDate"
         >
           <UInput
             v-model="formState.publishDate"
             class="w-full"
-            placeholder="Year or date"
+            :placeholder="$t('ui.yearOrDate')"
           />
         </UFormField>
       </div>
 
       <div class="grid gap-4 sm:grid-cols-2">
         <UFormField
-          label="Publisher"
+          :label="$t('ui.publisher')"
           name="publisher"
         >
           <UInput
             v-model="formState.publisher"
             class="w-full"
-            placeholder="Optional"
+            :placeholder="$t('ui.optional')"
           />
         </UFormField>
 
         <UFormField
-          label="Page count"
+          :label="$t('ui.pageCount')"
           name="numberOfPages"
         >
           <UInputNumber
@@ -337,7 +339,7 @@ defineExpose({ reset })
       </div>
 
       <UFormField
-        label="Cover"
+        :label="$t('ui.cover')"
         name="coverImage"
       >
         <UFileUpload
@@ -345,7 +347,7 @@ defineExpose({ reset })
           accept="image/*"
           class="w-full"
           icon="i-lucide-image-plus"
-          label="Drop a cover image here"
+          :label="$t('ui.dropACoverImageHere')"
           :description="`PNG, JPEG, GIF, or WebP up to ${maxCoverSizeLabel}`"
           :reset="true"
           :multiple="false"
@@ -359,7 +361,7 @@ defineExpose({ reset })
           <div class="w-24 overflow-hidden rounded-md border border-default bg-muted">
             <img
               :src="coverPreviewUrl"
-              alt="Selected cover preview"
+              :alt="$t('ui.selectedCoverPreview')"
               class="aspect-[2/3] w-full object-cover"
             >
           </div>
@@ -381,20 +383,20 @@ defineExpose({ reset })
               icon="i-lucide-x"
               @click="clearCover"
             >
-              Remove cover
+              {{ $t('ui.removeCover') }}
             </UButton>
           </div>
         </div>
       </UFormField>
 
       <UFormField
-        label="Tags"
+        :label="$t('ui.tags')"
         name="tags"
       >
         <UInput
           v-model="tagInput"
           class="w-full"
-          placeholder="Favorites, history, signed"
+          :placeholder="$t('ui.favoritesHistorySigned')"
         />
       </UFormField>
 
@@ -403,7 +405,7 @@ defineExpose({ reset })
         class="grid gap-4 sm:grid-cols-2"
       >
         <UFormField
-          label="Reading status"
+          :label="$t('ui.readingStatus')"
           name="readingStatus"
         >
           <USelect
@@ -414,7 +416,7 @@ defineExpose({ reset })
         </UFormField>
 
         <UFormField
-          label="Rating"
+          :label="$t('ui.rating')"
           name="rating"
         >
           <USelect
@@ -430,7 +432,7 @@ defineExpose({ reset })
         class="grid gap-4 sm:grid-cols-2"
       >
         <UFormField
-          label="Current page"
+          :label="$t('ui.currentPage')"
           name="currentPage"
         >
           <UInputNumber
@@ -441,7 +443,7 @@ defineExpose({ reset })
         </UFormField>
 
         <UFormField
-          label="Progress"
+          :label="$t('ui.progress')"
           name="progressPercent"
         >
           <UInputNumber
@@ -454,14 +456,14 @@ defineExpose({ reset })
       </div>
 
       <UFormField
-        label="Note"
+        :label="$t('ui.note')"
         name="note"
       >
         <UTextarea
           v-model="formState.note"
           class="w-full"
           :rows="4"
-          placeholder="Private note"
+          :placeholder="$t('ui.privateNote')"
         />
       </UFormField>
 
@@ -472,7 +474,7 @@ defineExpose({ reset })
         size="lg"
         :loading="isSaving"
       >
-        Add Book
+        {{ $t('ui.addBook') }}
       </UButton>
     </UForm>
   </UCard>

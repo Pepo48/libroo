@@ -16,7 +16,7 @@ const emit = defineEmits<{
     >
       <UCheckbox
         :model-value="selected"
-        :aria-label="`Select ${book.title}`"
+        :aria-label="$t('library.selectBookName', { title: book.title })"
         @update:model-value="emit('select', book.id, $event)"
       />
     </div>

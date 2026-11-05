@@ -45,7 +45,7 @@ defineEmits<{
           class="w-full h-full flex items-center justify-center bg-muted aspect-[1/1.5]"
           role="status"
         >
-          <span class="sr-only">Preparing book cover</span>
+          <span class="sr-only">{{ $t('ui.preparingBookCover') }}</span>
           <UIcon
             name="i-lucide-loader-2"
             class="animate-spin text-3xl text-primary"
@@ -101,7 +101,7 @@ defineEmits<{
             color="neutral"
             variant="subtle"
           >
-            {{ book.numberOfPages }} pages
+            {{ book.numberOfPages }} {{ $t('ui.pagesText') }}
           </UBadge>
         </div>
         <p
@@ -124,7 +124,7 @@ defineEmits<{
       v-else-if="book.enrichment?.status === 'failed' || book.enrichment?.status === 'no_cover' || book.enrichment?.status === 'not_found'"
       class="text-sm text-muted"
     >
-      Extra book details could not be loaded. You can still add this book.
+      {{ $t('ui.extraBookDetailsCouldNotBeLoaded') }}
     </p>
 
     <USeparator />
@@ -139,7 +139,7 @@ defineEmits<{
         class="animate-spin text-2xl text-primary mb-2"
       />
       <p class="text-sm text-muted">
-        Adding book...
+        {{ $t('ui.addingBook') }}
       </p>
     </div>
 
@@ -163,7 +163,7 @@ defineEmits<{
         class="flex-1"
         @click="$emit('add')"
       >
-        Add to Library
+        {{ $t('ui.addToLibrary') }}
       </UButton>
       <UButton
         v-if="!addDisabled"
@@ -174,7 +174,7 @@ defineEmits<{
         class="flex-1"
         @click="$emit('wishlist')"
       >
-        Add to Wishlist
+        {{ $t('ui.addToWishlist') }}
       </UButton>
       <UButton
         v-else-if="book.existingState === 'wishlisted'"
@@ -184,7 +184,7 @@ defineEmits<{
         :disabled="moveDisabled"
         @click="$emit('move')"
       >
-        Move to Library
+        {{ $t('ui.moveToLibrary') }}
       </UButton>
       <UButton
         v-else

@@ -76,7 +76,7 @@ defineExpose({ reset })
           name="i-lucide-list"
           class="text-lg"
         />
-        <span class="font-semibold">Bulk Import</span>
+        <span class="font-semibold">{{ $t('ui.bulkImport') }}</span>
       </div>
     </template>
 
@@ -86,8 +86,8 @@ defineExpose({ reset })
       class="space-y-4"
     >
       <UFormField
-        label="Enter ISBNs"
-        hint="One per line, or separated by commas."
+        :label="$t('ui.enterIsbns')"
+        :hint="$t('ui.onePerLineOrSeparatedByCommas')"
       >
         <UTextarea
           v-model="bulkIsbnText"
@@ -103,7 +103,7 @@ defineExpose({ reset })
         {{ bulkIsbnBytes.toLocaleString() }} / {{ MAX_BULK_ISBN_INPUT_BYTES.toLocaleString() }} bytes · {{ bulkIsbnCount }} ISBN{{ bulkIsbnCount === 1 ? '' : 's' }} detected
       </p>
 
-      <UFormField label="Add as">
+      <UFormField :label="$t('ui.addAs')">
         <USelect
           v-model="targetLibraryState"
           :items="libraryStateItems"
@@ -112,7 +112,7 @@ defineExpose({ reset })
       </UFormField>
 
       <p class="text-sm text-muted">
-        Enter multiple ISBNs to look them all up at once. You can paste a list from a spreadsheet or text file.
+        {{ $t('ui.enterMultipleIsbnsToLookThemAll') }}
       </p>
 
       <UButton
@@ -123,7 +123,7 @@ defineExpose({ reset })
         :disabled="!bulkIsbnText.trim()"
         @click="handleBulkImport"
       >
-        Look Up All
+        {{ $t('ui.lookUpAll') }}
       </UButton>
     </div>
 
@@ -132,7 +132,7 @@ defineExpose({ reset })
       v-else
       class="space-y-4"
     >
-      <UFormField label="Add selected as">
+      <UFormField :label="$t('ui.addSelectedAs')">
         <USelect
           v-model="targetLibraryState"
           :items="libraryStateItems"

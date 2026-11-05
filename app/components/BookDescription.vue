@@ -147,7 +147,7 @@ function onParagraphTransitionEnd(event: TransitionEvent) {
       :aria-label="expanded ? 'Show less of the book description' : 'Show more of the book description'"
       @click="toggleExpanded"
     >
-      {{ expanded ? 'Show less' : 'Show more' }}
+      {{ expanded ? $t('ui.showLess') : $t('ui.showMore') }}
     </UButton>
   </div>
 </template>

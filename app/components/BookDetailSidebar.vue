@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { isBookEnrichmentInProgress } from '~~/shared/utils/book-enrichment'
 
+const { t } = useI18n()
+
 const props = defineProps<{
   book: BookDetails
 }>()
@@ -9,10 +11,11 @@ const coverUrl = computed(() => props.book.coverPath ? `/api/blob/${props.book.c
 const isCoverEnrichmentInProgress = computed(() => isBookEnrichmentInProgress(props.book.enrichmentStatus))
 const isOwnedBook = computed(() => props.book.libraryState === 'owned')
 const statusLabel = computed(() => {
-  if (!isOwnedBook.value) return props.book.libraryState === 'wishlisted' ? 'Wishlist' : 'Previously owned'
-  return props.book.activeLoan ? 'Lent out' : 'Available'
+  if (!isOwnedBook.value) return props.book.libraryState === 'wishlisted' ? t('ui.wishlist') : t('ui.previouslyOwned')
+  return props.book.activeLoan ? t('ui.lentOut') : t('ui.available')
 })
-const readingSummary = computed(() => useReadingSummary(
+const describeReadingProgress = useReadingSummary()
+const readingSummary = computed(() => describeReadingProgress(
   props.book.readingProgress,
   props.book.numberOfPages
 ))
@@ -53,7 +56,7 @@ const readingSummary = computed(() => useReadingSummary(
               class="size-3.5 animate-spin"
               aria-hidden="true"
             />
-            Preparing book cover
+            {{ $t('ui.preparingBookCover') }}
           </p>
         </div>
       </div>
@@ -67,7 +70,7 @@ const readingSummary = computed(() => useReadingSummary(
           id="summary-heading"
           class="text-sm font-bold uppercase tracking-wide"
         >
-          At a glance
+          {{ $t('ui.atAGlance') }}
         </h2>
         <dl class="mt-4 space-y-3 text-sm">
           <div class="flex items-start justify-between gap-4">
@@ -75,7 +78,7 @@ const readingSummary = computed(() => useReadingSummary(
               <UIcon
                 name="i-lucide-box"
                 class="size-4"
-              />Status
+              />{{ $t('ui.status') }}
             </dt>
             <dd class="text-right font-medium">
               <span :class="book.activeLoan ? 'text-amber-600 dark:text-amber-400' : isOwnedBook ? 'text-emerald-600 dark:text-emerald-400' : ''">
@@ -91,10 +94,10 @@ const readingSummary = computed(() => useReadingSummary(
               <UIcon
                 name="i-lucide-map-pin"
                 class="size-4"
-              />Location
+              />{{ $t('ui.location') }}
             </dt>
             <dd class="max-w-36 text-right font-medium">
-              {{ book.location?.path || 'Not set' }}
+              {{ book.location?.path || $t('ui.notSet') }}
             </dd>
           </div>
           <div
@@ -105,7 +108,7 @@ const readingSummary = computed(() => useReadingSummary(
               <UIcon
                 name="i-lucide-book-open"
                 class="size-4"
-              />Reading
+              />{{ $t('ui.reading') }}
             </dt>
             <dd class="max-w-36 text-right font-medium">
               {{ readingSummary }}
@@ -119,7 +122,7 @@ const readingSummary = computed(() => useReadingSummary(
               <UIcon
                 name="i-lucide-star"
                 class="size-4"
-              />Rating
+              />{{ $t('ui.rating') }}
             </dt>
             <dd class="flex min-h-5 items-center justify-end gap-0.5">
               <template v-if="book.rating">
@@ -129,12 +132,12 @@ const readingSummary = computed(() => useReadingSummary(
                   name="i-lucide-star"
                   :class="star <= book.rating ? 'size-4 fill-amber-400 text-amber-500' : 'size-4 text-muted'"
                 />
-                <span class="sr-only">{{ book.rating }} out of 5</span>
+                <span class="sr-only">{{ book.rating }} {{ $t('ui.outOf5') }}</span>
               </template>
               <span
                 v-else
                 class="font-medium"
-              >Not rated</span>
+              >{{ $t('ui.notRated') }}</span>
             </dd>
           </div>
         </dl>

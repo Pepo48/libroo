@@ -2,9 +2,11 @@
 import type { BorrowedBook, OwnerLoan } from '~~/shared/types/book'
 import type { Ref } from 'vue'
 
+const { t } = useI18n()
+
 type LoansView = 'loaned' | 'borrowed'
 
-usePageTitle('Loans')
+usePageTitle(() => t('ui.loans'))
 
 const toast = useToast()
 const route = useRoute()
@@ -132,8 +134,8 @@ async function saveLoanNote(loan: OwnerLoan, note: string | null) {
 <template>
   <UContainer>
     <UPageHeader
-      title="Loans"
-      description="Track books you loaned out and books lent to you."
+      :title="$t('ui.loans')"
+      :description="$t('ui.trackBooksYouLoanedOutAndBooks')"
     >
       <template #links>
         <UButton
@@ -142,7 +144,7 @@ async function saveLoanNote(loan: OwnerLoan, note: string | null) {
           icon="i-lucide-library"
           to="/library"
         >
-          My Library
+          {{ $t('ui.myLibrary') }}
         </UButton>
       </template>
     </UPageHeader>
@@ -156,7 +158,7 @@ async function saveLoanNote(loan: OwnerLoan, note: string | null) {
             icon="i-lucide-handshake"
             @click="setView('loaned')"
           >
-            Loaned out
+            {{ $t('ui.loanedOut') }}
           </UButton>
           <UButton
             :color="view === 'borrowed' ? 'primary' : 'neutral'"
@@ -164,7 +166,7 @@ async function saveLoanNote(loan: OwnerLoan, note: string | null) {
             icon="i-lucide-book-user"
             @click="setView('borrowed')"
           >
-            Lent to you
+            {{ $t('ui.lentToYou') }}
           </UButton>
         </UFieldGroup>
       </div>

@@ -90,7 +90,7 @@ async function removeSelected() {
           v-if="previewLoading"
           role="status"
         >
-          Counting all library records…
+          {{ $t('ui.countingAllLibraryRecords') }}
         </p>
         <template v-if="all && preview">
           <p>{{ preview.total }} records in your library. {{ ids.length }} can be removed; {{ preview.protectedLoanCount }} with active loans will be kept.</p>
@@ -103,9 +103,9 @@ async function removeSelected() {
             />
           </UFormField>
         </template>
-        <p>Notes, ratings and reading progress on these records will no longer appear in your library. {{ all ? 'Your account is kept.' : 'Unselected records and your account are kept.' }}</p>
+        <p>{{ $t('ui.notesRatingsAndReadingProgressOnThese') }} {{ all ? 'Your account is kept.' : 'Unselected records and your account are kept.' }}</p>
         <p class="text-sm text-muted">
-          Export a backup in Settings before cleaning up your library. Books with active loans will be skipped.
+          {{ $t('ui.exportABackupInSettingsBeforeCleaning') }}
         </p>
         <p
           v-if="busy"
@@ -116,7 +116,7 @@ async function removeSelected() {
         <UAlert
           v-if="error"
           color="warning"
-          title="Review remaining records"
+          :title="$t('ui.reviewRemainingRecords')"
           :description="error"
         />
       </div>
@@ -128,7 +128,7 @@ async function removeSelected() {
         :disabled="busy"
         @click="open = false"
       >
-        Cancel
+        {{ $t('ui.cancel') }}
       </UButton>
       <UButton
         color="error"
@@ -136,7 +136,7 @@ async function removeSelected() {
         :disabled="previewLoading || !ids.length || (!!error && !requestFailed) || (all && confirmation !== 'DELETE LIBRARY')"
         @click="removeSelected"
       >
-        {{ requestFailed ? 'Retry remaining records' : all ? 'Clear library' : `Delete ${ids.length} ${ids.length === 1 ? 'record' : 'records'}` }}
+        {{ requestFailed ? 'Retry remaining records' : all ? $t('ui.clearLibrary') : `Delete ${ids.length} ${ids.length === 1 ? 'record' : 'records'}` }}
       </UButton>
     </template>
   </UModal>

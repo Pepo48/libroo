@@ -3,7 +3,9 @@ import type { TableColumn, TableRow } from '@nuxt/ui/components/Table.vue'
 import type { AdminUser, AdminUsersPage } from '~~/shared/types/admin'
 import { formatAdminDateTime } from '~/utils/admin-date-format'
 
-usePageTitle('Admin Users')
+const { t, locale } = useI18n()
+
+usePageTitle(() => t('ui.adminUsers'))
 
 const toast = useToast()
 const route = useRoute()
@@ -53,15 +55,15 @@ watch(isInvalidPage, (invalid) => {
   }
 })
 
-const columns: TableColumn<AdminUser>[] = [
-  { accessorKey: 'name', header: 'Name' },
-  { accessorKey: 'email', header: 'Email' },
-  { accessorKey: 'createdAt', header: 'Created' },
-  { accessorKey: 'lastSessionActivityAt', header: 'Last session update' },
-  { accessorKey: 'role', header: 'Role' },
-  { accessorKey: 'status', header: 'Status' },
-  { id: 'actions', header: '' }
-]
+const columns = computed<TableColumn<AdminUser>[]>(() => [
+  { accessorKey: 'name', header: t('admin.columns.name') },
+  { accessorKey: 'email', header: t('ui.email') },
+  { accessorKey: 'createdAt', header: t('admin.columns.created') },
+  { accessorKey: 'lastSessionActivityAt', header: t('ui.lastSessionUpdate') },
+  { accessorKey: 'role', header: t('admin.columns.role') },
+  { accessorKey: 'status', header: t('ui.status') },
+  { id: 'actions', header: t('admin.columns.actions') }
+])
 
 function roleColor(role: AdminUser['role']) {
   return role === 'admin' ? 'primary' : 'neutral'
@@ -105,14 +107,14 @@ async function setRole(user: AdminUser, role: AdminUser['role']) {
       )
     }
     toast.add({
-      title: role === 'admin' ? 'Admin promoted' : 'Admin rights removed',
+      title: role === 'admin' ? t('admin.users.promoted') : t('admin.users.demoted'),
       color: 'success'
     })
   } catch (err: unknown) {
     const message = (err as { data?: { message?: string } })?.data?.message
-      ?? (err instanceof Error ? err.message : 'Unable to update role')
+      ?? (err instanceof Error ? err.message : t('admin.users.roleFailed'))
     toast.add({
-      title: 'Could not update role',
+      title: t('admin.users.roleFailed'),
       description: message,
       color: 'error'
     })
@@ -132,11 +134,11 @@ async function banUser(user: AdminUser) {
     }))
     updateUserStatus(user.id, response.user)
     toast.add({
-      title: 'Account banned',
+      title: t('admin.users.accountBanned'),
       color: 'success'
     })
   } catch (err: unknown) {
-    showStatusError(err, 'Could not ban account')
+    showStatusError(err, t('admin.users.banFailed'))
   } finally {
     statusUpdatingUserIds.value.delete(user.id)
   }
@@ -152,11 +154,11 @@ async function unbanUser(user: AdminUser) {
     }))
     updateUserStatus(user.id, response.user)
     toast.add({
-      title: 'Account unbanned',
+      title: t('admin.users.accountUnbanned'),
       color: 'success'
     })
   } catch (err: unknown) {
-    showStatusError(err, 'Could not unban account')
+    showStatusError(err, t('admin.users.unbanFailed'))
   } finally {
     statusUpdatingUserIds.value.delete(user.id)
   }
@@ -186,7 +188,7 @@ function updateUserStatus(userId: string, betterAuthUser: {
 
 function showStatusError(err: unknown, title: string) {
   const message = (err as { data?: { message?: string } })?.data?.message
-    ?? (err instanceof Error ? err.message : 'Unable to update account status')
+    ?? (err instanceof Error ? err.message : t('admin.users.statusFailed'))
   toast.add({
     title,
     description: message,
@@ -228,7 +230,7 @@ function pageQuery(page: number) {
 async function unwrapAuthResponse<T>(promise: Promise<{ data: T | null, error: { message?: string, statusText?: string } | null }>) {
   const { data, error } = await promise
   if (error || !data) {
-    throw new Error(error?.message ?? error?.statusText ?? 'Request failed')
+    throw new Error(error?.message ?? error?.statusText ?? t('admin.users.requestFailed'))
   }
   return data
 }
@@ -237,8 +239,8 @@ async function unwrapAuthResponse<T>(promise: Promise<{ data: T | null, error: {
 <template>
   <UContainer>
     <UPageHeader
-      title="Users"
-      :description="`${totalUsers} registered ${totalUsers === 1 ? 'user' : 'users'}`"
+      :title="$t('ui.users')"
+      :description="$t('admin.users.count', totalUsers)"
     />
 
     <UPageBody>
@@ -257,7 +259,7 @@ async function unwrapAuthResponse<T>(promise: Promise<{ data: T | null, error: {
         color="error"
         variant="subtle"
         icon="i-lucide-circle-alert"
-        title="Could not load users"
+        :title="$t('ui.couldNotLoadUsers')"
         :description="error.message"
       />
 
@@ -270,10 +272,10 @@ async function unwrapAuthResponse<T>(promise: Promise<{ data: T | null, error: {
           class="text-6xl text-muted mx-auto mb-4"
         />
         <h2 class="text-xl font-semibold mb-2">
-          No registered users
+          {{ $t('ui.noRegisteredUsers') }}
         </h2>
         <p class="text-muted">
-          Signed up users will appear here.
+          {{ $t('ui.signedUpUsersWillAppearHere') }}
         </p>
       </UCard>
 
@@ -283,17 +285,17 @@ async function unwrapAuthResponse<T>(promise: Promise<{ data: T | null, error: {
           :columns="columns"
         >
           <template #lastSessionActivityAt-header>
-            <UTooltip text="Most recent Better Auth session update or refresh, not per-request activity.">
-              <span>Last session update</span>
+            <UTooltip :text="$t('admin.users.sessionHelp')">
+              <span>{{ $t('ui.lastSessionUpdate') }}</span>
             </UTooltip>
           </template>
 
           <template #createdAt-cell="{ row }">
-            <span class="whitespace-nowrap">{{ formatAdminDateTime(originalUser(row).createdAt) }}</span>
+            <span class="whitespace-nowrap">{{ formatAdminDateTime(originalUser(row).createdAt, locale, $t('admin.never')) }}</span>
           </template>
 
           <template #lastSessionActivityAt-cell="{ row }">
-            <span class="whitespace-nowrap">{{ formatAdminDateTime(originalUser(row).lastSessionActivityAt) }}</span>
+            <span class="whitespace-nowrap">{{ formatAdminDateTime(originalUser(row).lastSessionActivityAt, locale, $t('admin.never')) }}</span>
           </template>
 
           <template #role-cell="{ row }">
@@ -301,7 +303,7 @@ async function unwrapAuthResponse<T>(promise: Promise<{ data: T | null, error: {
               :color="roleColor(originalUser(row).role)"
               variant="subtle"
             >
-              {{ originalUser(row).role }}
+              {{ $t(`admin.users.${originalUser(row).role}`) }}
             </UBadge>
           </template>
 
@@ -310,7 +312,7 @@ async function unwrapAuthResponse<T>(promise: Promise<{ data: T | null, error: {
               :color="statusColor(originalUser(row).status)"
               variant="subtle"
             >
-              {{ originalUser(row).status }}
+              {{ $t(`admin.users.${originalUser(row).status}`) }}
             </UBadge>
           </template>
 
@@ -326,7 +328,7 @@ async function unwrapAuthResponse<T>(promise: Promise<{ data: T | null, error: {
                 :loading="roleUpdatingUserIds.has(originalUser(row).id)"
                 @click="setRole(originalUser(row), 'user')"
               >
-                Demote
+                {{ $t('ui.demote') }}
               </UButton>
               <UButton
                 v-else
@@ -337,7 +339,7 @@ async function unwrapAuthResponse<T>(promise: Promise<{ data: T | null, error: {
                 :loading="roleUpdatingUserIds.has(originalUser(row).id)"
                 @click="setRole(originalUser(row), 'admin')"
               >
-                Promote
+                {{ $t('ui.promote') }}
               </UButton>
 
               <UButton
@@ -349,7 +351,7 @@ async function unwrapAuthResponse<T>(promise: Promise<{ data: T | null, error: {
                 :loading="statusUpdatingUserIds.has(originalUser(row).id)"
                 @click="unbanUser(originalUser(row))"
               >
-                Unban
+                {{ $t('ui.unban') }}
               </UButton>
               <UButton
                 v-else
@@ -361,7 +363,7 @@ async function unwrapAuthResponse<T>(promise: Promise<{ data: T | null, error: {
                 :loading="statusUpdatingUserIds.has(originalUser(row).id)"
                 @click="banUser(originalUser(row))"
               >
-                Ban
+                {{ $t('ui.ban') }}
               </UButton>
             </div>
           </template>
@@ -369,7 +371,7 @@ async function unwrapAuthResponse<T>(promise: Promise<{ data: T | null, error: {
 
         <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p class="text-sm text-muted">
-            Showing {{ pageStart }}-{{ pageEnd }} of {{ totalUsers }} users
+            {{ $t('admin.users.showing', { start: pageStart, end: pageEnd, total: totalUsers }) }}
           </p>
 
           <UPagination

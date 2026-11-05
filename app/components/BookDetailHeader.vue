@@ -1,4 +1,6 @@
 <script setup lang="ts">
+const { t } = useI18n()
+
 const props = defineProps<{
   book: BookDetails
   isDeleting: boolean
@@ -17,10 +19,10 @@ const emit = defineEmits<{
 
 const isOwnedBook = computed(() => props.book.libraryState === 'owned')
 const menuItems = computed(() => [
-  ...(isOwnedBook.value && !props.book.activeLoan ? [{ label: 'Move to Wishlist', icon: 'i-lucide-bookmark', onSelect: () => emit('moveToWishlist') }] : []),
+  ...(isOwnedBook.value && !props.book.activeLoan ? [{ label: t('ui.moveToWishlistText'), icon: 'i-lucide-bookmark', onSelect: () => emit('moveToWishlist') }] : []),
   ...(isOwnedBook.value ? [{ label: 'No longer own this book', icon: 'i-lucide-history', onSelect: () => emit('markPreviouslyOwned') }] : []),
-  ...(props.book.libraryState === 'wishlisted' ? [{ label: 'Remove from Wishlist', icon: 'i-lucide-x', color: 'error' as const, onSelect: () => emit('removeWishlist') }] : []),
-  ...(props.book.libraryState === 'previously_owned' ? [{ label: 'Delete this book', icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: () => emit('deleteRecord') }] : [])
+  ...(props.book.libraryState === 'wishlisted' ? [{ label: t('ui.removeFromWishlistText'), icon: 'i-lucide-x', color: 'error' as const, onSelect: () => emit('removeWishlist') }] : []),
+  ...(props.book.libraryState === 'previously_owned' ? [{ label: t('ui.deleteThisBook'), icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: () => emit('deleteRecord') }] : [])
 ])
 </script>
 
@@ -50,7 +52,7 @@ const menuItems = computed(() => [
       </div>
       <div class="flex shrink-0 flex-wrap gap-2">
         <UButton
-          label="Edit book"
+          :label="$t('ui.editBook')"
           icon="i-lucide-pencil"
           variant="outline"
           color="neutral"
@@ -66,7 +68,7 @@ const menuItems = computed(() => [
           :disabled="isUpdatingLibraryState"
           @click="emit('moveToLibrary')"
         >
-          Move to Library
+          {{ $t('ui.moveToLibrary') }}
         </UButton>
         <UDropdownMenu :items="menuItems">
           <UButton
@@ -74,7 +76,7 @@ const menuItems = computed(() => [
             variant="outline"
             size="sm"
             icon="i-lucide-ellipsis"
-            aria-label="More book actions"
+            :aria-label="$t('ui.moreBookActions')"
             :disabled="isDeleting || isUpdatingLibraryState"
           />
         </UDropdownMenu>
@@ -87,7 +89,7 @@ const menuItems = computed(() => [
       ><UIcon
         name="i-lucide-calendar-days"
         class="size-4"
-      /> Published {{ formatDate(book.publishDate) }}</span>
+      /> {{ $t('ui.published') }} {{ formatDate(book.publishDate) }}</span>
       <span
         v-if="book.publishers"
         class="inline-flex items-center gap-1.5"
@@ -101,7 +103,7 @@ const menuItems = computed(() => [
       ><UIcon
         name="i-lucide-book-open"
         class="size-4"
-      /> {{ book.numberOfPages }} pages</span>
+      /> {{ book.numberOfPages }} {{ $t('ui.pagesText') }}</span>
       <span
         v-if="book.isbn"
         class="inline-flex items-center gap-1.5"
@@ -112,14 +114,14 @@ const menuItems = computed(() => [
       <span class="inline-flex items-center gap-1.5"><UIcon
         name="i-lucide-plus-circle"
         class="size-4"
-      /> Added {{ formatDate(book.addedAt) }}</span>
+      /> {{ $t('ui.added') }} {{ formatDate(book.addedAt) }}</span>
     </div>
     <div
       v-if="book.description"
       class="max-w-3xl"
     >
       <h2 class="mb-2 text-lg font-semibold">
-        Description
+        {{ $t('ui.description') }}
       </h2>
       <BookDescription :description="book.description" />
     </div>

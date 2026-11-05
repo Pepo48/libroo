@@ -40,7 +40,7 @@ function isStarFilled(star: number): boolean {
         v-if="showTitle"
         class="text-lg font-semibold"
       >
-        Rating
+        {{ $t('ui.rating') }}
       </h2>
       <span
         v-if="showValue && rating"

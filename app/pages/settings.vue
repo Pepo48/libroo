@@ -16,7 +16,9 @@ import { canShowVerificationResendAction, canUseVerifiedEmailChange, getPassword
 import { canShowEmailManagement, canShowPasskeyManagement, canShowPasswordManagement, canShowTwoFactorManagement } from '~~/shared/utils/auth-capability-ui'
 import { authClient } from '~/utils/auth-client'
 
-usePageTitle('Settings')
+const { locale, locales, setLocale, t } = useI18n()
+const languageOptions = computed(() => locales.value.map(item => ({ label: item.name ?? item.code, value: item.code })))
+usePageTitle(() => t('ui.settings'))
 
 const toast = useToast()
 const route = useRoute()
@@ -139,10 +141,10 @@ const clearLibraryOpen = ref(false)
 const isExporting = ref(false)
 const LIBRARY_IMPORT_MAX_BYTES = 10 * 1024 * 1024
 
-const importConflictItems = [
-  { label: 'Keep existing data', value: 'existing' },
-  { label: 'Use CSV data', value: 'csv' }
-]
+const importConflictItems = computed(() => [
+  { label: t('ui.keepExistingData'), value: 'existing' },
+  { label: t('ui.useCsvData'), value: 'csv' }
+])
 
 watch(user, (nextUser, previousUser) => {
   // A session refresh can complete after a user starts editing this form. Only
@@ -199,7 +201,7 @@ onMounted(() => {
 
 if (route.query.verify === 'required') {
   toast.add({
-    title: 'Verify your email',
+    title: t('ui.verifyYourEmail'),
     description: emailCapabilities.value.emailVerificationEnabled
       ? 'Open the verification link sent to your email before using the rest of Libroo.'
       : 'Email verification is unavailable. Contact the administrator if your account is blocked.',
@@ -718,7 +720,7 @@ async function changePassword(payload: FormSubmitEvent<AccountPasswordChangeSche
     passwordForm.value?.clear()
     passwordManagementOpen.value = false
     toast.add({
-      title: 'Password updated',
+      title: t('ui.passwordUpdated'),
       description: getPasswordUpdatedDescription(emailCapabilities.value),
       color: 'success'
     })
@@ -857,19 +859,33 @@ async function importLibraryCsvFile() {
 <template>
   <UContainer>
     <UPageHeader
-      title="Settings"
-      description="Manage your account and library data."
+      :title="$t('ui.settings')"
+      :description="$t('ui.manageYourAccountAndLibraryData')"
     />
 
     <UPageBody>
       <UCard>
+        <UFormField
+          :label="$t('settings.language')"
+          :description="$t('settings.languageDescription')"
+        >
+          <USelect
+            :model-value="locale"
+            :items="languageOptions"
+            class="mt-2 w-full sm:max-w-xs"
+            @update:model-value="setLocale"
+          />
+        </UFormField>
+      </UCard>
+
+      <UCard class="mt-6">
         <template #header>
           <div class="flex items-center gap-2">
             <UIcon
               name="i-lucide-user-round"
               class="text-lg"
             />
-            <span class="font-semibold">Account & sign-in</span>
+            <span class="font-semibold">{{ $t('ui.accountSignIn') }}</span>
           </div>
         </template>
 
@@ -885,13 +901,13 @@ async function importLibraryCsvFile() {
               />
               <div class="min-w-0">
                 <p class="font-medium">
-                  Email
+                  {{ $t('ui.email') }}
                 </p>
                 <p class="truncate text-sm text-muted">
                   {{ pendingEmailChange
                     ? `Changing to ${pendingEmailChange} — verification pending`
                     : emailCapabilities.emailVerificationEnabled && verificationStatus.enabled
-                      ? `${user?.email || 'Email'} · ${verificationStatus.verified ? 'verified' : 'unverified'}`
+                      ? `${user?.email || $t('ui.email')} · ${verificationStatus.verified ? 'verified' : 'unverified'}`
                       : user?.email }}
                 </p>
               </div>
@@ -901,7 +917,7 @@ async function importLibraryCsvFile() {
               variant="outline"
               @click="requestRecentAuth('email', openEmailManagement)"
             >
-              Manage
+              {{ $t('ui.manage') }}
             </UButton>
           </div>
 
@@ -916,10 +932,10 @@ async function importLibraryCsvFile() {
               />
               <div>
                 <p class="font-medium">
-                  Password
+                  {{ $t('ui.password') }}
                 </p>
                 <p class="text-sm text-muted">
-                  Configured
+                  {{ $t('ui.configured') }}
                 </p>
               </div>
             </div>
@@ -928,7 +944,7 @@ async function importLibraryCsvFile() {
               variant="outline"
               @click="requestRecentAuth('password', openPasswordManagement)"
             >
-              Change password
+              {{ $t('ui.changePassword') }}
             </UButton>
           </div>
 
@@ -943,10 +959,10 @@ async function importLibraryCsvFile() {
               />
               <div>
                 <p class="font-medium">
-                  Two-factor authentication
+                  {{ $t('ui.twoFactorAuthentication') }}
                 </p>
                 <p class="text-sm text-muted">
-                  {{ twoFactorEnabled ? 'Enabled with an authenticator app' : 'Not configured' }}
+                  {{ twoFactorEnabled ? $t('ui.enabledWithAnAuthenticatorApp') : $t('ui.notConfigured') }}
                 </p>
               </div>
             </div>
@@ -955,7 +971,7 @@ async function importLibraryCsvFile() {
               variant="outline"
               @click="requestRecentAuth(twoFactorEnabled ? 'two-factor-manage' : 'two-factor-setup', twoFactorEnabled ? openTwoFactorManagement : openTwoFactorSetup)"
             >
-              {{ twoFactorEnabled ? 'Manage' : 'Set up' }}
+              {{ twoFactorEnabled ? $t('ui.manage') : $t('ui.setUp') }}
             </UButton>
           </div>
 
@@ -970,10 +986,10 @@ async function importLibraryCsvFile() {
               />
               <div>
                 <p class="font-medium">
-                  Passkeys
+                  {{ $t('ui.passkeys') }}
                 </p>
                 <p class="text-sm text-muted">
-                  {{ passkeys.length ? `${passkeys.length} ${passkeys.length === 1 ? 'passkey' : 'passkeys'} configured` : 'No passkeys configured' }}
+                  {{ passkeys.length ? $t('settings.passkeyCount', passkeys.length) : $t('ui.noPasskeysConfigured') }}
                 </p>
               </div>
             </div>
@@ -982,7 +998,7 @@ async function importLibraryCsvFile() {
               variant="outline"
               @click="requestRecentAuth('passkeys', openPasskeyManagement)"
             >
-              Manage passkeys
+              {{ $t('ui.managePasskeys') }}
             </UButton>
           </div>
 
@@ -1001,10 +1017,10 @@ async function importLibraryCsvFile() {
                 </p>
                 <p class="text-sm text-muted">
                   {{ !accountMethodsLoaded
-                    ? 'Checking connection…'
+                    ? $t('ui.checkingConnection')
                     : oidcProviderLinked
-                      ? 'Connected to this account'
-                      : 'Not connected to this account' }}
+                      ? $t('ui.connectedToThisAccount')
+                      : $t('ui.notConnectedToThisAccount') }}
                 </p>
               </div>
             </div>
@@ -1015,7 +1031,7 @@ async function importLibraryCsvFile() {
               :disabled="!accountMethodsLoaded || oidcProviderLinked"
               @click="connectOidcProvider"
             >
-              {{ oidcProviderLinked ? 'Connected' : `Connect ${oidcProvider.displayName}` }}
+              {{ oidcProviderLinked ? $t('ui.connected') : $t('settings.connectProvider', { provider: oidcProvider.displayName }) }}
             </UButton>
           </div>
 
@@ -1027,10 +1043,10 @@ async function importLibraryCsvFile() {
               />
               <div>
                 <p class="font-medium">
-                  Delete account
+                  {{ $t('ui.deleteAccount') }}
                 </p>
                 <p class="text-sm text-muted">
-                  Permanently remove your account and personal library data.
+                  {{ $t('ui.permanentlyRemoveYourAccountAndPersonalLibrary') }}
                 </p>
               </div>
             </div>
@@ -1039,7 +1055,7 @@ async function importLibraryCsvFile() {
               variant="outline"
               @click="requestRecentAuth('delete', openAccountDeletion)"
             >
-              Delete account
+              {{ $t('ui.deleteAccount') }}
             </UButton>
           </div>
         </div>
@@ -1055,7 +1071,7 @@ async function importLibraryCsvFile() {
               name="i-lucide-database"
               class="text-lg"
             />
-            <span class="font-semibold">Library data</span>
+            <span class="font-semibold">{{ $t('ui.libraryData') }}</span>
           </div>
         </template>
 
@@ -1068,10 +1084,10 @@ async function importLibraryCsvFile() {
               />
               <div>
                 <p class="font-medium">
-                  Export library
+                  {{ $t('ui.exportLibrary') }}
                 </p>
                 <p class="text-sm text-muted">
-                  Download your books, tags, locations, reading state, and active loans as CSV.
+                  {{ $t('ui.downloadYourBooksTagsLocationsReadingState') }}
                 </p>
               </div>
             </div>
@@ -1082,7 +1098,7 @@ async function importLibraryCsvFile() {
               :disabled="isExporting"
               @click="downloadLibraryCsv"
             >
-              Export CSV
+              {{ $t('ui.exportCsv') }}
             </UButton>
           </div>
 
@@ -1094,10 +1110,10 @@ async function importLibraryCsvFile() {
               />
               <div>
                 <p class="font-medium">
-                  Import library
+                  {{ $t('ui.importLibrary') }}
                 </p>
                 <p class="text-sm text-muted">
-                  Restore books from a Libroo CSV export.
+                  {{ $t('ui.restoreBooksFromALibrooCsvExport') }}
                 </p>
               </div>
             </div>
@@ -1106,7 +1122,7 @@ async function importLibraryCsvFile() {
               variant="outline"
               @click="openLibraryImport"
             >
-              Import CSV
+              {{ $t('ui.importCsv') }}
             </UButton>
           </div>
           <div class="flex flex-col gap-4 py-5 sm:flex-row sm:items-center sm:justify-between">
@@ -1117,10 +1133,10 @@ async function importLibraryCsvFile() {
               />
               <div>
                 <p class="font-medium">
-                  Review existing duplicates
+                  {{ $t('ui.reviewExistingDuplicates') }}
                 </p>
                 <p class="text-sm text-muted">
-                  Compare matching books and choose which records to keep. Importing does not remove existing duplicates.
+                  {{ $t('ui.compareMatchingBooksAndChooseWhichRecords') }}
                 </p>
               </div>
             </div>
@@ -1129,7 +1145,7 @@ async function importLibraryCsvFile() {
               color="neutral"
               variant="outline"
             >
-              Review existing duplicates
+              {{ $t('ui.reviewExistingDuplicates') }}
             </UButton>
           </div>
           <div class="flex flex-col gap-4 py-5 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
@@ -1140,10 +1156,10 @@ async function importLibraryCsvFile() {
               />
               <div>
                 <p class="font-medium">
-                  Clear library
+                  {{ $t('ui.clearLibrary') }}
                 </p>
                 <p class="text-sm text-muted">
-                  Remove all owned, wishlisted and previously owned records. Books with active loans are kept. Export a backup first.
+                  {{ $t('ui.removeAllOwnedWishlistedAndPreviouslyOwned') }}
                 </p>
               </div>
             </div>
@@ -1152,7 +1168,7 @@ async function importLibraryCsvFile() {
               variant="outline"
               @click="clearLibraryOpen = true"
             >
-              Clear library
+              {{ $t('ui.clearLibrary') }}
             </UButton>
           </div>
         </div>
@@ -1165,12 +1181,12 @@ async function importLibraryCsvFile() {
       <UModal
         v-if="showPasswordManagement"
         v-model:open="recentAuthOpen"
-        title="Confirm it’s you"
-        description="For your security, confirm your current password before changing sign-in or account settings. This confirmation lasts five minutes."
+        :title="$t('ui.confirmItSYou')"
+        :description="$t('ui.forYourSecurityConfirmYourCurrentPassword')"
       >
         <template #body>
           <UFormField
-            label="Current password"
+            :label="$t('ui.currentPassword')"
             required
           >
             <UInput
@@ -1189,14 +1205,14 @@ async function importLibraryCsvFile() {
             :disabled="isConfirmingRecentAuth"
             @click="() => { recentAuthOpen = false }"
           >
-            Cancel
+            {{ $t('ui.cancel') }}
           </UButton>
           <UButton
             :loading="isConfirmingRecentAuth"
             :disabled="!recentAuthPassword"
             @click="confirmRecentAuth"
           >
-            Continue
+            {{ $t('ui.continue') }}
           </UButton>
         </template>
       </UModal>
@@ -1204,8 +1220,8 @@ async function importLibraryCsvFile() {
       <UModal
         v-if="showEmailManagement"
         v-model:open="emailManagementOpen"
-        title="Manage email"
-        description="Update the email address for this account."
+        :title="$t('ui.manageEmail')"
+        :description="$t('ui.updateTheEmailAddressForThisAccount')"
       >
         <template #body>
           <div class="space-y-5">
@@ -1225,7 +1241,7 @@ async function importLibraryCsvFile() {
                 color="info"
                 variant="subtle"
                 icon="i-lucide-mail-check"
-                title="Pending email change"
+                :title="$t('ui.pendingEmailChange')"
                 :description="`Open the verification link sent to ${pendingEmailChange}. Your account email stays ${user?.email} until then.`"
               />
               <UButton
@@ -1238,7 +1254,7 @@ async function importLibraryCsvFile() {
                 :disabled="isResendingVerification"
                 @click="resendVerificationEmail"
               >
-                Resend verification email
+                {{ $t('ui.resendVerificationEmail') }}
               </UButton>
             </div>
 
@@ -1250,7 +1266,7 @@ async function importLibraryCsvFile() {
               @submit="changeEmail"
             >
               <UFormField
-                label="Email"
+                :label="$t('ui.email')"
                 name="email"
                 required
               >
@@ -1263,7 +1279,7 @@ async function importLibraryCsvFile() {
               </UFormField>
               <UFormField
                 v-if="showPasswordManagement && !hasRecentAuth"
-                label="Current password"
+                :label="$t('ui.currentPassword')"
                 name="currentPassword"
                 required
               >
@@ -1294,7 +1310,7 @@ async function importLibraryCsvFile() {
                   :disabled="isChangingEmail"
                   @click="() => { emailManagementOpen = false }"
                 >
-                  Cancel
+                  {{ $t('ui.cancel') }}
                 </UButton>
                 <UButton
                   type="submit"
@@ -1302,7 +1318,7 @@ async function importLibraryCsvFile() {
                   :loading="isChangingEmail"
                   :disabled="isChangingEmail || emailState.email === user?.email || !hasRecentAuth"
                 >
-                  Change email
+                  {{ $t('ui.changeEmail') }}
                 </UButton>
               </div>
             </UForm>
@@ -1313,8 +1329,8 @@ async function importLibraryCsvFile() {
       <UModal
         v-if="showPasswordManagement"
         v-model:open="passwordManagementOpen"
-        title="Change password"
-        description="This signs out your other active sessions."
+        :title="$t('ui.changePassword')"
+        :description="$t('ui.thisSignsOutYourOtherActiveSessions')"
       >
         <template #body>
           <UForm
@@ -1326,7 +1342,7 @@ async function importLibraryCsvFile() {
           >
             <UFormField
               v-if="showPasswordManagement && !hasRecentAuth"
-              label="Current password"
+              :label="$t('ui.currentPassword')"
               name="currentPassword"
               required
             >
@@ -1350,7 +1366,7 @@ async function importLibraryCsvFile() {
               </UInput>
             </UFormField>
             <UFormField
-              label="New password"
+              :label="$t('ui.newPassword')"
               name="newPassword"
               required
             >
@@ -1374,7 +1390,7 @@ async function importLibraryCsvFile() {
               </UInput>
             </UFormField>
             <UFormField
-              label="Confirm new password"
+              :label="$t('ui.confirmNewPassword')"
               name="confirmPassword"
               required
             >
@@ -1405,7 +1421,7 @@ async function importLibraryCsvFile() {
                 :disabled="isChangingPassword"
                 @click="() => { passwordManagementOpen = false }"
               >
-                Cancel
+                {{ $t('ui.cancel') }}
               </UButton>
               <UButton
                 type="submit"
@@ -1413,7 +1429,7 @@ async function importLibraryCsvFile() {
                 :loading="isChangingPassword"
                 :disabled="isChangingPassword"
               >
-                Change password
+                {{ $t('ui.changePassword') }}
               </UButton>
             </div>
           </UForm>
@@ -1424,8 +1440,8 @@ async function importLibraryCsvFile() {
         v-model:open="libraryImportOpen"
         :dismissible="!isImporting"
         :close="!isImporting"
-        title="Import library CSV"
-        description="Restore a Libroo CSV export into your library."
+        :title="$t('ui.importLibraryCsv')"
+        :description="$t('ui.restoreALibrooCsvExportIntoYour')"
       >
         <template #body>
           <div class="space-y-5">
@@ -1454,23 +1470,23 @@ async function importLibraryCsvFile() {
                 :disabled="isImporting"
                 @click="resetImport"
               >
-                Clear
+                {{ $t('ui.clear') }}
               </UButton>
             </div>
             <URadioGroup
               v-model="importConflictStrategy"
               :disabled="isImporting"
               :items="importConflictItems"
-              legend="When a book already exists"
+              :legend="$t('ui.whenABookAlreadyExists')"
             />
             <p class="text-sm text-muted">
-              Import adds or updates books. It does not remove records missing from the CSV or clean up existing duplicates.
+              {{ $t('ui.importAddsOrUpdatesBooksItDoes') }}
             </p>
             <UCheckbox
               v-model="importEnrich"
               :disabled="isImporting"
-              label="Find missing covers and book details"
-              description="After import, valid ISBNs can fill blank descriptions, publication details, and covers. Existing values are never replaced."
+              :label="$t('ui.findMissingCoversAndBookDetails')"
+              :description="$t('ui.afterImportValidIsbnsCanFillBlank')"
             />
           </div>
         </template>
@@ -1481,7 +1497,7 @@ async function importLibraryCsvFile() {
             :disabled="isImporting"
             @click="() => { libraryImportOpen = false }"
           >
-            Cancel
+            {{ $t('ui.cancel') }}
           </UButton>
           <UButton
             icon="i-lucide-upload"
@@ -1489,7 +1505,7 @@ async function importLibraryCsvFile() {
             :loading="isImporting"
             @click="openImportConfirmation"
           >
-            Import CSV
+            {{ $t('ui.importCsv') }}
           </UButton>
         </template>
       </UModal>
@@ -1497,8 +1513,8 @@ async function importLibraryCsvFile() {
       <UModal
         v-if="showTwoFactorManagement"
         v-model:open="twoFactorManagementOpen"
-        title="Manage two-factor authentication"
-        description="Regenerate recovery codes or turn off two-factor authentication."
+        :title="$t('ui.manageTwoFactorAuthentication')"
+        :description="$t('ui.regenerateRecoveryCodesOrTurnOffTwo')"
         :ui="{ footer: 'justify-stretch' }"
       >
         <template #body>
@@ -1507,7 +1523,7 @@ async function importLibraryCsvFile() {
               color="success"
               variant="subtle"
               icon="i-lucide-shield-check"
-              title="Two-factor authentication is enabled"
+              :title="$t('ui.twoFactorAuthenticationIsEnabled')"
             />
             <div class="grid gap-3">
               <UButton
@@ -1519,7 +1535,7 @@ async function importLibraryCsvFile() {
                 :disabled="!hasRecentAuth"
                 @click="regenerateBackupCodes"
               >
-                Regenerate recovery codes
+                {{ $t('ui.regenerateRecoveryCodes') }}
               </UButton>
               <UButton
                 color="error"
@@ -1530,19 +1546,19 @@ async function importLibraryCsvFile() {
                 :disabled="!hasRecentAuth"
                 @click="disableTwoFactor"
               >
-                Disable two-factor authentication
+                {{ $t('ui.disableTwoFactorAuthentication') }}
               </UButton>
             </div>
             <p class="text-xs text-muted">
-              Regenerating recovery codes permanently invalidates all previous codes.
+              {{ $t('ui.regeneratingRecoveryCodesPermanentlyInvalidatesAllPrevious') }}
             </p>
             <template v-if="backupCodes.length">
               <UAlert
                 color="warning"
                 variant="subtle"
                 icon="i-lucide-key-round"
-                title="Save your new recovery codes"
-                description="Each code works once. They are shown only now."
+                :title="$t('ui.saveYourNewRecoveryCodes')"
+                :description="$t('ui.eachCodeWorksOnceTheyAreShown')"
               />
               <div class="grid grid-cols-2 gap-2 rounded-lg border border-warning/40 bg-warning/5 p-4 font-mono text-sm">
                 <code
@@ -1557,7 +1573,7 @@ async function importLibraryCsvFile() {
                 icon="i-lucide-copy"
                 @click="copyBackupCodes"
               >
-                Copy all recovery codes
+                {{ $t('ui.copyAllRecoveryCodes') }}
               </UButton>
             </template>
           </div>
@@ -1569,7 +1585,7 @@ async function importLibraryCsvFile() {
             block
             @click="() => { twoFactorManagementOpen = false }"
           >
-            Done
+            {{ $t('ui.done') }}
           </UButton>
         </template>
       </UModal>
@@ -1578,41 +1594,41 @@ async function importLibraryCsvFile() {
         v-model:open="importConfirmOpen"
         :dismissible="!isImporting"
         :close="!isImporting"
-        title="Import library CSV?"
-        description="This will update your library using the selected conflict strategy."
+        :title="$t('ui.importLibraryCsvText')"
+        :description="$t('ui.thisWillUpdateYourLibraryUsingThe')"
         :ui="{ footer: 'justify-end gap-3' }"
       >
         <template #body>
           <div class="space-y-3 text-sm">
             <p>
-              File: <span class="font-medium">{{ importFileName }}</span>
+              {{ $t('settings.importFile') }} <span class="font-medium">{{ importFileName }}</span>
             </p>
             <div
               v-if="isImporting"
               role="status"
               class="space-y-2"
             >
-              <p>Processed {{ importProgress.processed }} of {{ importProgress.total }} rows. Keep this page open.</p>
+              <p>{{ $t('settings.importProgress', { processed: importProgress.processed, total: importProgress.total }) }}</p>
               <UProgress
                 :model-value="importProgress.processed"
                 :max="Math.max(1, importProgress.total)"
-                aria-label="CSV import progress"
+                :aria-label="$t('ui.csvImportProgress')"
               />
             </div>
             <p>
-              Existing books:
+              {{ $t('settings.existingBooks') }}
               <span class="font-medium">
-                {{ importConflictStrategy === 'existing' ? 'keep existing data' : 'use CSV data' }}
+                {{ importConflictStrategy === 'existing' ? $t('ui.keepExistingData') : $t('ui.useCsvData') }}
               </span>
             </p>
             <p>
               Open Library:
               <span class="font-medium">
                 {{ !importEnrich
-                  ? 'do not look up missing information'
+                  ? $t('settings.noEnrichment')
                   : importConflictStrategy === 'existing'
-                    ? 'look up only newly created imports; matched library books are skipped'
-                    : 'look up new and previously CSV-imported books without replacing stored values' }}
+                    ? $t('settings.enrichNewOnly')
+                    : $t('settings.enrichImported') }}
               </span>
             </p>
           </div>
@@ -1625,7 +1641,7 @@ async function importLibraryCsvFile() {
             :disabled="isImporting"
             @click="() => { importConfirmOpen = false }"
           >
-            Cancel
+            {{ $t('ui.cancel') }}
           </UButton>
           <UButton
             icon="i-lucide-upload"
@@ -1633,15 +1649,15 @@ async function importLibraryCsvFile() {
             :disabled="isImporting"
             @click="importLibraryCsvFile"
           >
-            Confirm import
+            {{ $t('ui.confirmImport') }}
           </UButton>
         </template>
       </UModal>
 
       <UModal
         v-model:open="importReportOpen"
-        title="Import result"
-        description="Review the completed rows and any errors before closing this report."
+        :title="$t('ui.importResult')"
+        :description="$t('ui.reviewTheCompletedRowsAndAnyErrors')"
         :ui="{ content: 'max-w-2xl', footer: 'justify-end gap-3' }"
       >
         <template #body>
@@ -1650,35 +1666,34 @@ async function importLibraryCsvFile() {
             class="space-y-4"
           >
             <p role="status">
-              Row outcomes: {{ importReport.result.created }} created, {{ importReport.result.updated }} updated,
-              {{ importReport.result.skipped }} skipped, {{ importReport.result.failed.length }} failed.
+              {{ $t('settings.importOutcomes', { created: importReport.result.created, updated: importReport.result.updated, skipped: importReport.result.skipped, failed: importReport.result.failed.length }) }}
             </p>
             <p class="text-sm text-muted">
-              Processed {{ importReport.processedRows }} of {{ importReport.totalRows }} rows.
+              {{ $t('settings.importProcessed', { processed: importReport.processedRows, total: importReport.totalRows }) }}
             </p>
             <UAlert
               v-if="importReport.interrupted"
               color="warning"
-              title="Import stopped early"
-              description="Some rows may already be saved. Re-import the same file with Keep existing data to continue without replacing saved books."
+              :title="$t('ui.importStoppedEarly')"
+              :description="$t('ui.someRowsMayAlreadyBeSavedRe')"
             />
             <UAlert
               v-else-if="importReport.result.failed.length"
               color="warning"
-              title="Some rows could not be imported"
-              description="Successful rows were saved. Expand row details to review errors; retry with Keep existing data after correcting the problem."
+              :title="$t('ui.someRowsCouldNotBeImported')"
+              :description="$t('ui.successfulRowsWereSavedExpandRowDetails')"
             />
             <p
               v-if="importReport.result.skipped"
               class="text-sm text-muted"
             >
-              Wishlist entries are shown separately from owned books.
+              {{ $t('ui.wishlistEntriesAreShownSeparatelyFromOwned') }}
             </p>
             <p
               v-if="importReport.result.enrichmentQueued"
               class="text-sm text-muted"
             >
-              {{ importReport.result.enrichmentQueued }} books queued for missing covers and details.
+              {{ $t('settings.enrichmentQueued', { count: importReport.result.enrichmentQueued }) }}
             </p>
             <LibraryImportDetails :result="importReport.result" />
           </div>
@@ -1689,21 +1704,21 @@ async function importLibraryCsvFile() {
             variant="outline"
             @click="importReportOpen = false"
           >
-            Close report
+            {{ $t('ui.closeReport') }}
           </UButton>
           <UButton
             to="/library"
             @click="importReportOpen = false"
           >
-            View library
+            {{ $t('ui.viewLibrary') }}
           </UButton>
         </template>
       </UModal>
 
       <UModal
         v-model:open="accountDeletionOpen"
-        title="Delete your account?"
-        description="This action is immediate and cannot be undone."
+        :title="$t('ui.deleteYourAccount')"
+        :description="$t('ui.thisActionIsImmediateAndCannotBe')"
         :ui="{ footer: 'justify-end gap-3' }"
       >
         <template #body>
@@ -1718,16 +1733,16 @@ async function importLibraryCsvFile() {
               color="error"
               variant="subtle"
               icon="i-lucide-triangle-alert"
-              title="What will be deleted"
-              description="Your account, active sessions, personal library records, tags, notes, ratings, locations, reading state, loans, invites, settings, and uploaded cover images will be removed."
+              :title="$t('ui.whatWillBeDeleted')"
+              :description="$t('ui.yourAccountActiveSessionsPersonalLibraryRecords')"
             />
 
             <UAlert
               color="neutral"
               variant="subtle"
               icon="i-lucide-database"
-              title="What may remain"
-              description="Information that belongs to other people, or shared book information that no longer identifies you, may remain. Deleted information may also stay temporarily in protected backups."
+              :title="$t('ui.whatMayRemain')"
+              :description="$t('ui.informationThatBelongsToOtherPeopleOr')"
             />
 
             <UAlert
@@ -1735,13 +1750,13 @@ async function importLibraryCsvFile() {
               color="warning"
               variant="subtle"
               icon="i-lucide-shield-alert"
-              title="Last-admin protection"
-              description="The last active admin cannot delete their own account until another active admin exists."
+              :title="$t('ui.lastAdminProtection')"
+              :description="$t('ui.theLastActiveAdminCannotDeleteTheir')"
             />
 
             <UFormField
               v-if="showPasswordManagement && !hasRecentAuth"
-              label="Current password"
+              :label="$t('ui.currentPassword')"
               name="currentPassword"
               required
             >
@@ -1773,7 +1788,7 @@ async function importLibraryCsvFile() {
                 :disabled="isDeletingAccount"
                 @click="() => { accountDeletionOpen = false }"
               >
-                Cancel
+                {{ $t('ui.cancel') }}
               </UButton>
               <UButton
                 type="submit"
@@ -1782,7 +1797,7 @@ async function importLibraryCsvFile() {
                 :loading="isDeletingAccount"
                 :disabled="isDeletingAccount || deletionState.confirmation !== ACCOUNT_DELETION_CONFIRMATION_TEXT || !hasRecentAuth"
               >
-                Delete permanently
+                {{ $t('ui.deletePermanently') }}
               </UButton>
             </div>
           </UForm>
@@ -1792,7 +1807,7 @@ async function importLibraryCsvFile() {
       <UModal
         v-if="showTwoFactorManagement"
         v-model:open="twoFactorSetupOpen"
-        title="Set up two-factor authentication"
+        :title="$t('ui.setUpTwoFactorAuthentication')"
         :description="twoFactorSetupStep === 'backup-codes'
           ? 'Save your recovery codes before continuing. They are shown only now.'
           : 'Scan the QR code or add the authenticator URI, then enter its first code.'"
@@ -1805,13 +1820,13 @@ async function importLibraryCsvFile() {
                 :color="twoFactorSetupStep === 'backup-codes' ? 'primary' : 'neutral'"
                 variant="soft"
               >
-                1. Save codes
+                {{ $t('ui.1SaveCodes') }}
               </UBadge>
               <UBadge
                 :color="twoFactorSetupStep === 'verify' ? 'primary' : 'neutral'"
                 variant="soft"
               >
-                2. Verify
+                {{ $t('ui.2Verify') }}
               </UBadge>
             </div>
 
@@ -1820,8 +1835,8 @@ async function importLibraryCsvFile() {
                 color="warning"
                 variant="subtle"
                 icon="i-lucide-key-round"
-                title="Save your recovery codes"
-                description="Each code works once. Regenerating recovery codes invalidates every previous code."
+                :title="$t('ui.saveYourRecoveryCodes')"
+                :description="$t('ui.eachCodeWorksOnceRegeneratingRecoveryCodes')"
               />
               <div class="grid grid-cols-2 gap-2 rounded-lg border border-warning/40 bg-warning/5 p-4 font-mono text-sm">
                 <code
@@ -1836,7 +1851,7 @@ async function importLibraryCsvFile() {
                 icon="i-lucide-copy"
                 @click="copyBackupCodes"
               >
-                Copy all recovery codes
+                {{ $t('ui.copyAllRecoveryCodes') }}
               </UButton>
             </template>
 
@@ -1844,10 +1859,10 @@ async function importLibraryCsvFile() {
               <img
                 v-if="totpQrCode"
                 :src="totpQrCode"
-                alt="TOTP enrollment QR code"
+                :alt="$t('ui.totpEnrollmentQrCode')"
                 class="mx-auto size-52 rounded border border-default bg-white p-2"
               >
-              <UFormField label="Authenticator URI">
+              <UFormField :label="$t('ui.authenticatorUri')">
                 <UTextarea
                   :model-value="totpUri"
                   readonly
@@ -1861,9 +1876,9 @@ async function importLibraryCsvFile() {
                 icon="i-lucide-copy"
                 @click="copyTotpUri"
               >
-                Copy authenticator URI
+                {{ $t('ui.copyAuthenticatorUri') }}
               </UButton>
-              <UFormField label="First authenticator code">
+              <UFormField :label="$t('ui.firstAuthenticatorCode')">
                 <UInput
                   v-model="twoFactorCode"
                   inputmode="numeric"
@@ -1885,14 +1900,14 @@ async function importLibraryCsvFile() {
             :disabled="isEnablingTwoFactor || isVerifyingTotp"
             @click="() => { twoFactorSetupOpen = false }"
           >
-            Cancel
+            {{ $t('ui.cancel') }}
           </UButton>
           <UButton
             v-if="twoFactorSetupStep === 'backup-codes'"
             :icon="backupCodesCopied ? 'i-lucide-check' : undefined"
             @click="() => { twoFactorSetupStep = 'verify' }"
           >
-            I've saved these codes
+            {{ $t('ui.iVeSavedTheseCodes') }}
           </UButton>
           <UButton
             v-else
@@ -1900,7 +1915,7 @@ async function importLibraryCsvFile() {
             :disabled="!twoFactorCode.trim()"
             @click="verifyTwoFactorSetup"
           >
-            Verify and finish
+            {{ $t('ui.verifyAndFinish') }}
           </UButton>
         </template>
       </UModal>
@@ -1908,20 +1923,20 @@ async function importLibraryCsvFile() {
       <UModal
         v-if="showPasskeyManagement"
         v-model:open="passkeyManagementOpen"
-        title="Manage passkeys"
-        description="Add, name, or remove passkeys for this account."
+        :title="$t('ui.managePasskeys')"
+        :description="$t('ui.addNameOrRemovePasskeysForThis')"
         :ui="{ footer: 'justify-end gap-3' }"
       >
         <template #body>
           <div class="space-y-5">
             <div class="flex flex-wrap items-end gap-3">
               <UFormField
-                label="Passkey name"
+                :label="$t('ui.passkeyName')"
                 class="min-w-52 flex-1"
               >
                 <UInput
                   v-model="passkeyState.name"
-                  placeholder="e.g. Work laptop"
+                  :placeholder="$t('ui.eGWorkLaptop')"
                   class="w-full"
                 />
               </UFormField>
@@ -1931,7 +1946,7 @@ async function importLibraryCsvFile() {
                 :disabled="!hasRecentAuth"
                 @click="addPasskey"
               >
-                Add passkey
+                {{ $t('ui.addPasskey') }}
               </UButton>
             </div>
             <div
@@ -1951,7 +1966,7 @@ async function importLibraryCsvFile() {
                     v-if="item.createdAt"
                     class="text-xs text-muted"
                   >
-                    Added {{ new Date(item.createdAt).toLocaleDateString() }}
+                    {{ $t('ui.added') }} {{ new Date(item.createdAt).toLocaleDateString() }}
                   </p>
                 </div>
                 <UButton
@@ -1962,7 +1977,7 @@ async function importLibraryCsvFile() {
                   :disabled="!hasRecentAuth"
                   @click="removePasskey(item.id)"
                 >
-                  Remove
+                  {{ $t('ui.remove') }}
                 </UButton>
               </div>
             </div>
@@ -1970,7 +1985,7 @@ async function importLibraryCsvFile() {
               v-else
               class="text-sm text-muted"
             >
-              No passkeys have been added yet.
+              {{ $t('ui.noPasskeysHaveBeenAddedYet') }}
             </p>
           </div>
         </template>
@@ -1981,7 +1996,7 @@ async function importLibraryCsvFile() {
             variant="soft"
             @click="() => { passkeyManagementOpen = false }"
           >
-            Done
+            {{ $t('ui.done') }}
           </UButton>
         </template>
       </UModal>

@@ -9,7 +9,9 @@ import {
 } from '~~/shared/utils/location-hierarchy'
 import { getApiErrorMessage } from '~~/shared/utils/api-error'
 
-usePageTitle('Locations')
+const { t } = useI18n()
+
+usePageTitle(() => t('ui.locations'))
 
 const toast = useToast()
 
@@ -162,9 +164,9 @@ async function createLocation(parentLocationId: string | null, name: string) {
     })
     newLocationName.value = ''
     addLocationLocally(location)
-    toast.add({ title: 'Location added', color: 'success' })
+    toast.add({ title: t('ui.locationAdded'), color: 'success' })
   } catch (err: unknown) {
-    showErrorToast('Failed to add location', err)
+    showErrorToast(t('ui.locationAddFailed'), err)
   } finally {
     isCreating.value = false
     isMutating.value = false
@@ -189,10 +191,10 @@ async function renameLocation(locationId: string, name: string) {
       body: { name }
     })
     reconcileLocationLocally(updatedLocation)
-    toast.add({ title: 'Location renamed', color: 'success' })
+    toast.add({ title: t('ui.locationRenamed'), color: 'success' })
   } catch (err: unknown) {
     locations.value = rollbackLocations
-    showErrorToast('Failed to rename location', err)
+    showErrorToast(t('ui.locationRenameFailed'), err)
   } finally {
     isMutating.value = false
   }
@@ -216,10 +218,10 @@ async function moveLocation(locationId: string, parentLocationId: string | null)
       body: { parentLocationId }
     })
     reconcileLocationLocally(updatedLocation)
-    toast.add({ title: 'Location moved', color: 'success' })
+    toast.add({ title: t('ui.locationMoved'), color: 'success' })
   } catch (err: unknown) {
     locations.value = rollbackLocations
-    showErrorToast('Failed to move location', err)
+    showErrorToast(t('ui.locationMoveFailed'), err)
   } finally {
     isMutating.value = false
   }
@@ -255,17 +257,17 @@ async function deleteLocation() {
         : { mode: deleteMode.value }
     })
     deleteTarget.value = null
-    toast.add({ title: 'Location deleted', color: 'success' })
+    toast.add({ title: t('ui.locationDeleted'), color: 'success' })
   } catch (err: unknown) {
     locations.value = rollbackLocations
-    showErrorToast('Failed to delete location', err)
+    showErrorToast(t('ui.locationDeleteFailed'), err)
   } finally {
     isMutating.value = false
   }
 }
 
 function showErrorToast(title: string, err: unknown) {
-  const message = getApiErrorMessage(err, 'Something went wrong')
+  const message = getApiErrorMessage(err, t('ui.genericError'))
   toast.add({ title, description: message, color: 'error' })
 }
 </script>
@@ -273,8 +275,8 @@ function showErrorToast(title: string, err: unknown) {
 <template>
   <UContainer>
     <UPageHeader
-      title="Locations"
-      :description="locations ? `${locations.length} ${locations.length === 1 ? 'location' : 'locations'}` : undefined"
+      :title="$t('ui.locations')"
+      :description="locations ? $t('library.locationCount', locations.length) : undefined"
     >
       <template #links>
         <UButton
@@ -283,7 +285,7 @@ function showErrorToast(title: string, err: unknown) {
           variant="outline"
           to="/library"
         >
-          Library
+          {{ $t('ui.library') }}
         </UButton>
       </template>
     </UPageHeader>
@@ -294,7 +296,7 @@ function showErrorToast(title: string, err: unknown) {
           v-model="newLocationName"
           icon="i-lucide-map-pin-plus"
           size="lg"
-          placeholder="New top-level location"
+          :placeholder="$t('ui.newTopLevelLocation')"
           @keyup.enter="createLocation(null, newLocationName)"
         />
         <UButton
@@ -304,7 +306,7 @@ function showErrorToast(title: string, err: unknown) {
           :disabled="!newLocationName.trim() || isCreating || isMutating"
           @click="createLocation(null, newLocationName)"
         >
-          Add Location
+          {{ $t('ui.addLocation') }}
         </UButton>
       </div>
 
@@ -327,10 +329,10 @@ function showErrorToast(title: string, err: unknown) {
           class="mx-auto mb-4 text-6xl text-muted"
         />
         <h2 class="mb-2 text-xl font-semibold">
-          No locations yet
+          {{ $t('ui.noLocationsYet') }}
         </h2>
         <p class="text-muted">
-          Add a shelf, room, box, or any physical place you use to organize books.
+          {{ $t('ui.addAShelfRoomBoxOrAny') }}
         </p>
       </UCard>
 
@@ -354,8 +356,8 @@ function showErrorToast(title: string, err: unknown) {
 
     <UModal
       :open="Boolean(deleteTarget)"
-      title="Delete location"
-      :description="deleteTarget ? `Choose what happens to books in ${deleteTarget.path}.` : undefined"
+      :title="$t('ui.deleteLocation')"
+      :description="deleteTarget ? $t('ui.locationDeleteDescription', { path: deleteTarget.path }) : undefined"
       :ui="{ content: 'sm:max-w-lg', footer: 'justify-end gap-2' }"
       @update:open="value => { if (!value) deleteTarget = null }"
     >
@@ -367,7 +369,7 @@ function showErrorToast(title: string, err: unknown) {
           <div class="grid grid-cols-3 gap-2 text-sm">
             <div class="rounded-md bg-muted p-3">
               <p class="text-muted">
-                Direct
+                {{ $t('ui.direct') }}
               </p>
               <p class="text-lg font-semibold">
                 {{ deleteTarget.directBookCount }}
@@ -375,7 +377,7 @@ function showErrorToast(title: string, err: unknown) {
             </div>
             <div class="rounded-md bg-muted p-3">
               <p class="text-muted">
-                Nested
+                {{ $t('ui.nested') }}
               </p>
               <p class="text-lg font-semibold">
                 {{ deleteTarget.descendantBookCount }}
@@ -383,7 +385,7 @@ function showErrorToast(title: string, err: unknown) {
             </div>
             <div class="rounded-md bg-muted p-3">
               <p class="text-muted">
-                Total
+                {{ $t('ui.total') }}
               </p>
               <p class="text-lg font-semibold">
                 {{ deleteTarget.directBookCount + deleteTarget.descendantBookCount }}
@@ -394,9 +396,9 @@ function showErrorToast(title: string, err: unknown) {
           <URadioGroup
             v-model="deleteMode"
             :items="[
-              { label: 'Block if books are assigned', value: 'block' },
-              { label: 'Clear location from affected books', value: 'clear' },
-              { label: 'Move affected books elsewhere', value: 'move' }
+              { label: $t('ui.locationDeleteBlock'), value: 'block' },
+              { label: $t('ui.locationDeleteClear'), value: 'clear' },
+              { label: $t('ui.locationDeleteMove'), value: 'move' }
             ]"
           />
 
@@ -404,7 +406,7 @@ function showErrorToast(title: string, err: unknown) {
             v-if="deleteMode === 'move'"
             v-model="deleteTargetLocationId"
             :items="deleteMoveOptions"
-            placeholder="Move books to..."
+            :placeholder="$t('ui.moveBooksTo')"
             class="w-full"
           />
         </div>
@@ -416,7 +418,7 @@ function showErrorToast(title: string, err: unknown) {
           variant="soft"
           @click="() => { deleteTarget = null }"
         >
-          Cancel
+          {{ $t('ui.cancel') }}
         </UButton>
         <UButton
           color="error"
@@ -425,7 +427,7 @@ function showErrorToast(title: string, err: unknown) {
           :disabled="!canConfirmDelete || isMutating"
           @click="deleteLocation"
         >
-          Delete
+          {{ $t('ui.delete') }}
         </UButton>
       </template>
     </UModal>

@@ -45,7 +45,7 @@ function handleHome() {
 
             <div class="space-y-2">
               <p class="text-sm font-medium text-muted">
-                Error {{ statusCode }}
+                {{ $t('ui.error') }} {{ statusCode }}
               </p>
 
               <h1 class="text-xl font-semibold text-highlighted">
@@ -68,7 +68,7 @@ function handleHome() {
               size="md"
               @click="handleHome"
             >
-              Return to library
+              {{ $t('ui.returnToLibrary') }}
             </UButton>
           </div>
         </div>

@@ -93,10 +93,10 @@ function openBook(loan: OwnerLoan) {
       class="text-6xl text-muted mx-auto mb-4"
     />
     <h2 class="text-xl font-semibold mb-2">
-      No loans yet
+      {{ $t('ui.noLoansYet') }}
     </h2>
     <p class="text-muted">
-      Books you record as loaned out will appear here.
+      {{ $t('ui.booksYouRecordAsLoanedOutWill') }}
     </p>
   </UCard>
 
@@ -106,7 +106,7 @@ function openBook(loan: OwnerLoan) {
   >
     <section>
       <h2 class="text-lg font-semibold mb-3">
-        Current
+        {{ $t('ui.current') }}
       </h2>
       <div
         v-if="activeLoans.length > 0"
@@ -148,7 +148,7 @@ function openBook(loan: OwnerLoan) {
                 variant="subtle"
                 class="mb-2"
               >
-                Lent out
+                {{ $t('ui.lentOut') }}
               </UBadge>
               <h3 class="font-semibold line-clamp-2 transition-colors group-hover:text-primary">
                 {{ loan.book.title }}
@@ -163,7 +163,7 @@ function openBook(loan: OwnerLoan) {
                 v-if="loan.dueAt"
                 class="text-sm text-muted"
               >
-                Due {{ formatDate(loan.dueAt) }}
+                {{ $t('ui.due') }} {{ formatDate(loan.dueAt) }}
               </p>
               <div
                 class="mt-2"
@@ -172,7 +172,7 @@ function openBook(loan: OwnerLoan) {
                 <UTextarea
                   v-if="editingLoanId === loan.id"
                   v-model="draftNote"
-                  aria-label="Loan note"
+                  :aria-label="$t('ui.loanNote')"
                   data-testid="loan-note-field"
                   class="w-full"
                   autofocus
@@ -196,7 +196,7 @@ function openBook(loan: OwnerLoan) {
                     size="sm"
                     @click="saveNote(loan)"
                   >
-                    Save note
+                    {{ $t('ui.saveNote') }}
                   </UButton>
                   <UButton
                     size="sm"
@@ -204,7 +204,7 @@ function openBook(loan: OwnerLoan) {
                     variant="soft"
                     @click="cancelNoteEdit"
                   >
-                    Cancel
+                    {{ $t('ui.cancel') }}
                   </UButton>
                   <UButton
                     size="sm"
@@ -212,7 +212,7 @@ function openBook(loan: OwnerLoan) {
                     variant="soft"
                     @click="clearNote"
                   >
-                    Clear
+                    {{ $t('ui.clear') }}
                   </UButton>
                 </template>
                 <UButton
@@ -235,7 +235,7 @@ function openBook(loan: OwnerLoan) {
                     :disabled="Boolean(returningLoanId || cancellingLoanId)"
                     @click="emit('returnLoan', loan)"
                   >
-                    Mark returned
+                    {{ $t('ui.markReturned') }}
                   </UButton>
                   <UDropdownMenu
                     v-if="!loan.acceptedAt"
@@ -251,7 +251,7 @@ function openBook(loan: OwnerLoan) {
                       variant="outline"
                       size="sm"
                       icon="i-lucide-chevron-down"
-                      aria-label="More loan actions"
+                      :aria-label="$t('ui.moreLoanActions')"
                       :loading="cancellingLoanId === loan.id"
                       :disabled="Boolean(returningLoanId || cancellingLoanId)"
                     />
@@ -266,13 +266,13 @@ function openBook(loan: OwnerLoan) {
         v-else
         class="text-sm text-muted"
       >
-        No books are currently loaned out.
+        {{ $t('ui.noBooksAreCurrentlyLoanedOut') }}
       </p>
     </section>
 
     <section>
       <h2 class="text-lg font-semibold mb-3">
-        History
+        {{ $t('ui.history') }}
       </h2>
       <div
         v-if="loanHistory.length > 0"
@@ -317,7 +317,7 @@ function openBook(loan: OwnerLoan) {
                   {{ loan.book.author }} · {{ borrowerLabel(loan) }}
                 </p>
                 <p class="text-sm text-muted">
-                  {{ loan.status === 'returned' ? returnedLabel(loan.returnedAt) : 'Canceled' }}
+                  {{ loan.status === 'returned' ? returnedLabel(loan.returnedAt) : $t('ui.canceled') }}
                 </p>
                 <p
                   v-if="loan.note"
@@ -335,19 +335,19 @@ function openBook(loan: OwnerLoan) {
                 size="md"
                 class="min-h-7 px-2.5"
               >
-                Canceled
+                {{ $t('ui.canceled') }}
               </UBadge>
               <UButton
                 color="error"
                 variant="subtle"
                 size="sm"
                 icon="i-lucide-trash-2"
-                aria-label="Delete loan record"
+                :aria-label="$t('ui.deleteLoanRecord')"
                 :loading="deletingLoanId === loan.id"
                 :disabled="Boolean(deletingLoanId)"
                 @click.stop="openDeleteLoanModal(loan)"
               >
-                Delete
+                {{ $t('ui.delete') }}
               </UButton>
             </div>
           </div>
@@ -357,7 +357,7 @@ function openBook(loan: OwnerLoan) {
         v-else
         class="text-sm text-muted"
       >
-        Returned books will stay here.
+        {{ $t('ui.returnedBooksWillStayHere') }}
       </p>
     </section>
   </div>
@@ -365,7 +365,7 @@ function openBook(loan: OwnerLoan) {
   <UModal
     v-if="deleteLoanTarget"
     v-model:open="isDeleteLoanModalOpen"
-    title="Delete loan record?"
+    :title="$t('ui.deleteLoanRecordText')"
     :description="deleteLoanDescription"
     :close="false"
     :ui="{ content: 'max-w-md', footer: 'justify-end gap-2 p-5' }"
@@ -377,7 +377,7 @@ function openBook(loan: OwnerLoan) {
         :disabled="Boolean(deletingLoanId)"
         @click="cancelDeleteLoan"
       >
-        Cancel
+        {{ $t('ui.cancel') }}
       </UButton>
       <UButton
         color="error"
@@ -387,7 +387,7 @@ function openBook(loan: OwnerLoan) {
         :disabled="Boolean(deletingLoanId)"
         @click="confirmDeleteLoan"
       >
-        Delete permanently
+        {{ $t('ui.deletePermanently') }}
       </UButton>
     </template>
   </UModal>

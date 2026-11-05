@@ -57,7 +57,7 @@ async function loadMore() {
 <template>
   <UContainer>
     <UPageHeader
-      :title="author?.name || 'Author'"
+      :title="author?.name || $t('ui.author')"
       :description="pagination ? `${pagination.totalItems} ${pagination.totalItems === 1 ? 'book' : 'books'} in your library` : undefined"
     >
       <template #links>
@@ -67,7 +67,7 @@ async function loadMore() {
           variant="outline"
           icon="i-lucide-arrow-left"
         >
-          Library
+          {{ $t('ui.library') }}
         </UButton>
       </template>
     </UPageHeader>
@@ -92,13 +92,13 @@ async function loadMore() {
           class="text-6xl text-muted mx-auto mb-4"
         />
         <h2 class="text-xl font-semibold mb-2">
-          No books found
+          {{ $t('ui.noBooksFound') }}
         </h2>
         <p class="text-muted mb-6">
-          There are no books by this author in your library.
+          {{ $t('ui.thereAreNoBooksByThisAuthor') }}
         </p>
         <UButton to="/library">
-          Back to Library
+          {{ $t('ui.backToLibrary') }}
         </UButton>
       </UCard>
 
@@ -128,7 +128,7 @@ async function loadMore() {
             :disabled="isLoadingMore"
             @click="loadMore"
           >
-            Load More
+            {{ $t('ui.loadMore') }}
           </UButton>
         </div>
       </template>

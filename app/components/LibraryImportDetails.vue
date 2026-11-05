@@ -45,7 +45,7 @@ watch(() => props.result, () => {
         {{ matchedCount }} updated or skipped rows matched library records. Match origins are unavailable for {{ unknownMatches }} {{ unknownMatches === 1 ? 'row' : 'rows' }} in this report; these cannot be classified as pre-existing books or CSV repeats.
       </p>
       <p class="text-sm text-muted">
-        {{ repeats ? 'Repeated rows are included in the updated/skipped totals above; they do not create additional books. ' : '' }}Matches can occur across locations.
+        {{ repeats ? 'Repeated rows are included in the updated/skipped totals above; they do not create additional books. ' : '' }}{{ $t('ui.matchesCanOccurAcrossLocations') }}
       </p>
     </template>
     <UCollapsible
@@ -65,7 +65,7 @@ watch(() => props.result, () => {
           <USelect
             v-model="filter"
             :items="items"
-            aria-label="Filter import details"
+            :aria-label="$t('ui.filterImportDetails')"
             class="w-full"
           />
           <p
@@ -77,7 +77,7 @@ watch(() => props.result, () => {
           <ul
             v-else
             class="max-h-80 divide-y divide-default overflow-y-auto"
-            aria-label="Import row details"
+            :aria-label="$t('ui.importRowDetails')"
           >
             <li
               v-for="row in visible"
@@ -91,19 +91,19 @@ watch(() => props.result, () => {
                 >
                   {{ row.status.replaceAll('_', ' ') }}
                 </UBadge>
-                <span class="font-medium">Row {{ row.row }}: {{ row.title }}</span>
+                <span class="font-medium">{{ $t('ui.row') }} {{ row.row }}: {{ row.title }}</span>
               </div>
               <p
                 v-if="'matchedBy' in row && row.matchedBy"
                 class="text-muted"
               >
-                Matched {{ row.matchedTitle ? `“${row.matchedTitle}”` : 'an existing book' }} by {{ matchLabels[row.matchedBy] }}.
+                {{ $t('ui.matched') }} {{ row.matchedTitle ? `“${row.matchedTitle}”` : 'an existing book' }} by {{ matchLabels[row.matchedBy] }}.
               </p>
               <p
                 v-if="isLibraryMatch(row)"
                 class="text-muted"
               >
-                Already in your library before this import.
+                {{ $t('ui.alreadyInYourLibraryBeforeThisImport') }}
               </p>
               <p
                 v-if="'repeatedInFile' in row && row.repeatedInFile"

@@ -117,17 +117,20 @@ const readingPercent = computed(() => {
   }
   return progress.progressPercent ?? 0
 })
-const readingSummary = computed(() => useReadingSummary(
+const describeReadingProgress = useReadingSummary()
+const readingSummary = computed(() => describeReadingProgress(
   book.value?.readingProgress,
   book.value?.numberOfPages
 ))
+
+const { locale } = useI18n()
 
 function formatDate(value: Date | string | null): string | null {
   if (!value) return null
   if (typeof value === 'string' && /^\d{4}$/.test(value)) return value
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return String(value)
-  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+  return date.toLocaleDateString(locale.value === 'sk' ? 'sk-SK' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 function moveToWishlist() {
@@ -216,13 +219,13 @@ async function onTagsSaved() {
         class="py-12 text-center"
       >
         <h1 class="text-xl font-semibold">
-          Book not found
+          {{ $t('ui.bookNotFound') }}
         </h1>
         <UButton
           to="/library"
           class="mt-4"
         >
-          Back to Library
+          {{ $t('ui.backToLibrary') }}
         </UButton>
       </UCard>
 
@@ -254,11 +257,11 @@ async function onTagsSaved() {
                 id="personal-heading"
                 class="border-b border-default pb-3 text-lg font-semibold"
               >
-                Personal
+                {{ $t('ui.personal') }}
               </h2>
               <BookDetailCard
                 v-if="isOwnedBook"
-                title="Reading progress"
+                :title="$t('ui.readingProgressText')"
                 :description="readingSummary"
                 icon="i-lucide-book-open"
               >
@@ -270,7 +273,7 @@ async function onTagsSaved() {
                     trailing-icon="i-lucide-chevron-right"
                     @click="isReadingModalOpen = true"
                   >
-                    Update
+                    {{ $t('ui.update') }}
                   </UButton>
                 </template>
                 <UProgress
@@ -282,7 +285,7 @@ async function onTagsSaved() {
 
               <BookDetailCard
                 v-if="isOwnedBook"
-                title="Rating"
+                :title="$t('ui.rating')"
                 icon="i-lucide-star"
                 tone="warning"
               >
@@ -297,8 +300,8 @@ async function onTagsSaved() {
               </BookDetailCard>
 
               <BookDetailCard
-                title="Personal note"
-                :description="book.note ? undefined : 'Add a note'"
+                :title="$t('ui.personalNote')"
+                :description="book.note ? undefined : $t('ui.addBookNote')"
                 icon="i-lucide-notebook-pen"
                 tone="warning"
               >
@@ -310,7 +313,7 @@ async function onTagsSaved() {
                     trailing-icon="i-lucide-chevron-right"
                     @click="openBookNote"
                   >
-                    {{ book.note ? 'Edit' : 'Add' }}
+                    {{ book.note ? $t('ui.edit') : $t('ui.add') }}
                   </UButton>
                 </template>
                 <p
@@ -330,11 +333,11 @@ async function onTagsSaved() {
                 id="lending-heading"
                 class="border-b border-default pb-3 text-lg font-semibold"
               >
-                Lending
+                {{ $t('ui.lending') }}
               </h2>
               <BookDetailCard
-                title="Loan"
-                :description="book.activeLoan ? `Lent to ${book.activeLoan.acceptedByName || book.activeLoan.borrowerDisplayName}` : 'This copy is currently available to lend.'"
+                :title="$t('ui.loan')"
+                :description="book.activeLoan ? $t('ui.lentToBorrower', { name: book.activeLoan.acceptedByName || book.activeLoan.borrowerDisplayName }) : $t('ui.thisCopyIsCurrentlyAvailableToLend')"
                 icon="i-lucide-handshake"
                 tone="success"
               >
@@ -347,7 +350,7 @@ async function onTagsSaved() {
                     variant="subtle"
                     size="sm"
                   >
-                    Lent out
+                    {{ $t('ui.lentOut') }}
                   </UBadge>
                 </template>
                 <template #action>
@@ -363,15 +366,15 @@ async function onTagsSaved() {
                       :loading="isReturningLoan"
                       @click="returnActiveLoan"
                     >
-                      Mark returned
+                      {{ $t('ui.markReturned') }}
                     </UButton>
-                    <UDropdownMenu :items="[{ label: 'Edit loan note', icon: 'i-lucide-notebook-pen', onSelect: openLoanNote }]">
+                    <UDropdownMenu :items="[{ label: $t('ui.editLoanNote'), icon: 'i-lucide-notebook-pen', onSelect: openLoanNote }]">
                       <UButton
                         color="primary"
                         variant="link"
                         size="sm"
                         icon="i-lucide-ellipsis"
-                        aria-label="More loan actions"
+                        :aria-label="$t('ui.moreLoanActions')"
                       />
                     </UDropdownMenu>
                   </div>
@@ -383,7 +386,7 @@ async function onTagsSaved() {
                     trailing-icon="i-lucide-chevron-right"
                     @click="isLendingModalOpen = true"
                   >
-                    Lend this book
+                    {{ $t('ui.lendThisBook') }}
                   </UButton>
                 </template>
                 <div
@@ -391,7 +394,7 @@ async function onTagsSaved() {
                   class="mt-3 space-y-2 text-sm"
                 >
                   <p class="text-muted">
-                    Lent {{ formatDate(book.activeLoan.loanedAt) }}<template v-if="book.activeLoan.dueAt">
+                    {{ $t('ui.lent') }} {{ formatDate(book.activeLoan.loanedAt) }}<template v-if="book.activeLoan.dueAt">
                       · Due {{ formatDate(book.activeLoan.dueAt) }}
                     </template>
                   </p>
@@ -400,7 +403,7 @@ async function onTagsSaved() {
                     class="border-l-2 border-primary/50 pl-3"
                   >
                     <p class="text-xs font-bold uppercase tracking-wide text-muted">
-                      Loan note
+                      {{ $t('ui.loanNote') }}
                     </p>
                     <p class="mt-1 whitespace-pre-wrap">
                       {{ book.activeLoan.note }}
@@ -417,12 +420,12 @@ async function onTagsSaved() {
                 id="organization-heading"
                 class="border-b border-default pb-3 text-lg font-semibold"
               >
-                Organization
+                {{ $t('ui.organization') }}
               </h2>
               <BookDetailCard
                 v-if="isOwnedBook"
-                title="Location"
-                description="Where this physical copy belongs."
+                :title="$t('ui.location')"
+                :description="$t('ui.whereThisPhysicalCopyBelongs')"
                 icon="i-lucide-map-pin"
               >
                 <template #action>
@@ -433,17 +436,17 @@ async function onTagsSaved() {
                     trailing-icon="i-lucide-chevron-right"
                     @click="isLocationModalOpen = true"
                   >
-                    {{ book.location ? 'Update' : 'Set location' }}
+                    {{ book.location ? $t('ui.update') : $t('ui.setLocation') }}
                   </UButton>
                 </template>
                 <p class="mt-2 text-sm font-medium">
-                  {{ book.location?.path || 'No location set' }}
+                  {{ book.location?.path || $t('ui.noLocationSet') }}
                 </p>
               </BookDetailCard>
 
               <BookDetailCard
-                title="Tags"
-                :description="book.userTags.length ? undefined : 'Add tags to make this book easier to find and group.'"
+                :title="$t('ui.tags')"
+                :description="book.userTags.length ? undefined : $t('ui.bookTagsDescription')"
                 icon="i-lucide-tag"
                 tone="secondary"
               >
@@ -455,7 +458,7 @@ async function onTagsSaved() {
                     trailing-icon="i-lucide-chevron-right"
                     @click="isTagModalOpen = true"
                   >
-                    {{ book.userTags.length ? 'Edit' : 'Add' }}
+                    {{ book.userTags.length ? $t('ui.edit') : $t('ui.add') }}
                   </UButton>
                 </template>
                 <div
@@ -488,7 +491,7 @@ async function onTagsSaved() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                View Edition
+                {{ $t('ui.viewEdition') }}
               </UButton>
               <UButton
                 v-if="book.workKey"
@@ -500,7 +503,7 @@ async function onTagsSaved() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                View Work
+                {{ $t('ui.viewWork') }}
               </UButton>
             </div>
           </main>
@@ -538,8 +541,8 @@ async function onTagsSaved() {
 
         <UModal
           v-model:open="isMoveToWishlistDialogOpen"
-          title="Move to Wishlist?"
-          description="This clears the book's location, rating, and reading progress."
+          :title="$t('ui.moveToWishlist')"
+          :description="$t('ui.thisClearsTheBookSLocationRating')"
           :close="false"
           :ui="{ content: 'max-w-md', footer: 'justify-end gap-2 p-5' }"
         >
@@ -549,22 +552,22 @@ async function onTagsSaved() {
               variant="soft"
               @click="isMoveToWishlistDialogOpen = false"
             >
-              Cancel
+              {{ $t('ui.cancel') }}
             </UButton>
             <UButton
               icon="i-lucide-bookmark"
               :loading="isUpdatingLibraryState"
               @click="moveToWishlist"
             >
-              Move to Wishlist
+              {{ $t('ui.moveToWishlistText') }}
             </UButton>
           </template>
         </UModal>
 
         <UModal
           v-model:open="isMoveToLibraryDialogOpen"
-          title="Move to Library?"
-          description="This will make the book available for physical inventory and lending."
+          :title="$t('ui.moveToLibraryText')"
+          :description="$t('ui.thisWillMakeTheBookAvailableFor')"
           :close="false"
           :ui="{ content: 'max-w-md', footer: 'justify-end gap-2 p-5' }"
         >
@@ -574,14 +577,14 @@ async function onTagsSaved() {
               variant="soft"
               @click="isMoveToLibraryDialogOpen = false"
             >
-              Cancel
+              {{ $t('ui.cancel') }}
             </UButton>
             <UButton
               icon="i-lucide-arrow-up-right"
               :loading="isUpdatingLibraryState"
               @click="moveToLibrary"
             >
-              Move to Library
+              {{ $t('ui.moveToLibrary') }}
             </UButton>
           </template>
         </UModal>
@@ -589,10 +592,10 @@ async function onTagsSaved() {
         <UModal
           v-if="book"
           v-model:open="isOwnershipDialogOpen"
-          title="No longer own this book?"
+          :title="$t('ui.noLongerOwnThisBook')"
           :description="book.activeLoan
-            ? 'This book has an active loan, so it cannot be marked previously owned until the loan is returned. You can delete this book instead.'
-            : 'Keep this book as previously owned, or delete this book.'"
+            ? $t('ui.activeLoanRemovalDescription')
+            : $t('ui.bookRemovalDescription')"
           :close="false"
           :ui="{ content: 'max-w-md', footer: 'flex-wrap justify-end gap-2 p-5' }"
         >
@@ -602,7 +605,7 @@ async function onTagsSaved() {
               variant="soft"
               @click="isOwnershipDialogOpen = false"
             >
-              Cancel
+              {{ $t('ui.cancel') }}
             </UButton>
             <UButton
               v-if="book && !book.activeLoan"
@@ -610,7 +613,7 @@ async function onTagsSaved() {
               :loading="isUpdatingLibraryState"
               @click="markAsPreviouslyOwned"
             >
-              Previously owned
+              {{ $t('ui.previouslyOwned') }}
             </UButton>
             <UButton
               color="error"
@@ -620,15 +623,15 @@ async function onTagsSaved() {
               :disabled="isUpdatingLibraryState"
               @click="deleteBookRecord"
             >
-              Delete this book
+              {{ $t('ui.deleteThisBook') }}
             </UButton>
           </template>
         </UModal>
 
         <UModal
           v-model:open="isWishlistRemovalDialogOpen"
-          title="Remove from Wishlist?"
-          description="This book will no longer appear in your wishlist."
+          :title="$t('ui.removeFromWishlist')"
+          :description="$t('ui.thisBookWillNoLongerAppearIn')"
           :close="false"
           :ui="{ content: 'max-w-md', footer: 'justify-end gap-2 p-5' }"
         >
@@ -638,7 +641,7 @@ async function onTagsSaved() {
               variant="soft"
               @click="isWishlistRemovalDialogOpen = false"
             >
-              Cancel
+              {{ $t('ui.cancel') }}
             </UButton>
             <UButton
               color="error"
@@ -647,15 +650,15 @@ async function onTagsSaved() {
               :loading="isDeleting"
               @click="deleteBookRecord"
             >
-              Remove from Wishlist
+              {{ $t('ui.removeFromWishlistText') }}
             </UButton>
           </template>
         </UModal>
 
         <UModal
           v-model:open="isRecordDeletionDialogOpen"
-          title="Delete this book?"
-          description="This removes the book from your library history."
+          :title="$t('ui.deleteThisBookText')"
+          :description="$t('ui.thisRemovesTheBookFromYourLibrary')"
           :close="false"
           :ui="{ content: 'max-w-md', footer: 'justify-end gap-2 p-5' }"
         >
@@ -665,7 +668,7 @@ async function onTagsSaved() {
               variant="soft"
               @click="isRecordDeletionDialogOpen = false"
             >
-              Cancel
+              {{ $t('ui.cancel') }}
             </UButton>
             <UButton
               color="error"
@@ -674,15 +677,15 @@ async function onTagsSaved() {
               :loading="isDeleting"
               @click="deleteBookRecord"
             >
-              Delete this book
+              {{ $t('ui.deleteThisBook') }}
             </UButton>
           </template>
         </UModal>
 
         <UModal
           v-model:open="isLoanRemovalDialogOpen"
-          title="Remove a lent-out book?"
-          description="This book will leave your library, but its active loan and borrower history will remain."
+          :title="$t('ui.removeALentOutBook')"
+          :description="$t('ui.thisBookWillLeaveYourLibraryBut')"
           :ui="{ footer: 'justify-end gap-3' }"
         >
           <template #footer>
@@ -691,7 +694,7 @@ async function onTagsSaved() {
               variant="soft"
               @click="isLoanRemovalDialogOpen = false"
             >
-              Cancel
+              {{ $t('ui.cancel') }}
             </UButton>
             <UButton
               color="error"
@@ -700,14 +703,14 @@ async function onTagsSaved() {
               :loading="isDeleting"
               @click="removeBook(true)"
             >
-              Remove from Library
+              {{ $t('ui.removeFromLibrary') }}
             </UButton>
           </template>
         </UModal>
 
         <UModal
           v-model:open="isBookNoteModalOpen"
-          title="Personal note"
+          :title="$t('ui.personalNote')"
           :ui="{ footer: 'justify-end gap-2' }"
         >
           <template #body>
@@ -715,7 +718,7 @@ async function onTagsSaved() {
               v-model="bookNoteDraft"
               autofocus
               :rows="6"
-              placeholder="Write your note here..."
+              :placeholder="$t('ui.writeYourNoteHere')"
               class="w-full"
               @keydown.ctrl.enter.prevent="saveBookNote"
               @keydown.meta.enter.prevent="saveBookNote"
@@ -726,18 +729,18 @@ async function onTagsSaved() {
               variant="outline"
               @click="isBookNoteModalOpen = false"
             >
-              Cancel
+              {{ $t('ui.cancel') }}
             </UButton><UButton
               :loading="isSavingBookNote"
               @click="saveBookNote"
             >
-              Save note
+              {{ $t('ui.saveNote') }}
             </UButton>
           </template>
         </UModal>
         <UModal
           v-model:open="isLoanNoteModalOpen"
-          title="Loan note"
+          :title="$t('ui.loanNote')"
           :ui="{ footer: 'justify-end gap-2' }"
         >
           <template #body>
@@ -745,7 +748,7 @@ async function onTagsSaved() {
               v-model="loanNoteDraft"
               autofocus
               :rows="6"
-              placeholder="Add a private note about this loan..."
+              :placeholder="$t('ui.addAPrivateNoteAboutThisLoan')"
               class="w-full"
               @keydown.ctrl.enter.prevent="saveLoanNote"
               @keydown.meta.enter.prevent="saveLoanNote"
@@ -756,12 +759,12 @@ async function onTagsSaved() {
               variant="outline"
               @click="isLoanNoteModalOpen = false"
             >
-              Cancel
+              {{ $t('ui.cancel') }}
             </UButton><UButton
               :loading="isSavingLoanNote"
               @click="saveLoanNote"
             >
-              Save note
+              {{ $t('ui.saveNote') }}
             </UButton>
           </template>
         </UModal>

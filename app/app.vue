@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import { useHead, useRequestURL, useSeoMeta } from '#imports'
+import { en, sk } from '@nuxt/ui/locale'
 import { appName, formatPageTitle } from '~/utils/page-title'
 
-const appDescription = 'Private library management for inventory, lending, and shelf mapping.'
+const { locale, t } = useI18n()
+const uiLocale = computed(() => locale.value === 'sk' ? sk : en)
+const appDescription = () => t('app.description')
 const requestUrl = useRequestURL()
 const socialImage = new URL('/libroo-social-card.png', requestUrl.origin).href
 
-useHead({
+useHead(() => ({
   titleTemplate: (title?: string) => formatPageTitle(title),
   htmlAttrs: {
-    lang: 'en'
+    lang: locale.value
   },
   link: [
     { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
@@ -24,7 +27,7 @@ useHead({
     { name: 'apple-mobile-web-app-title', content: appName },
     { name: 'theme-color', content: '#ffffff' }
   ]
-})
+}))
 
 useSeoMeta({
   description: appDescription,
@@ -41,7 +44,10 @@ useSeoMeta({
 </script>
 
 <template>
-  <UApp :toaster="{ disableSwipe: true }">
+  <UApp
+    :locale="uiLocale"
+    :toaster="{ disableSwipe: true }"
+  >
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { DuplicateBookGroup } from '~~/shared/types/library-cleanup'
 
-usePageTitle('Review duplicates')
+const { t } = useI18n()
+
+usePageTitle(() => t('ui.reviewDuplicates'))
 const { data: groups, status, error, refresh } = await useFetch<DuplicateBookGroup[]>('/api/library/duplicates')
 const included = ref<string[]>([])
 const keep = ref<Record<string, string>>({})
@@ -29,8 +31,8 @@ async function reload() {
 <template>
   <UContainer>
     <UPageHeader
-      title="Review duplicates"
-      description="Review matching records across owned, wishlisted and previously owned books, regardless of your library view. Choose which records to keep."
+      :title="$t('ui.reviewDuplicates')"
+      :description="$t('ui.reviewMatchingRecordsAcrossOwnedWishlistedAnd')"
     >
       <template #links>
         <UButton
@@ -39,7 +41,7 @@ async function reload() {
           variant="outline"
           icon="i-lucide-library"
         >
-          Show all books
+          {{ $t('ui.showAllBooks') }}
         </UButton>
         <UButton
           to="/settings#library-data"
@@ -47,7 +49,7 @@ async function reload() {
           variant="outline"
           icon="i-lucide-download"
         >
-          Export a backup
+          {{ $t('ui.exportABackup') }}
         </UButton>
         <UButton
           color="neutral"
@@ -55,39 +57,39 @@ async function reload() {
           :loading="status === 'pending'"
           @click="reload"
         >
-          Refresh
+          {{ $t('ui.refresh') }}
         </UButton>
         <UButton
           color="error"
           :disabled="!selectedIds.length"
           @click="deletionOpen = true"
         >
-          Delete {{ selectedIds.length }} {{ selectedIds.length === 1 ? 'duplicate' : 'duplicates' }}
+          {{ $t('ui.delete') }} {{ selectedIds.length }} {{ selectedIds.length === 1 ? 'duplicate' : 'duplicates' }}
         </UButton>
       </template>
     </UPageHeader>
     <UPageBody>
       <UAlert
         color="info"
-        title="Review before deleting"
-        description="Matching titles and authors may represent different editions or physical copies. Nothing is selected automatically. Fields are not merged: keep the record with the cover, notes, tags and progress you want. Records with any loan history are kept."
+        :title="$t('ui.reviewBeforeDeleting')"
+        :description="$t('ui.matchingTitlesAndAuthorsMayRepresentDifferent')"
       />
       <UAlert
         v-if="error"
         color="error"
-        title="Unable to load duplicates"
-        description="Please try refreshing this page."
+        :title="$t('ui.unableToLoadDuplicates')"
+        :description="$t('ui.pleaseTryRefreshingThisPage')"
       />
       <p
         v-else-if="status === 'pending'"
         role="status"
       >
-        Checking your library…
+        {{ $t('ui.checkingYourLibrary') }}
       </p>
       <UEmpty
         v-else-if="!visibleGroups.length"
-        title="No duplicate candidates"
-        description="No repeated title-and-author combinations were found in your library."
+        :title="$t('ui.noDuplicateCandidates')"
+        :description="$t('ui.noRepeatedTitleAndAuthorCombinationsWere')"
         icon="i-lucide-check"
       />
       <p
@@ -114,7 +116,7 @@ async function reload() {
             <UCheckbox
               :model-value="included.includes(group.key)"
               :disabled="!keep[group.key]"
-              label="Clean up this group"
+              :label="$t('ui.cleanUpThisGroup')"
               @update:model-value="includeGroup(group.key, $event)"
             />
           </div>
@@ -142,9 +144,9 @@ async function reload() {
                     :to="`/library/${book.id}`"
                     target="_blank"
                     class="font-medium text-primary underline"
-                  >View book details</NuxtLink>
+                  >{{ $t('ui.viewBookDetails') }}</NuxtLink>
                   <p class="text-sm">
-                    {{ book.libraryState.replaceAll('_', ' ') }} · {{ book.location || 'No location' }}
+                    {{ book.libraryState.replaceAll('_', ' ') }} · {{ book.location || $t('ui.noLocation') }}
                   </p>
                   <UButton
                     :variant="keep[group.key] === book.id ? 'solid' : 'outline'"
@@ -160,30 +162,30 @@ async function reload() {
                   ISBN
                 </dt><dd>{{ book.isbn || 'None' }}</dd>
                 <dt class="text-muted">
-                  Tags
+                  {{ $t('ui.tags') }}
                 </dt><dd>{{ book.tags.join(', ') || 'None' }}</dd>
                 <dt class="text-muted">
-                  Edition
+                  {{ $t('ui.edition') }}
                 </dt><dd>{{ [book.publishDate, book.publishers, book.numberOfPages ? `${book.numberOfPages} pages` : null].filter(Boolean).join(' · ') || 'None' }}</dd>
                 <dt class="text-muted">
-                  Reading
+                  {{ $t('ui.reading') }}
                 </dt><dd>{{ book.readingStatus }} · page {{ book.currentPage ?? '—' }} · {{ book.progressPercent ?? '—' }}%</dd>
                 <dt class="text-muted">
-                  Rating
-                </dt><dd>{{ book.rating ? `${book.rating}/5` : 'Not rated' }}</dd>
+                  {{ $t('ui.rating') }}
+                </dt><dd>{{ book.rating ? `${book.rating}/5` : $t('ui.notRated') }}</dd>
                 <dt class="text-muted">
-                  Added
+                  {{ $t('ui.added') }}
                 </dt><dd>{{ new Date(book.addedAt).toLocaleDateString() }}</dd>
                 <dt class="text-muted">
-                  Loan history
+                  {{ $t('ui.loanHistory') }}
                 </dt><dd>{{ book.loanCount }} {{ book.loanCount ? '(record will be kept)' : '' }}</dd>
                 <dt class="text-muted">
-                  Note
+                  {{ $t('ui.note') }}
                 </dt><dd class="whitespace-pre-wrap break-words">
                   {{ book.note || 'None' }}
                 </dd>
                 <dt class="text-muted">
-                  Description
+                  {{ $t('ui.description') }}
                 </dt><dd class="whitespace-pre-wrap break-words">
                   {{ book.description || 'None' }}
                 </dd>

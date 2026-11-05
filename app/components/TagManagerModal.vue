@@ -21,6 +21,7 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
+const { t } = useI18n()
 
 const customTagInput = ref('')
 const isSaving = ref(false)
@@ -181,10 +182,10 @@ async function saveChanges() {
   } catch (err: unknown) {
     const message = err instanceof Error
       ? err.message
-      : (err as { data?: { message?: string } })?.data?.message || 'An error occurred'
+      : (err as { data?: { message?: string } })?.data?.message || t('ui.genericError')
 
     toast.add({
-      title: 'Failed to save tags',
+      title: t('ui.tagsSaveFailed'),
       description: message,
       color: 'error'
     })
@@ -197,15 +198,15 @@ async function saveChanges() {
 <template>
   <UModal
     v-model:open="modalOpen"
-    title="Manage Tags"
-    description="Select suggested tags or add custom tags, then save once."
+    :title="$t('ui.manageTags')"
+    :description="$t('ui.selectSuggestedTagsOrAddCustomTags')"
     :ui="{ footer: 'justify-end gap-2' }"
   >
     <template #body>
       <div class="space-y-5">
         <div>
           <h3 class="text-sm font-medium mb-2">
-            Suggested Tags
+            {{ $t('ui.suggestedTagsText') }}
           </h3>
           <div
             v-if="availableSuggestedTags.length > 0"
@@ -226,7 +227,7 @@ async function saveChanges() {
             v-else
             class="text-sm text-muted"
           >
-            No suggested tags available.
+            {{ $t('ui.noSuggestedTagsAvailable') }}
           </p>
         </div>
 
@@ -234,12 +235,12 @@ async function saveChanges() {
 
         <div>
           <h3 class="text-sm font-medium mb-2">
-            Add Custom Tag
+            {{ $t('ui.addCustomTag') }}
           </h3>
           <div class="flex gap-2">
             <UInput
               v-model="customTagInput"
-              placeholder="Type a tag name"
+              :placeholder="$t('ui.typeATagName')"
               class="flex-1"
               @keyup.enter="addCustomTag"
             />
@@ -248,7 +249,7 @@ async function saveChanges() {
               :disabled="!canAddCustomTag"
               @click="addCustomTag"
             >
-              Add
+              {{ $t('ui.add') }}
             </UButton>
           </div>
         </div>
@@ -257,7 +258,7 @@ async function saveChanges() {
 
         <div>
           <h3 class="text-sm font-medium mb-2">
-            Selected Tags
+            {{ $t('ui.selectedTags') }}
           </h3>
           <div
             v-if="workingUserTags.length > 0"
@@ -279,7 +280,7 @@ async function saveChanges() {
             v-else
             class="text-sm text-muted"
           >
-            No user tags selected.
+            {{ $t('ui.noUserTagsSelected') }}
           </p>
         </div>
       </div>
@@ -291,7 +292,7 @@ async function saveChanges() {
         variant="soft"
         @click="() => { modalOpen = false }"
       >
-        Cancel
+        {{ $t('ui.cancel') }}
       </UButton>
       <UButton
         icon="i-lucide-save"
@@ -299,7 +300,7 @@ async function saveChanges() {
         :disabled="isSaving || !hasChanges"
         @click="saveChanges"
       >
-        Save Changes
+        {{ $t('ui.saveChangesText') }}
       </UButton>
     </template>
   </UModal>

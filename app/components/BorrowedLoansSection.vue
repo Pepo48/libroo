@@ -24,10 +24,10 @@ function coverUrl(book: BorrowedBook) {
       class="text-6xl text-muted mx-auto mb-4"
     />
     <h2 class="text-xl font-semibold mb-2">
-      No borrowed books yet
+      {{ $t('ui.noBorrowedBooksYet') }}
     </h2>
     <p class="text-muted">
-      Accepted books will appear here.
+      {{ $t('ui.acceptedBooksWillAppearHere') }}
     </p>
   </UCard>
 
@@ -37,7 +37,7 @@ function coverUrl(book: BorrowedBook) {
   >
     <section>
       <h2 class="text-lg font-semibold mb-3">
-        Current
+        {{ $t('ui.current') }}
       </h2>
       <div
         v-if="activeBooks.length > 0"
@@ -70,7 +70,7 @@ function coverUrl(book: BorrowedBook) {
                 variant="subtle"
                 class="mb-2"
               >
-                With you
+                {{ $t('ui.withYou') }}
               </UBadge>
               <h3 class="font-semibold line-clamp-2">
                 {{ book.title }}
@@ -79,13 +79,13 @@ function coverUrl(book: BorrowedBook) {
                 {{ book.author }}
               </p>
               <p class="mt-2 text-sm text-muted">
-                Lent by {{ book.ownerName }} · {{ formatDate(book.loanedAt) }}
+                {{ $t('ui.lentBy') }} {{ book.ownerName }} · {{ formatDate(book.loanedAt) }}
               </p>
               <p
                 v-if="book.dueAt"
                 class="text-sm text-muted"
               >
-                Due {{ formatDate(book.dueAt) }}
+                {{ $t('ui.due') }} {{ formatDate(book.dueAt) }}
               </p>
             </div>
           </div>
@@ -95,13 +95,13 @@ function coverUrl(book: BorrowedBook) {
         v-else
         class="text-sm text-muted"
       >
-        Nothing currently with you.
+        {{ $t('ui.nothingCurrentlyWithYou') }}
       </p>
     </section>
 
     <section>
       <h2 class="text-lg font-semibold mb-3">
-        History
+        {{ $t('ui.history') }}
       </h2>
       <div
         v-if="bookHistory.length > 0"
@@ -154,7 +154,7 @@ function coverUrl(book: BorrowedBook) {
         v-else
         class="text-sm text-muted"
       >
-        Returned books will stay here.
+        {{ $t('ui.returnedBooksWillStayHere') }}
       </p>
     </section>
   </div>

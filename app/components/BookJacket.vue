@@ -35,7 +35,7 @@ const jacketClass = computed(() => {
         height="16"
         class="size-4 shrink-0 brightness-0 invert opacity-60"
       />
-      Libroo library
+      {{ $t('ui.librooLibrary') }}
     </div>
     <p class="break-words font-serif text-xl leading-tight font-medium line-clamp-4 sm:text-2xl">
       {{ title }}

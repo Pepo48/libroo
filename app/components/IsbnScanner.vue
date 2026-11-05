@@ -101,7 +101,7 @@ onUnmounted(() => {
           class="animate-spin text-3xl text-primary mb-2"
         />
         <p class="text-sm text-neutral-400">
-          Starting camera...
+          {{ $t('ui.startingCamera') }}
         </p>
       </div>
     </div>
@@ -164,7 +164,7 @@ onUnmounted(() => {
         <!-- Instruction text at top -->
         <div class="absolute top-4 left-0 right-0 text-center">
           <span class="bg-black/60 text-white text-xs px-3 py-1 rounded-full">
-            Align barcode in the center
+            {{ $t('ui.alignBarcodeInTheCenter') }}
           </span>
         </div>
 
@@ -193,10 +193,10 @@ onUnmounted(() => {
     <!-- Instructions -->
     <p class="text-center text-sm text-muted mt-3">
       <template v-if="props.continuous">
-        Point camera at book barcodes to scan continuously
+        {{ $t('ui.pointCameraAtBookBarcodesToScan') }}
       </template>
       <template v-else>
-        Point camera at a book barcode to scan
+        {{ $t('ui.pointCameraAtABookBarcodeTo') }}
       </template>
     </p>
   </div>

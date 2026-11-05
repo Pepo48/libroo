@@ -3,11 +3,13 @@ import * as z from 'zod'
 import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
 import { newPasswordSchema } from '~~/shared/utils/password'
 
+const { t } = useI18n()
+
 definePageMeta({
   auth: false
 })
 
-usePageTitle('Set New Password')
+usePageTitle(() => t('ui.setNewPasswordText'))
 
 const route = useRoute()
 const toast = useToast()
@@ -24,14 +26,14 @@ const fields: AuthFormField[] = [
   {
     name: 'newPassword',
     type: 'password',
-    label: 'New password',
+    label: t('ui.newPassword'),
     placeholder: 'Enter your new password',
     required: true
   },
   {
     name: 'confirmPassword',
     type: 'password',
-    label: 'Confirm new password',
+    label: t('ui.confirmNewPassword'),
     placeholder: 'Confirm your new password',
     required: true
   }
@@ -83,8 +85,8 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
     })
     isComplete.value = true
     toast.add({
-      title: 'Password updated',
-      description: 'Sign in with your new password.',
+      title: t('ui.passwordUpdated'),
+      description: t('ui.signInWithYourNewPassword'),
       color: 'success'
     })
   } catch (err: unknown) {
@@ -103,8 +105,8 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
   <UContainer class="py-12 max-w-md">
     <AuthStateCard
       v-if="!token"
-      title="Set new password"
-      description="Open the password reset link from your email."
+      :title="$t('ui.setNewPassword')"
+      :description="$t('ui.openThePasswordResetLinkFromYour')"
       icon="i-lucide-circle-alert"
       action-label="Request a reset link"
       action-to="/forgot-password"
@@ -113,8 +115,8 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
 
     <AuthStateCard
       v-else-if="isComplete"
-      title="Password updated"
-      description="Sign in with your new password."
+      :title="$t('ui.passwordUpdated')"
+      :description="$t('ui.signInWithYourNewPassword')"
       icon="i-lucide-check"
       action-label="Go to sign in"
       action-to="/login"
@@ -127,18 +129,18 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
         :schema="schema"
         :fields="fields"
         :loading="isSubmitting"
-        title="Set new password"
+        :title="$t('ui.setNewPassword')"
         icon="i-lucide-key-round"
         submit-label="Update password"
         @submit="onSubmit"
       >
         <template #description>
-          Remember your password?
+          {{ $t('ui.rememberYourPassword') }}
           <ULink
             to="/login"
             class="text-primary font-medium"
           >
-            Sign in
+            {{ $t('ui.signIn') }}
           </ULink>
         </template>
 
@@ -188,7 +190,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
 
         <template #footer>
           <p class="text-center text-sm text-muted">
-            Libroo - Your Library, Managed
+            {{ $t('ui.librooYourLibraryManaged') }}
           </p>
         </template>
       </UAuthForm>

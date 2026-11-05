@@ -5,6 +5,8 @@ import { storeToRefs } from 'pinia'
 import { isValidIsbnChecksum } from '~~/shared/utils/schemas'
 import { normalizeIsbnIdentity, normalizeIsbnText } from '~~/shared/utils/isbn'
 
+const { t } = useI18n()
+
 const props = defineProps<{ initialIsbn?: string }>()
 
 const toast = useToast()
@@ -72,7 +74,7 @@ async function lookupISBN(payload: Pick<FormSubmitEvent<BookIsbnSchema>, 'data'>
       })
     } else if (!result.found) {
       toast.add({
-        title: 'Book not found',
+        title: t('ui.bookNotFound'),
         description: result.message || 'Could not find this book in the available catalogs',
         color: 'warning'
       })
@@ -187,7 +189,7 @@ defineExpose({ reset })
           name="i-lucide-search"
           class="text-lg"
         />
-        <span class="font-semibold">Find Book by ISBN</span>
+        <span class="font-semibold">{{ $t('ui.findBookByIsbn') }}</span>
       </div>
     </template>
 
@@ -212,7 +214,7 @@ defineExpose({ reset })
       </UFormField>
 
       <p class="text-sm text-muted">
-        You can find the ISBN on the back cover of most books, usually above the barcode.
+        {{ $t('ui.youCanFindTheIsbnOnThe') }}
       </p>
 
       <UButton
@@ -223,7 +225,7 @@ defineExpose({ reset })
         :loading="isLookingUp"
         :disabled="!formState.isbn.trim()"
       >
-        Look Up Book
+        {{ $t('ui.lookUpBook') }}
       </UButton>
     </UForm>
   </UCard>

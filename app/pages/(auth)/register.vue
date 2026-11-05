@@ -8,11 +8,13 @@ import { newPasswordSchema } from '~~/shared/utils/password'
 import { booleanConfigValue } from '~~/shared/utils/runtime-config'
 import { canShowOAuthSignIn, canShowPasswordForm } from '~~/shared/utils/auth-capability-ui'
 
+const { t } = useI18n()
+
 definePageMeta({
   auth: false
 })
 
-usePageTitle('Create Account')
+usePageTitle(() => t('ui.createAccount'))
 
 const route = useRoute()
 const config = useRuntimeConfig()
@@ -122,7 +124,7 @@ const fields = computed<AuthInputField[]>(() => [
     id: 'register-email',
     name: 'email',
     type: 'email',
-    label: 'Email',
+    label: t('ui.email'),
     ariaLabel: 'Email',
     placeholder: 'Enter your email',
     defaultValue: inviteEmail.value,
@@ -133,7 +135,7 @@ const fields = computed<AuthInputField[]>(() => [
     id: 'register-password',
     name: 'password',
     type: 'password',
-    label: 'Password',
+    label: t('ui.password'),
     ariaLabel: 'Password',
     placeholder: 'Enter your password',
     hint: 'At least 8 characters',
@@ -264,7 +266,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'An unexpected error occurred'
     toast.add({
-      title: 'Error',
+      title: t('ui.error'),
       description: error.value,
       color: 'error'
     })
@@ -282,7 +284,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
   <UContainer class="py-12 max-w-md">
     <AuthStateCard
       v-if="isVerificationEmailSent"
-      title="Verify your email"
+      :title="$t('ui.verifyYourEmail')"
       icon="i-lucide-mail-check"
       :description="`We sent a verification link to ${verificationEmail}. Open it to activate your account.`"
       action-label="Go to sign in"
@@ -302,10 +304,10 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
 
     <AuthStateCard
       v-else-if="!showPasswordForm"
-      :title="showOAuthSignIn ? 'Create an account with single sign-on' : 'Sign-in unavailable'"
+      :title="showOAuthSignIn ? 'Create an account with single sign-on' : $t('ui.signInUnavailable')"
       :description="showOAuthSignIn
         ? 'Local password registration is disabled. Continue through the configured sign-in provider.'
-        : 'This Libroo deployment has no enabled sign-in method. Contact an administrator.'"
+        : $t('ui.thisLibrooDeploymentHasNoEnabledSign')"
       :action-label="showOAuthSignIn ? 'Go to sign in' : undefined"
       :action-to="showOAuthSignIn ? { path: '/login', query: route.query.redirect ? { redirect: route.query.redirect } : undefined } : undefined"
       icon="i-lucide-lock-keyhole"
@@ -319,18 +321,18 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
         :schema="schema"
         :fields="fields"
         :loading="isLoading"
-        title="Create Account"
+        :title="$t('ui.createAccount')"
         icon="i-lucide-user-plus"
         submit-label="Create Account"
         @submit="onSubmit"
       >
         <template #description>
-          Already have an account?
+          {{ $t('ui.alreadyHaveAnAccount') }}
           <ULink
             :to="{ path: '/login', query: route.query.redirect ? { redirect: route.query.redirect } : undefined }"
             class="text-primary font-medium"
           >
-            Sign in
+            {{ $t('ui.signIn') }}
           </ULink>
         </template>
 
@@ -384,7 +386,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
             v-bind="inputFieldProps(field)"
           >
             <template #label>
-              I agree to the
+              {{ $t('ui.iAgreeToThe') }}
               <ULink
                 :to="termsLink"
                 :target="termsLinkExternal ? '_blank' : undefined"
@@ -392,7 +394,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
                 class="text-primary font-medium"
                 @click.stop
               >
-                Terms of Service
+                {{ $t('ui.termsOfService') }}
               </ULink>
             </template>
           </UCheckbox>
@@ -418,21 +420,21 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
             color="warning"
             variant="subtle"
             icon="i-lucide-shield-alert"
-            title="Bot protection is not configured"
+            :title="$t('ui.botProtectionIsNotConfigured')"
           />
 
           <p
             v-if="privacyPolicyConfigured"
             class="text-center text-sm text-muted"
           >
-            By creating an account, you acknowledge that your personal data will be processed as described in the
+            {{ $t('ui.byCreatingAnAccountYouAcknowledgeThat') }}
             <ULink
               :to="privacyPolicyLink"
               :target="privacyPolicyLinkExternal ? '_blank' : undefined"
               :rel="privacyPolicyLinkExternal ? 'noopener noreferrer' : undefined"
               class="text-primary font-medium"
             >
-              Privacy Policy
+              {{ $t('ui.privacyPolicy') }}
             </ULink>.
           </p>
 

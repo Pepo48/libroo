@@ -5,6 +5,8 @@ import { BATCH_TAG_UPDATE_MAX_ENTRIES, bookEditSchema, MANUAL_COVER_MAX_BYTES, t
 import type { BookRefreshSelection } from '~~/shared/types/book-refresh'
 import { isValidIsbn } from '~~/shared/utils/isbn'
 
+const { t } = useI18n()
+
 const open = defineModel<boolean>('open', { default: false })
 const props = defineProps<{ book: BookDetails }>()
 const emit = defineEmits<{ saved: [book: BookDetails] }>()
@@ -95,7 +97,7 @@ function applyRefresh({ addTags, ...fields }: BookRefreshSelection) {
     state.removeCover = false
     coverFile.value = null
   }
-  notify({ title: 'Selected fields applied', description: 'Review your edits, then save your changes.', color: 'success' })
+  notify({ title: t('ui.selectedFieldsApplied'), description: t('ui.reviewYourEditsThenSaveYourChanges'), color: 'success' })
 }
 async function save(event: FormSubmitEvent<BookEditSchema>) {
   if (saving.value || refreshing.value || refreshPreviewPending.value || preparingCover.value) return
@@ -104,9 +106,9 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
     const book = await $fetch<BookDetails>(`/api/books/${props.book.id}`, { method: 'PUT', body: event.data })
     emit('saved', book)
     open.value = false
-    savedToastId = toast.add({ title: 'Book updated', color: 'success' }).id
+    savedToastId = toast.add({ title: t('ui.bookUpdated'), color: 'success' }).id
   } catch (error) {
-    notify({ title: 'Could not save book', description: errorMessage(error), color: 'error' })
+    notify({ title: t('ui.couldNotSaveBook'), description: errorMessage(error), color: 'error' })
   } finally { saving.value = false }
 }
 </script>
@@ -114,8 +116,8 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
 <template>
   <UModal
     v-model:open="open"
-    title="Edit book"
-    description="Changes apply to this entry in your library."
+    :title="$t('ui.editBook')"
+    :description="$t('ui.changesApplyToThisEntryInYour')"
     :dismissible="!saving"
     :close="!saving"
     :ui="{ content: 'sm:max-w-3xl' }"
@@ -133,7 +135,7 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
           class="space-y-6"
         >
           <UFormField
-            label="Title"
+            :label="$t('ui.title')"
             name="title"
             required
           >
@@ -144,10 +146,10 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
             />
           </UFormField>
           <UFormField
-            label="Authors"
+            :label="$t('ui.authors')"
             name="authors"
             required
-            description="One name per row, in the order you want displayed."
+            :description="$t('ui.oneNamePerRowInTheOrder')"
           >
             <div class="space-y-2">
               <div
@@ -170,7 +172,7 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
                 />
               </div>
               <UButton
-                label="Add author"
+                :label="$t('ui.addAuthor')"
                 icon="i-lucide-plus"
                 variant="link"
                 size="sm"
@@ -183,7 +185,7 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
             <UFormField
               label="ISBN"
               name="isbn"
-              hint="Optional"
+              :hint="$t('ui.optional')"
             >
               <UInput
                 v-model="state.isbn"
@@ -191,7 +193,7 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
               />
             </UFormField>
             <UFormField
-              label="Publisher"
+              :label="$t('ui.publisher')"
               name="publisher"
             >
               <UInput
@@ -200,9 +202,9 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
               />
             </UFormField>
             <UFormField
-              label="Publication date"
+              :label="$t('ui.publicationDate')"
               name="publishDate"
-              hint="Year or date"
+              :hint="$t('ui.yearOrDate')"
             >
               <UInput
                 v-model="state.publishDate"
@@ -211,7 +213,7 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
               />
             </UFormField>
             <UFormField
-              label="Pages"
+              :label="$t('ui.pages')"
               name="numberOfPages"
             >
               <UInput
@@ -237,7 +239,7 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
             @pending="refreshPreviewPending = $event"
           />
           <UFormField
-            label="Description"
+            :label="$t('ui.description')"
             name="description"
           >
             <UTextarea
@@ -247,9 +249,9 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
             />
           </UFormField>
           <UFormField
-            label="Add tags"
+            :label="$t('ui.addTags')"
             name="addTags"
-            description="Press Enter to add a tag. Existing tags are kept."
+            :description="$t('ui.pressEnterToAddATagExisting')"
           >
             <div
               v-if="book.userTags.length"
@@ -270,16 +272,16 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
             />
           </UFormField>
           <UFormField
-            label="Cover"
+            :label="$t('ui.cover')"
             name="coverImage"
-            description="Upload your own image up to 2 MB or remove the current cover."
+            :description="$t('ui.uploadYourOwnImageUpTo2')"
           >
             <div class="mt-2 flex flex-col gap-4 sm:flex-row">
               <div class="flex aspect-2/3 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-default bg-muted">
                 <NuxtImg
                   v-if="preview"
                   :src="preview"
-                  alt="Cover preview"
+                  :alt="$t('ui.coverPreview')"
                   class="size-full object-contain"
                 />
                 <UIcon
@@ -292,14 +294,14 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
                 <UFileUpload
                   v-model="coverFile"
                   accept="image/jpeg,image/png,image/webp,image/gif"
-                  label="Upload cover"
-                  description="JPEG, PNG, WebP or GIF · up to 2 MB"
+                  :label="$t('ui.uploadCover')"
+                  :description="$t('ui.jpegPngWebpOrGifUpTo')"
                   class="min-h-24"
                   @update:model-value="upload"
                 />
                 <div class="flex flex-wrap gap-2">
                   <UButton
-                    label="Remove cover"
+                    :label="$t('ui.removeCover')"
                     icon="i-lucide-image-off"
                     variant="ghost"
                     color="neutral"
@@ -326,18 +328,18 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
           v-if="refreshPreviewPending"
           class="text-sm text-muted"
         >
-          Apply selected fields or dismiss the preview before saving.
+          {{ $t('ui.applySelectedFieldsOrDismissThePreview') }}
         </p>
         <div class="flex justify-end gap-2">
           <UButton
-            label="Cancel"
+            :label="$t('ui.cancel')"
             color="neutral"
             variant="outline"
             :disabled="saving"
             @click="open = false"
           />
           <UButton
-            label="Save changes"
+            :label="$t('ui.saveChanges')"
             form="book-edit-form"
             type="submit"
             :loading="saving"

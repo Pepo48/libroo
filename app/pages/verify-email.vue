@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { getEmailVerificationFailureStatus } from '~~/shared/utils/email-verification'
 
+const { t } = useI18n()
+
 definePageMeta({
   auth: false
 })
 
-usePageTitle('Email Verification')
+usePageTitle(() => t('ui.emailVerificationText'))
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -103,7 +105,7 @@ onMounted(async () => {
 <template>
   <UContainer class="py-12 max-w-md">
     <AuthStateCard
-      title="Email verification"
+      :title="$t('ui.emailVerification')"
       :description="message"
       :icon="icon"
       :action-label="actionLabel"

@@ -8,9 +8,10 @@ import {
   getActiveLibraryFilterCount,
   hasLibraryStateFilter,
   libraryStateFilterValues,
-  libraryStateLabels,
   normalizeLibraryQuery
 } from '~~/shared/utils/library-query'
+
+const { t, locale } = useI18n()
 
 interface PaginatedResponse {
   items: LibraryBook[]
@@ -21,7 +22,7 @@ interface PreferencesResponse {
   defaultLibraryStateFilter: LibraryState[]
 }
 
-usePageTitle('Library')
+usePageTitle(() => t('ui.library'))
 
 const toast = useToast()
 const route = useRoute()
@@ -328,11 +329,11 @@ onMounted(() => {
     } catch (err: unknown) {
       const message = err instanceof Error
         ? err.message
-        : (err as { data?: { message?: string } })?.data?.message || 'Unable to refresh your library'
+        : (err as { data?: { message?: string } })?.data?.message || t('library.refreshFailed')
 
       console.error('Failed to sync library pages during mount', err)
       toast.add({
-        title: 'Could not refresh library',
+        title: t('library.refreshFailed'),
         description: message,
         color: 'error'
       })
@@ -388,7 +389,9 @@ const hasBooks = computed(() => books.value.length > 0)
 // that wishlist or previously owned records have been removed.
 const hasRestrictedLibraryView = computed(() => hasLibraryStateFilter(libraryState.value))
 const emptyLibraryViewDescription = computed(() =>
-  `This view shows ${libraryState.value.map(state => state.replaceAll('_', ' ')).join(' and ')} books. Other library states may still contain records.`
+  t('library.restrictedViewDescription', {
+    states: new Intl.ListFormat(locale.value).format(libraryState.value.map(state => libraryStateNames.value[state]))
+  })
 )
 const hasActiveFilters = computed(() =>
   Boolean(search.value.trim())
@@ -413,30 +416,35 @@ const activeAdvancedFilterCount = computed(() => getActiveLibraryFilterCount({
 }))
 const hasActiveAdvancedFilters = computed(() => activeAdvancedFilterCount.value > 0)
 const loanStatusItems = [
-  { label: 'All loans', value: 'all' },
-  { label: 'Available', value: 'available' },
-  { label: 'Loaned out', value: 'loaned' }
+  { label: t('ui.allLoans'), value: 'all' },
+  { label: t('ui.available'), value: 'available' },
+  { label: t('ui.loanedOut'), value: 'loaned' }
 ]
+const libraryStateNames = computed(() => ({
+  owned: t('ui.library'),
+  wishlisted: t('ui.wishlist'),
+  previously_owned: t('ui.previouslyOwned')
+}))
 const libraryStateFilterLabel = computed(() => {
   const selectedStates = libraryState.value
   const hasAllStates = libraryStateFilterValues.every(state => selectedStates.includes(state))
 
-  if (selectedStates.length === 0 || hasAllStates) return 'All books'
+  if (selectedStates.length === 0 || hasAllStates) return t('ui.allBooks')
 
-  return selectedStates.map(state => libraryStateLabels[state]).join(', ')
+  return selectedStates.map(state => libraryStateNames.value[state]).join(', ')
 })
 const readingStatusItems = [
-  { label: 'All reading', value: 'all' },
-  { label: 'Unread', value: 'unread' },
-  { label: 'Reading', value: 'reading' },
-  { label: 'Read', value: 'read' }
+  { label: t('ui.allReading'), value: 'all' },
+  { label: t('ui.unread'), value: 'unread' },
+  { label: t('ui.reading'), value: 'reading' },
+  { label: t('ui.read'), value: 'read' }
 ]
-const physicalSortItem = { label: 'Location path', value: 'locationPath' }
+const physicalSortItem = { label: t('ui.locationPath'), value: 'locationPath' }
 const sortItems = computed(() => [
-  { label: 'Date added', value: 'dateAdded' },
+  { label: t('ui.dateAdded'), value: 'dateAdded' },
   ...(showPhysicalFilters.value ? [physicalSortItem] : []),
-  { label: 'Title', value: 'title' },
-  { label: 'Author', value: 'author' }
+  { label: t('ui.title'), value: 'title' },
+  { label: t('ui.author'), value: 'author' }
 ])
 const selectedLocationFilter = computed({
   get: () => locationId.value || ALL_LOCATIONS_VALUE,
@@ -445,7 +453,7 @@ const selectedLocationFilter = computed({
   }
 })
 const locationOptions = computed(() => [
-  { label: 'All locations', value: ALL_LOCATIONS_VALUE },
+  { label: t('ui.allLocations'), value: ALL_LOCATIONS_VALUE },
   ...(locations.value ?? []).map(location => ({
     label: location.path,
     value: location.id
@@ -477,7 +485,7 @@ const groupedBooks = computed(() => {
 
   for (const book of books.value) {
     const key = book.location?.id ?? 'none'
-    const label = book.location?.path ?? 'No location'
+    const label = book.location?.path ?? t('ui.noLocation')
     const group = groups.get(key) ?? { key, label, books: [] }
     group.books.push(book)
     groups.set(key, group)
@@ -671,7 +679,7 @@ async function loadShelf(group: { key: string, books: LibraryBook[] }) {
     cacheResultsAction(activeResultCacheKey.value)
   } catch {
     if (!controller.signal.aborted) {
-      toast.add({ title: 'Unable to load more books', description: 'Use the shelf arrow to try again.', color: 'error' })
+      toast.add({ title: t('library.loadMoreFailed'), description: t('library.retryShelf'), color: 'error' })
     }
   } finally {
     if (shelfRequests.get(group.key) === controller) shelfRequests.delete(group.key)
@@ -702,7 +710,7 @@ async function onBulkFinished() {
     await syncLoadedPages(1)
     clearNeedsSyncAction()
   } catch {
-    toast.add({ title: 'Unable to reload remaining books', description: 'Open the library at page 1 to retry.', color: 'error' })
+    toast.add({ title: t('library.reloadRemainingFailed'), description: t('library.retryFirstPage'), color: 'error' })
   }
 }
 
@@ -766,8 +774,8 @@ async function syncLoadedPages(targetPages: number) {
   <UContainer>
     <!-- Page Header -->
     <UPageHeader
-      title="My Library"
-      :description="pagination ? `${pagination.totalItems} ${pagination.totalItems === 1 ? 'book' : 'books'}` : undefined"
+      :title="$t('ui.myLibrary')"
+      :description="pagination ? $t('library.bookCount', pagination.totalItems) : undefined"
     >
       <template #links>
         <UButton
@@ -775,11 +783,11 @@ async function syncLoadedPages(targetPages: number) {
           variant="outline"
           icon="i-lucide-list-checks"
           :aria-pressed="selectionMode"
-          :aria-label="selectionMode ? 'Done selecting' : 'Select books'"
-          :title="selectionMode ? 'Done selecting' : 'Select books'"
+          :aria-label="selectionMode ? $t('ui.doneSelecting') : $t('ui.selectBooks')"
+          :title="selectionMode ? $t('ui.doneSelecting') : $t('ui.selectBooks')"
           @click="selectionMode = !selectionMode"
         >
-          <span class="hidden sm:inline">{{ selectionMode ? 'Done selecting' : 'Select books' }}</span>
+          <span class="hidden sm:inline">{{ selectionMode ? $t('ui.doneSelecting') : $t('ui.selectBooks') }}</span>
         </UButton>
         <UButton
           icon="i-lucide-map"
@@ -787,17 +795,17 @@ async function syncLoadedPages(targetPages: number) {
           color="neutral"
           variant="outline"
           to="/library/locations"
-          aria-label="Locations"
-          title="Locations"
+          :aria-label="$t('ui.locations')"
+          :title="$t('ui.locations')"
         >
-          <span class="hidden sm:inline">Locations</span>
+          <span class="hidden sm:inline">{{ $t('ui.locations') }}</span>
         </UButton>
         <UButton
           icon="i-lucide-plus"
           size="lg"
           to="/library/add"
         >
-          Add Book
+          {{ $t('ui.addBook') }}
         </UButton>
       </template>
     </UPageHeader>
@@ -808,13 +816,13 @@ async function syncLoadedPages(targetPages: number) {
         v-if="selectionMode"
         class="flex flex-wrap items-center gap-3 rounded-lg border border-default p-4"
       >
-        <span role="status">{{ selectedBookIds.length }} selected</span>
+        <span role="status">{{ $t('library.selectionCount', { count: selectedBookIds.length }) }}</span>
         <UButton
           color="neutral"
           variant="soft"
           @click="selectedBookIds = books.map(book => book.id)"
         >
-          Select loaded books ({{ books.length }})
+          {{ $t('library.selectLoadedBooks', { count: books.length }) }}
         </UButton>
         <UButton
           color="neutral"
@@ -822,22 +830,22 @@ async function syncLoadedPages(targetPages: number) {
           :disabled="!selectedBookIds.length"
           @click="selectedBookIds = []"
         >
-          Deselect all
+          {{ $t('ui.deselectAll') }}
         </UButton>
         <UButton
           color="error"
           :disabled="!selectedBookIds.length"
           @click="bulkDeleteOpen = true"
         >
-          Delete selected
+          {{ $t('ui.deleteSelected') }}
         </UButton>
         <p class="w-full text-sm text-muted">
-          Only loaded books are selected. Load more to include more results. Books with active loans will be skipped.
+          {{ $t('ui.onlyLoadedBooksAreSelectedLoadMore') }}
         </p>
       </div>
       <section
         class="rounded-2xl border border-default bg-elevated/40 p-4 sm:p-5"
-        aria-label="Find books"
+        :aria-label="$t('ui.findBooks')"
       >
         <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-3 md:flex md:items-center">
           <div class="contents md:flex md:flex-1 md:items-center md:gap-2">
@@ -845,8 +853,8 @@ async function syncLoadedPages(targetPages: number) {
               v-model="search"
               icon="i-lucide-search"
               size="lg"
-              aria-label="Search library"
-              placeholder="Search title, author, ISBN, tag, or location"
+              :aria-label="$t('ui.searchLibrary')"
+              :placeholder="$t('ui.searchTitleAuthorIsbnTagOrLocation')"
               class="col-span-2 w-full md:flex-1"
             />
             <USelectMenu
@@ -856,7 +864,7 @@ async function syncLoadedPages(targetPages: number) {
               value-key="value"
               icon="i-lucide-bookmark"
               size="lg"
-              aria-label="Library state"
+              :aria-label="$t('ui.libraryState')"
               class="w-full md:w-42"
               @update:model-value="markLibraryStatePreferenceAsUserSelected"
             >
@@ -878,7 +886,7 @@ async function syncLoadedPages(targetPages: number) {
               class="justify-center"
               @click="() => { areFiltersExpanded = !areFiltersExpanded }"
             >
-              Filters
+              {{ $t('ui.filters') }}
               <UBadge
                 v-if="hasActiveAdvancedFilters"
                 color="primary"
@@ -898,7 +906,7 @@ async function syncLoadedPages(targetPages: number) {
               class="flex-1 justify-center md:flex-none"
               @click="clearFilters"
             >
-              Clear
+              {{ $t('ui.clear') }}
             </UButton>
           </div>
         </div>
@@ -917,7 +925,7 @@ async function syncLoadedPages(targetPages: number) {
             {{ summary }}
           </UBadge>
           <span v-if="activeFilterSummary.length > collapsedFilterSummary.length">
-            +{{ activeFilterSummary.length - collapsedFilterSummary.length }} more
+            {{ $t('library.moreFilters', { count: activeFilterSummary.length - collapsedFilterSummary.length }) }}
           </span>
         </div>
 
@@ -938,14 +946,14 @@ async function syncLoadedPages(targetPages: number) {
                   v-if="showPhysicalFilters"
                   v-model="loanStatus"
                   :items="loanStatusItems"
-                  aria-label="Loan status"
+                  :aria-label="$t('ui.loanStatus')"
                   class="w-full"
                 />
                 <USelect
                   v-if="showPhysicalFilters"
                   v-model="readingStatus"
                   :items="readingStatusItems"
-                  aria-label="Reading status"
+                  :aria-label="$t('ui.readingStatus')"
                   class="w-full"
                 />
                 <USelectMenu
@@ -955,23 +963,23 @@ async function syncLoadedPages(targetPages: number) {
                   searchable
                   value-key="value"
                   icon="i-lucide-tag"
-                  aria-label="Filter by tag"
-                  placeholder="Filter tags"
+                  :aria-label="$t('ui.filterByTag')"
+                  :placeholder="$t('ui.filterTags')"
                   class="w-full"
                 />
                 <UInput
                   v-if="showPhysicalFilters"
                   v-model="location"
                   icon="i-lucide-map-pin"
-                  aria-label="Filter by location path"
-                  placeholder="Search location path"
+                  :aria-label="$t('ui.filterByLocationPath')"
+                  :placeholder="$t('ui.searchLocationPath')"
                 />
                 <USelect
                   v-if="!showPhysicalFilters"
                   v-model="sortBy"
                   :items="sortItems"
                   icon="i-lucide-arrow-up-down"
-                  aria-label="Sort library"
+                  :aria-label="$t('ui.sortLibrary')"
                   class="w-full"
                 />
               </div>
@@ -984,27 +992,27 @@ async function syncLoadedPages(targetPages: number) {
                   v-model="selectedLocationFilter"
                   :items="locationOptions"
                   icon="i-lucide-map-pin"
-                  aria-label="Location filter mode"
+                  :aria-label="$t('ui.locationFilterMode')"
                   class="w-full"
                 />
                 <USelect
                   v-model="sortBy"
                   :items="sortItems"
                   icon="i-lucide-arrow-up-down"
-                  aria-label="Sort library"
+                  :aria-label="$t('ui.sortLibrary')"
                   class="w-full"
                 />
                 <UCheckbox
                   v-model="includeLocationDescendants"
                   :disabled="!locationId"
-                  aria-label="Include sub-locations"
-                  label="Include sub-locations"
+                  :aria-label="$t('ui.includeSubLocations')"
+                  :label="$t('ui.includeSubLocations')"
                 />
                 <USwitch
                   v-if="!useShelfLayout"
                   v-model="groupByLocation"
-                  aria-label="Group by location"
-                  label="Group by location"
+                  :aria-label="$t('ui.groupByLocation')"
+                  :label="$t('ui.groupByLocation')"
                 />
               </div>
             </div>
@@ -1033,17 +1041,17 @@ async function syncLoadedPages(targetPages: number) {
           class="text-6xl text-muted mx-auto mb-4"
         />
         <h2 class="text-xl font-semibold mb-2">
-          Your library is empty
+          {{ $t('ui.yourLibraryIsEmpty') }}
         </h2>
         <p class="text-muted mb-6">
-          Start by adding your first book.
+          {{ $t('ui.startByAddingYourFirstBook') }}
         </p>
         <UButton
           icon="i-lucide-plus"
           size="lg"
           to="/library/add"
         >
-          Add First Book
+          {{ $t('ui.addFirstBook') }}
         </UButton>
       </UCard>
 
@@ -1056,12 +1064,12 @@ async function syncLoadedPages(targetPages: number) {
           class="text-6xl text-muted mx-auto mb-4"
         />
         <h2 class="text-xl font-semibold mb-2">
-          {{ hasRestrictedLibraryView && !hasActiveFilters ? 'No books in this view' : 'No books found' }}
+          {{ hasRestrictedLibraryView && !hasActiveFilters ? $t('library.emptyRestrictedView') : $t('ui.noBooksFound') }}
         </h2>
         <p class="text-muted mb-6">
           {{ hasRestrictedLibraryView && !hasActiveFilters
             ? emptyLibraryViewDescription
-            : 'Try a different title, author, ISBN, tag, or shelf location.' }}
+            : $t('library.tryOtherSearch') }}
         </p>
         <div class="flex flex-wrap justify-center gap-3">
           <UButton
@@ -1069,7 +1077,7 @@ async function syncLoadedPages(targetPages: number) {
             icon="i-lucide-library"
             @click="showAllBooks"
           >
-            Show all books
+            {{ $t('ui.showAllBooks') }}
           </UButton>
           <UButton
             v-if="hasActiveFilters"
@@ -1078,14 +1086,14 @@ async function syncLoadedPages(targetPages: number) {
             icon="i-lucide-x"
             @click="clearFilters"
           >
-            Clear filters
+            {{ $t('ui.clearFilters') }}
           </UButton>
           <UButton
             to="/settings#library-data"
             color="neutral"
             variant="outline"
           >
-            Manage library data
+            {{ $t('ui.manageLibraryData') }}
           </UButton>
         </div>
       </UCard>
@@ -1095,19 +1103,19 @@ async function syncLoadedPages(targetPages: number) {
         <div class="flex flex-wrap items-center justify-between gap-4 border-b border-default pb-4">
           <div>
             <p class="hidden text-[10px] font-semibold uppercase tracking-[0.2em] text-primary sm:block">
-              Your collection
+              {{ $t('ui.yourCollection') }}
             </p>
             <h2 class="text-lg font-semibold tracking-tight text-highlighted sm:mt-1 sm:text-xl">
-              {{ useShelfLayout ? 'Your shelves' : search.trim() ? 'Search results' : 'All books' }}
+              {{ useShelfLayout ? $t('library.yourShelves') : search.trim() ? $t('library.searchResults') : $t('ui.allBooks') }}
             </h2>
             <p class="mt-1 hidden text-xs text-muted sm:block">
-              {{ useShelfLayout ? 'Swipe a shelf or use the arrows to explore.' : 'Find a book, explore its tags, or select records to manage.' }}
+              {{ useShelfLayout ? $t('library.shelfInstructions') : $t('library.gridInstructions') }}
             </p>
           </div>
           <div
             class="flex gap-1 rounded-xl border border-default bg-muted/50 p-1"
             role="group"
-            aria-label="Library layout"
+            :aria-label="$t('ui.libraryLayout')"
           >
             <UButton
               icon="i-lucide-panels-top-left"
@@ -1119,7 +1127,7 @@ async function syncLoadedPages(targetPages: number) {
               :disabled="selectionMode || !!search.trim()"
               @click="layout = 'shelves'"
             >
-              Shelves
+              {{ $t('ui.shelves') }}
             </UButton>
             <UButton
               icon="i-lucide-layout-grid"
@@ -1131,7 +1139,7 @@ async function syncLoadedPages(targetPages: number) {
               :disabled="selectionMode"
               @click="layout = 'grid'"
             >
-              Grid
+              {{ $t('ui.grid') }}
             </UButton>
           </div>
         </div>
@@ -1169,7 +1177,7 @@ async function syncLoadedPages(targetPages: number) {
               <h2 class="text-lg font-semibold text-highlighted">
                 {{ group.label }}
               </h2>
-              <span class="text-xs text-muted">{{ group.books.length }} books</span>
+              <span class="text-xs text-muted">{{ $t('library.bookCount', group.books.length) }}</span>
             </div>
             <div class="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
               <LibraryBookTile
@@ -1206,7 +1214,7 @@ async function syncLoadedPages(targetPages: number) {
           <span
             v-if="isLoadingMore"
             role="status"
-            aria-label="Loading more books"
+            :aria-label="$t('ui.loadingMoreBooks')"
             class="inline-flex gap-1.5 text-muted"
           >
             <span class="size-1.5 rounded-full bg-current motion-safe:animate-bounce" />
@@ -1219,7 +1227,7 @@ async function syncLoadedPages(targetPages: number) {
             variant="outline"
             @click="loadMore"
           >
-            Retry loading books
+            {{ $t('ui.retryLoadingBooks') }}
           </UButton>
           <div
             v-else-if="!isApplyingFilters && status !== 'pending'"
@@ -1235,7 +1243,7 @@ async function syncLoadedPages(targetPages: number) {
           v-if="pagination"
           class="mt-4 text-center text-sm text-muted"
         >
-          Showing {{ books.length }} of {{ pagination.totalItems }} books
+          {{ $t('library.showingBooks', { shown: books.length, total: pagination.totalItems }) }}
         </div>
       </template>
       <LibraryBulkDeleteModal

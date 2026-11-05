@@ -4,6 +4,8 @@ import { storeToRefs } from 'pinia'
 import { roleIncludesAdmin } from '~~/shared/utils/auth-roles'
 import { booleanConfigValue } from '~~/shared/utils/runtime-config'
 
+const { t } = useI18n()
+
 const authStore = useAuthStore()
 const { user } = storeToRefs(authStore)
 const { signOut } = authStore
@@ -27,24 +29,24 @@ const logoTo = computed(() => user.value ? '/library' : '/login')
 
 const adminLinks = computed<NavigationMenuItem[]>(() => [
   {
-    label: 'Users',
+    label: t('ui.users'),
     icon: 'i-lucide-users',
     to: '/admin/users'
   },
   ...(!registrationEnabled.value
     ? [{
-        label: 'Invites',
+        label: t('ui.invites'),
         icon: 'i-lucide-user-plus',
         to: '/admin/invites'
       }]
     : []),
   {
-    label: 'Audit',
+    label: t('ui.audit'),
     icon: 'i-lucide-scroll-text',
     to: '/admin/audit'
   },
   {
-    label: 'Metrics',
+    label: t('ui.metrics'),
     icon: 'i-lucide-bar-chart-3',
     to: '/admin/metrics'
   }
@@ -55,27 +57,27 @@ const links = computed<NavigationMenuItem[]>(() => {
   if (user.value) {
     const authenticatedLinks: NavigationMenuItem[] = [
       {
-        label: 'Library',
+        label: t('ui.library'),
         icon: 'i-lucide-library',
         to: '/library'
       },
       {
-        label: 'Loans',
+        label: t('ui.loans'),
         icon: 'i-lucide-handshake',
         to: '/library/loans'
       },
       {
-        label: 'Locations',
+        label: t('ui.locations'),
         icon: 'i-lucide-map',
         to: '/library/locations'
       },
       {
-        label: 'Settings',
+        label: t('ui.settings'),
         icon: 'i-lucide-settings',
         to: '/settings'
       },
       {
-        label: 'Sign Out',
+        label: t('ui.signOut'),
         icon: 'i-lucide-log-out',
         color: 'neutral' as const,
         variant: 'ghost' as const,
@@ -85,7 +87,7 @@ const links = computed<NavigationMenuItem[]>(() => {
 
     if (roleIncludesAdmin(user.value.role)) {
       authenticatedLinks.splice(3, 0, {
-        label: 'Admin',
+        label: t('ui.admin'),
         icon: 'i-lucide-shield',
         to: '/admin/users',
         active: route.path.startsWith('/admin'),

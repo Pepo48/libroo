@@ -1,4 +1,6 @@
 <script setup lang="ts">
+const { t } = useI18n()
+
 type ProgressMode = 'pages' | 'percent'
 
 interface ReadingProgressUpdate {
@@ -34,9 +36,9 @@ const modalOpen = computed({
 })
 
 const statusItems: Array<{ value: ReadingStatus, label: string, icon: string }> = [
-  { value: 'unread', label: 'Unread', icon: 'i-lucide-book-open' },
-  { value: 'reading', label: 'Reading', icon: 'i-lucide-book-marked' },
-  { value: 'read', label: 'Read', icon: 'i-lucide-check-circle-2' }
+  { value: 'unread', label: t('ui.unread'), icon: 'i-lucide-book-open' },
+  { value: 'reading', label: t('ui.reading'), icon: 'i-lucide-book-marked' },
+  { value: 'read', label: t('ui.read'), icon: 'i-lucide-check-circle-2' }
 ]
 
 function initializeState() {
@@ -175,15 +177,15 @@ function saveProgress() {
 <template>
   <UModal
     v-model:open="modalOpen"
-    title="Update Reading Progress"
-    description="Track this book as unread, in progress, or read."
+    :title="$t('ui.updateReadingProgress')"
+    :description="$t('ui.trackThisBookAsUnreadInProgress')"
     :ui="{ content: 'sm:max-w-xl', footer: 'justify-end gap-2' }"
   >
     <template #body>
       <div class="space-y-5">
         <div>
           <h3 class="text-sm font-medium mb-2">
-            Status
+            {{ $t('ui.status') }}
           </h3>
           <div class="grid gap-2 sm:grid-cols-3">
             <UButton
@@ -205,7 +207,7 @@ function saveProgress() {
 
         <div>
           <h3 class="text-sm font-medium mb-2">
-            Progress
+            {{ $t('ui.progress') }}
           </h3>
           <div
             v-if="totalPages"
@@ -219,7 +221,7 @@ function saveProgress() {
               class="justify-center"
               @click="selectMode('pages')"
             >
-              Pages
+              {{ $t('ui.pages') }}
             </UButton>
             <UButton
               type="button"
@@ -229,14 +231,14 @@ function saveProgress() {
               class="justify-center"
               @click="selectMode('percent')"
             >
-              Percent
+              {{ $t('ui.percent') }}
             </UButton>
           </div>
 
           <div class="space-y-2">
             <div class="flex items-center justify-between gap-3 text-sm font-medium">
               <span>
-                {{ progressMode === 'pages' && totalPages ? `Current page of ${totalPages}` : 'Percent complete' }}
+                {{ progressMode === $t('ui.pagesText') && totalPages ? `Current page of ${totalPages}` : 'Percent complete' }}
               </span>
               <span class="font-normal text-muted">
                 {{ displayedPercent }}% done
@@ -277,10 +279,10 @@ function saveProgress() {
 
         <div>
           <h3 class="text-sm font-medium mb-2">
-            Dates
+            {{ $t('ui.dates') }}
           </h3>
           <div class="grid gap-3 sm:grid-cols-2">
-            <UFormField label="Started">
+            <UFormField :label="$t('ui.started')">
               <UInput
                 v-model="startedAt"
                 type="date"
@@ -289,7 +291,7 @@ function saveProgress() {
               />
             </UFormField>
 
-            <UFormField label="Finished">
+            <UFormField :label="$t('ui.finished')">
               <UInput
                 v-model="finishedAt"
                 type="date"
@@ -309,7 +311,7 @@ function saveProgress() {
         :disabled="saving"
         @click="() => { modalOpen = false }"
       >
-        Cancel
+        {{ $t('ui.cancel') }}
       </UButton>
       <UButton
         icon="i-lucide-save"
@@ -317,7 +319,7 @@ function saveProgress() {
         :disabled="saving || !hasChanges"
         @click="saveProgress"
       >
-        Save Changes
+        {{ $t('ui.saveChangesText') }}
       </UButton>
     </template>
   </UModal>

@@ -265,3 +265,23 @@ test('copies an error notification title and description, and reports clipboard 
   await expect(page.getByRole('button', { name: 'Copy failed — select text to copy', exact: true })).toBeVisible()
   await expect(title).toHaveCSS('user-select', 'text')
 })
+
+test('switches the interface to Slovak and keeps it after reload', async ({ page }, testInfo) => {
+  await registerSettingsUser(page, testInfo.title, 'settings-locale')
+  await page.goto('/settings')
+
+  await page.getByRole('combobox', { name: 'Language' }).click()
+  await page.getByRole('option', { name: 'Slovenčina' }).click()
+  await expect(page.getByRole('heading', { name: 'Nastavenia' })).toBeVisible()
+  await expect(page.locator('html')).toHaveAttribute('lang', 'sk')
+
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Nastavenia' })).toBeVisible()
+  await page.goto('/library')
+  await expect(page.getByRole('heading', { name: 'Moja knižnica' })).toBeVisible()
+
+  await page.goto('/settings')
+  await page.getByRole('combobox', { name: 'Jazyk' }).click()
+  await page.getByRole('option', { name: 'English' }).click()
+  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+})

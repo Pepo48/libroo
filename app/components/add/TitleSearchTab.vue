@@ -54,14 +54,14 @@ defineExpose({ reset })
         icon="i-lucide-arrow-left"
         @click="selectedIsbn = null"
       >
-        Back to title results
+        {{ $t('ui.backToTitleResults') }}
       </UButton>
       <AddIsbnLookupTab :initial-isbn="selectedIsbn" />
     </template>
     <template v-else>
       <UCard>
         <template #header>
-          <span class="font-semibold">Find Book by Title</span>
+          <span class="font-semibold">{{ $t('ui.findBookByTitle') }}</span>
         </template>
         <UForm
           :state="state"
@@ -69,20 +69,20 @@ defineExpose({ reset })
           @submit="search"
         >
           <UFormField
-            label="Book title"
+            :label="$t('ui.bookTitle')"
             name="query"
             required
           >
             <UInput
               v-model="state.query"
-              placeholder="e.g., Harry Potter"
+              :placeholder="$t('ui.eGHarryPotter')"
               :maxlength="120"
               size="lg"
               class="w-full"
             />
           </UFormField>
           <p class="text-sm text-muted">
-            Search the available book catalogs. Enter at least three letters.
+            {{ $t('ui.searchTheAvailableBookCatalogsEnterAt') }}
           </p>
           <UButton
             type="submit"
@@ -92,7 +92,7 @@ defineExpose({ reset })
             :loading="loading"
             :disabled="state.query.trim().length < 3"
           >
-            Search by Title
+            {{ $t('ui.searchByTitle') }}
           </UButton>
         </UForm>
       </UCard>
@@ -109,18 +109,18 @@ defineExpose({ reset })
       <UAlert
         v-else-if="result && !result.books.length"
         color="neutral"
-        title="No matching books"
+        :title="$t('ui.noMatchingBooks')"
         :description="result.hasMore ? 'This search is too broad. Add more words to narrow it down.' : 'Try fewer words, search by ISBN, or add the book manually.'"
       />
       <UCard v-if="result?.books.length">
         <template #header>
           <div class="flex items-center justify-between gap-2">
-            <span class="font-semibold">Choose an edition</span>
+            <span class="font-semibold">{{ $t('ui.chooseAnEdition') }}</span>
             <UBadge
               color="neutral"
               variant="subtle"
             >
-              Catalog results
+              {{ $t('ui.catalogResults') }}
             </UBadge>
           </div>
         </template>
@@ -161,7 +161,7 @@ defineExpose({ reset })
             v-if="result.hasMore"
             class="text-sm text-muted"
           >
-            More editions match. Add more words to narrow your search.
+            {{ $t('ui.moreEditionsMatchAddMoreWordsTo') }}
           </p>
           <ULink
             v-for="credit in attributions"

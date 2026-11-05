@@ -6,11 +6,13 @@ import { booleanConfigValue } from '~~/shared/utils/runtime-config'
 import { canShowOAuthSignIn, canShowPasskeySignIn, canShowPasswordForm, getOAuthProviderLabel } from '~~/shared/utils/auth-capability-ui'
 import { authClient } from '~/utils/auth-client'
 
+const { t } = useI18n()
+
 definePageMeta({
   auth: false
 })
 
-usePageTitle('Login')
+usePageTitle(() => t('ui.login'))
 
 const route = useRoute()
 const config = useRuntimeConfig()
@@ -79,7 +81,7 @@ const fields: AuthInputField[] = [
     id: 'login-email',
     name: 'email',
     type: 'email',
-    label: 'Email',
+    label: t('ui.email'),
     ariaLabel: 'Email',
     placeholder: 'Enter your email',
     required: true
@@ -88,7 +90,7 @@ const fields: AuthInputField[] = [
     id: 'login-password',
     name: 'password',
     type: 'password',
-    label: 'Password',
+    label: t('ui.password'),
     ariaLabel: 'Password',
     placeholder: 'Enter your password',
     required: true
@@ -137,7 +139,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
       isFromSignout.value = false
       await authStore.refresh()
       toast.add({
-        title: 'Welcome back!',
+        title: t('ui.welcomeBack'),
         description: 'You have been signed in successfully.',
         color: 'success'
       })
@@ -145,7 +147,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'An unexpected error occurred'
     toast.add({
-      title: 'Error',
+      title: t('ui.error'),
       description: error.value,
       color: 'error'
     })
@@ -171,7 +173,7 @@ async function verifySecondFactor() {
     mfaCode.value = ''
     isFromSignout.value = false
     await authStore.refresh()
-    toast.add({ title: 'Welcome back!', description: 'Second factor verified.', color: 'success' })
+    toast.add({ title: t('ui.welcomeBack'), description: 'Second factor verified.', color: 'success' })
   } catch (cause: unknown) {
     error.value = cause instanceof Error ? cause.message : 'Unable to verify the code'
   } finally {
@@ -244,28 +246,28 @@ async function signInWithOAuth() {
             class="mx-auto size-8 text-primary"
           />
           <h1 class="text-xl font-semibold">
-            Verify your sign-in
+            {{ $t('ui.verifyYourSignIn') }}
           </h1>
           <p class="text-sm text-muted">
-            Enter the code from your authenticator app or a recovery code.
+            {{ $t('ui.enterTheCodeFromYourAuthenticatorApp') }}
           </p>
         </div>
         <UFormField
           v-if="useBackupCode"
-          label="Recovery code"
+          :label="$t('ui.recoveryCode')"
         >
           <UInput
             v-model="mfaCode"
             class="w-full"
             inputmode="text"
             autocomplete="off"
-            placeholder="Enter a recovery code"
+            :placeholder="$t('ui.enterARecoveryCode')"
             @keydown.enter="() => { if (mfaCode.trim() && !isVerifyingMfa) verifySecondFactor() }"
           />
         </UFormField>
         <UFormField
           v-else
-          label="Authenticator code"
+          :label="$t('ui.authenticatorCode')"
         >
           <UInput
             v-model="mfaCode"
@@ -283,7 +285,7 @@ async function signInWithOAuth() {
           :disabled="!mfaCode.trim()"
           @click="verifySecondFactor"
         >
-          Verify and sign in
+          {{ $t('ui.verifyAndSignIn') }}
         </UButton>
         <UButton
           color="neutral"
@@ -305,8 +307,8 @@ async function signInWithOAuth() {
 
     <AuthStateCard
       v-else-if="!showPasswordForm && !showOAuthSignIn"
-      title="Sign-in unavailable"
-      description="This Libroo deployment has no enabled sign-in method. Contact an administrator."
+      :title="$t('ui.signInUnavailable')"
+      :description="$t('ui.thisLibrooDeploymentHasNoEnabledSign')"
       icon="i-lucide-lock-keyhole"
     />
 
@@ -316,7 +318,7 @@ async function signInWithOAuth() {
         :schema="schema"
         :fields="fields"
         :loading="isLoading"
-        title="Welcome back!"
+        :title="$t('ui.welcomeBack')"
         icon="i-lucide-library"
         @submit="onSubmit"
       >
@@ -324,12 +326,12 @@ async function signInWithOAuth() {
           v-if="registrationEnabled"
           #description
         >
-          Don't have an account?
+          {{ $t('ui.donTHaveAnAccount') }}
           <ULink
             :to="{ path: '/register', query: route.query.redirect ? { redirect: route.query.redirect } : undefined }"
             class="text-primary font-medium"
           >
-            Sign up
+            {{ $t('ui.signUp') }}
           </ULink>
         </template>
 
@@ -339,7 +341,7 @@ async function signInWithOAuth() {
             to="/forgot-password"
             class="text-primary font-medium"
           >
-            Forgot password?
+            {{ $t('ui.forgotPassword') }}
           </ULink>
         </template>
 
@@ -388,7 +390,7 @@ async function signInWithOAuth() {
               :loading="isPasskeyLoading"
               @click="signInWithPasskey"
             >
-              Sign in with passkey
+              {{ $t('ui.signInWithPasskey') }}
             </UButton>
             <UButton
               v-if="showOAuthSignIn"
@@ -402,7 +404,7 @@ async function signInWithOAuth() {
               {{ oauthProviderLabel }}
             </UButton>
             <p class="text-center text-sm text-muted">
-              Libroo - Your Library, Managed
+              {{ $t('ui.librooYourLibraryManaged') }}
             </p>
           </div>
         </template>
@@ -417,7 +419,7 @@ async function signInWithOAuth() {
             class="mx-auto size-8 text-primary"
           />
           <h1 class="text-xl font-semibold">
-            Welcome back!
+            {{ $t('ui.welcomeBack') }}
           </h1>
         </div>
         <UButton

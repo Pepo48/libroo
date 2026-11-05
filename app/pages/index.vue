@@ -1,4 +1,6 @@
 <script setup lang="ts">
+const { t } = useI18n()
+
 // Root page redirects based on auth status
 // - Authenticated users go to /library
 // - Unauthenticated users go to /login
@@ -7,7 +9,7 @@ definePageMeta({
   auth: false
 })
 
-usePageTitle('Loading')
+usePageTitle(() => t('ui.loadingText'))
 
 const authStore = useAuthStore()
 const { isAuthenticated, isPending } = storeToRefs(authStore)
@@ -28,7 +30,7 @@ watch([isAuthenticated, isPending], ([authenticated, pending]) => {
         class="w-8 h-8 animate-spin text-primary"
       />
       <p class="mt-4 text-muted">
-        Loading...
+        {{ $t('ui.loading') }}
       </p>
     </div>
   </div>
