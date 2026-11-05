@@ -269,6 +269,8 @@ jobs:
           fi
 
       - name: Build Cloudflare preview
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
         run: pnpm build:cloudflare
 
       - name: Verify isolated preview bindings

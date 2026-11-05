@@ -10,7 +10,8 @@ describe('Open Library deployment identification', () => {
 
     expect(workflow).toContain('NUXT_OPEN_LIBRARY_CONTACT_EMAIL: ${{ secrets.NUXT_OPEN_LIBRARY_CONTACT_EMAIL }}')
     expect(workflow).toContain('NUXT_OPEN_LIBRARY_CONTACT_EMAIL is required for identified Open Library requests.')
-    expect(workflow).toMatch(/const secretNames = \[[\s\S]*'NUXT_OPEN_LIBRARY_CONTACT_EMAIL'[\s\S]*\]/)
+    expect(workflow).toContain('node scripts/production/worker-secrets.mjs | pnpm exec wrangler secret bulk')
+    expect(readWorkspaceFile('scripts/production/worker-secrets.mjs')).toContain('\'NUXT_OPEN_LIBRARY_CONTACT_EMAIL\'')
   })
 
   it('requires and syncs a separately scoped preview Worker secret', () => {

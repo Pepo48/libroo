@@ -34,6 +34,7 @@ const cloudflareRuntimeVars = definedEnvVars({
   NUXT_BOOKS_ENRICHMENT_BACKOFF_SECONDS: process.env.NUXT_BOOKS_ENRICHMENT_BACKOFF_SECONDS || '60',
   NUXT_BOOKS_ENRICHMENT_RECOVERY_TIME_BUDGET_SECONDS: process.env.NUXT_BOOKS_ENRICHMENT_RECOVERY_TIME_BUDGET_SECONDS || '840',
   NUXT_BOOKS_ENRICHMENT_RECOVERY_SAFETY_SECONDS: process.env.NUXT_BOOKS_ENRICHMENT_RECOVERY_SAFETY_SECONDS || '35',
+  NUXT_CLOUDFLARE_ACCESS_ENABLED: process.env.NUXT_CLOUDFLARE_ACCESS_ENABLED,
   NUXT_CLOUDFLARE_ACCESS_AUDIENCE: process.env.NUXT_CLOUDFLARE_ACCESS_AUDIENCE,
   NUXT_CLOUDFLARE_ACCESS_TEAM_DOMAIN: process.env.NUXT_CLOUDFLARE_ACCESS_TEAM_DOMAIN,
   NUXT_CLOUDFLARE_PREVIEW: cloudflarePreview ? 'true' : undefined,
@@ -113,6 +114,7 @@ export default defineNuxtConfig({
     booksEnrichmentBackoffSeconds: '60',
     booksEnrichmentRecoveryTimeBudgetSeconds: '840',
     booksEnrichmentRecoverySafetySeconds: '35',
+    cloudflareAccessEnabled: '',
     cloudflareAccessAudience: '',
     cloudflareAccessTeamDomain: '',
     cloudflarePreview: '',
@@ -225,6 +227,7 @@ export default defineNuxtConfig({
                 enabled: true
               }
             },
+            preview_urls: false,
             upload_source_maps: true
           }
         }
