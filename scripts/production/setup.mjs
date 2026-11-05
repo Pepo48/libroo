@@ -61,8 +61,12 @@ function runGitHub(args, input) {
   return spawnSync('gh', args, { input, encoding: 'utf8', timeout: 60_000 })
 }
 
-export async function configureGitHub({ repo, config, token, contactEmail, finish = false, deploy = true }, run = runGitHub) {
+export async function configureGitHub({ repo, config, token, contactEmail, placementRegion, finish = false, deploy = true }, run = runGitHub) {
   if (!/^[a-z0-9_.-]+\/[a-z0-9_.-]+$/i.test(repo)) throw new Error('Invalid GitHub owner/repository.')
+  const region = placementRegion?.trim()
+  if (!finish && region && !/^(aws|azure|gcp):[a-z0-9-]+$/.test(region)) {
+    throw new Error('Enter a cloud placement region such as aws:eu-central-1, or leave it blank.')
+  }
   function gh(args, input, allowMissing = false) {
     const result = run(args, input)
     if (result.status !== 0) {
@@ -111,6 +115,7 @@ export async function configureGitHub({ repo, config, token, contactEmail, finis
     if (!secretNames.has('NUXT_BETTER_AUTH_SECRET') && !repositorySecrets.some(item => item.name === 'NUXT_BETTER_AUTH_SECRET')) secrets.NUXT_BETTER_AUTH_SECRET = randomBytes(32).toString('base64')
     const settings = {
       ...config,
+      ...(region ? { NUXT_CLOUDFLARE_PLACEMENT_REGION: region } : {}),
       NUXT_EMAIL_VERIFICATION_ENABLED: 'false',
       NUXT_EMAIL_PASSWORD_ENABLED: 'true',
       NUXT_PUBLIC_OIDC_ENABLED: 'false',
@@ -168,6 +173,7 @@ async function main() {
     const hostname = (await ask('Libroo hostname (e.g. library.example.com): ')).toLowerCase()
     const token = process.env.CLOUDFLARE_API_TOKEN || await ask('Cloudflare API token (hidden): ', true)
     const contactEmail = process.env.NUXT_OPEN_LIBRARY_CONTACT_EMAIL || await ask('Open Library contact email: ')
+    const placementRegion = await ask('Optional Worker placement region (e.g. aws:eu-central-1, Enter to skip): ')
     const choose = async (label, items, display) => {
       if (items.length === 1) {
         console.log(`${label}: ${display(items[0])}`)
@@ -180,7 +186,7 @@ async function main() {
       return items[choice - 1]
     }
     const config = await discoverDeployment({ token, hostname, choose })
-    await configureGitHub({ repo, config, token, contactEmail, deploy: !args.includes('--no-deploy') })
+    await configureGitHub({ repo, config, token, contactEmail, placementRegion, deploy: !args.includes('--no-deploy') })
   }
   console.log(`Settings saved. ${args.includes('--no-deploy') ? 'Deployment was not started.' : `Follow deployment at https://github.com/${repo}/actions/workflows/deploy-cloudflare.yml`}`)
   if (!finish) console.log('Once deployed, create your first Libroo account, then run: pnpm setup:cloudflare --finish\nSave the $1 billing alert in Cloudflare Billing → Billable Usage → Create budget alert.')

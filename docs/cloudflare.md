@@ -58,6 +58,8 @@ pnpm setup:cloudflare
 
 Enter your Libroo hostname, Cloudflare API token, and an email you monitor as
 the admin/operator for the [Open Library contact](#what-open-library-is-for).
+The Worker placement prompt is optional. Press Enter to use Cloudflare’s default
+placement on a fresh setup or keep the current setting on a rerun.
 Follow the GitHub Actions link printed by the command and wait for deployment
 to succeed. [What the command configures](#what-the-setup-command-configures).
 
@@ -814,3 +816,15 @@ following gates are satisfied:
 - D1 and R2 migration verification is recorded and approved.
 - Required backups/exports and copy logs are retained under the backup policy.
 - An authorized operator gives explicit deletion approval.
+
+
+### Optional Worker placement hint
+
+Enter a region when running `pnpm setup:cloudflare` to save the optional hint.
+For an existing deployment, you can also add `NUXT_CLOUDFLARE_PLACEMENT_REGION`
+under **Settings → Environments → production** in GitHub. Use a Cloudflare placement region such as `aws:eu-central-1` (Frankfurt),
+then deploy. The workflow passes it to Wrangler as `placement.region`. Check
+`cf-placement` on a Worker response and retry the catalog lookup after any
+provider cooldown. This is a latency hint. The catalog can still reject the
+outbound IP, and the placement header only identifies where the Worker ran.
+See [Cloudflare Worker placement](https://developers.cloudflare.com/workers/configuration/placement/).
