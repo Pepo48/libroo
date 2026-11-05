@@ -75,6 +75,17 @@ describe('GitHub production setup', () => {
     expect(run.mock.calls.some(([args]) => args[0] === 'workflow')).toBe(false)
   })
 
+  it('writes a placement hint only when supplied', async () => {
+    const name = 'NUXT_CLOUDFLARE_PLACEMENT_REGION'
+    const run = github()
+    await configureGitHub({ ...options, placementRegion: 'aws:eu-central-1', deploy: false }, run)
+    expect(run).toHaveBeenCalledWith(['variable', 'set', name, '--env', 'production', '--repo', options.repo], 'aws:eu-central-1')
+
+    const rerun = github({ variables: [{ name, value: 'aws:eu-central-1' }] })
+    await configureGitHub({ ...options, placementRegion: '', deploy: false }, rerun)
+    expect(rerun.mock.calls.some(([args]) => args.includes(name))).toBe(false)
+  })
+
   it('closes registration without reading or rewriting Cloudflare credentials', async () => {
     const run = github()
     await configureGitHub({ ...options, finish: true, token: undefined }, run)
