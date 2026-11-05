@@ -16,7 +16,7 @@ useHead({
     { rel: 'icon', type: 'image/png', sizes: '96x96', href: '/favicon-96x96.png' },
     { rel: 'shortcut icon', href: '/favicon.ico' },
     { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
-    { rel: 'manifest', href: '/site.webmanifest' }
+    { rel: 'manifest', href: '/site.webmanifest', crossorigin: 'use-credentials' }
   ],
   meta: [
     { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
