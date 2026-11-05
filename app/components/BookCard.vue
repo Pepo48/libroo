@@ -19,7 +19,7 @@ interface Props {
 
 const props = defineProps<Props>()
 const emit = defineEmits<{ 'tag-selected': [tag: string] }>()
-const visibleTags = computed(() => props.tags?.slice(0, 3) ?? [])
+const visibleTags = computed(() => props.tags?.slice(0, 2) ?? [])
 const hiddenTagCount = computed(() => Math.max(0, (props.tags?.length ?? 0) - visibleTags.value.length))
 const enrichmentMessage = computed(() => {
   if (props.enrichmentStatus === 'no_cover') return 'Cover unavailable'
@@ -27,12 +27,6 @@ const enrichmentMessage = computed(() => {
   if (props.enrichmentStatus === 'failed') return 'Enrichment failed'
   return null
 })
-
-function selectTag(event: MouseEvent, tag: string) {
-  event.preventDefault()
-  event.stopPropagation()
-  emit('tag-selected', tag)
-}
 
 // Computed cover URL - blob images are already WebP, use directly
 const coverUrl = computed(() => {
@@ -44,123 +38,117 @@ const coverUrl = computed(() => {
 </script>
 
 <template>
-  <NuxtLink
-    :to="`/library/${id}`"
-    class="block cursor-pointer"
+  <article
+    data-testid="book-card"
+    class="group flex h-full min-w-0 flex-col"
   >
-    <UCard
-      variant="subtle"
-      class="h-full transition-all hover:shadow-lg dark:hover:shadow-neutral-700"
-      :ui="{
-        header: 'p-0 sm:px-0',
-        body: 'p-2 sm:p-4'
-      }"
+    <NuxtLink
+      :to="`/library/${id}`"
+      class="block rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
     >
-      <template #header>
-        <div class="flex items-center justify-center relative">
-          <NuxtImg
-            v-if="coverUrl"
-            :src="coverUrl"
-            :alt="title"
-            class="w-full object-cover"
-            loading="lazy"
-          />
-          <div
-            v-else-if="enrichmentStatus === 'queued' || enrichmentStatus === 'preparing' || enrichmentStatus === 'retrying'"
-            class="w-full h-full flex items-center justify-center bg-muted aspect-[1/1.5]"
-          >
-            <UIcon
-              name="i-lucide-loader-2"
-              class="animate-spin text-3xl text-primary"
-            />
-          </div>
-          <div
-            v-else
-            class="w-full h-full flex items-center justify-center bg-muted aspect-[1/1.5]"
-          >
-            <UIcon
-              name="i-lucide-book"
-              class="text-4xl text-muted"
-            />
-          </div>
+      <div class="relative isolate aspect-2/3 overflow-hidden rounded-xl bg-elevated shadow-md ring-1 ring-black/10 transition duration-300 motion-safe:group-hover:-translate-y-1 motion-safe:group-hover:shadow-xl dark:ring-white/10">
+        <NuxtImg
+          v-if="coverUrl"
+          :src="coverUrl"
+          :alt="`Cover of ${title}`"
+          width="300"
+          height="450"
+          class="absolute inset-0 size-full object-contain"
+          loading="lazy"
+        />
+        <BookJacket
+          v-else
+          :title="title"
+          :author="author"
+        />
+        <div
+          class="pointer-events-none absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent"
+          aria-hidden="true"
+        />
+        <div class="absolute top-2 right-2 left-2 flex flex-wrap gap-1">
           <UBadge
             v-if="activeLoan"
             color="warning"
             variant="solid"
             size="sm"
-            class="absolute top-2 left-2"
-          >
-            Lent out
-          </UBadge>
+            class="rounded-md shadow-sm"
+          >Lent out</UBadge>
           <UBadge
-            v-if="libraryState === 'wishlisted'"
+            v-else-if="libraryState === 'wishlisted'"
             color="info"
             variant="solid"
             size="sm"
-            class="absolute top-2 right-2"
-          >
-            Wishlist
-          </UBadge>
+            class="rounded-md shadow-sm"
+          >Wishlist</UBadge>
           <UBadge
-            v-if="libraryState === 'previously_owned'"
+            v-else-if="libraryState === 'previously_owned'"
             color="neutral"
-            variant="subtle"
+            variant="solid"
             size="sm"
-            class="absolute top-2 right-2"
-          >
-            Previously owned
-          </UBadge>
-        </div>
-      </template>
-
-      <div class="space-y-1">
-        <h3 class="font-semibold text-sm line-clamp-2">
-          {{ title }}
-        </h3>
-        <p class="text-xs text-muted line-clamp-1">
-          {{ author }}
-        </p>
-        <p
-          v-if="enrichmentMessage"
-          class="text-xs text-warning line-clamp-1"
-        >
-          {{ enrichmentMessage }}
-        </p>
-        <div
-          v-if="visibleTags.length"
-          class="flex flex-wrap gap-1 pt-1"
-        >
-          <UBadge
-            v-for="tag in visibleTags"
-            :key="tag"
-            color="primary"
-            variant="soft"
-            size="sm"
-            class="cursor-pointer"
-            @click="selectTag($event, tag)"
-          >
-            {{ tag }}
-          </UBadge>
-          <UBadge
-            v-if="hiddenTagCount"
-            color="neutral"
-            variant="soft"
-            size="sm"
-          >
-            +{{ hiddenTagCount }}
-          </UBadge>
+            class="rounded-md shadow-sm"
+          >Previously owned</UBadge>
         </div>
         <div
-          v-if="location || lastKnownLocation"
-          class="flex items-center gap-1 text-xs text-muted"
+          data-testid="book-card-location"
+          class="absolute right-3 bottom-3 left-3 flex min-w-0 items-center gap-1.5 text-xs font-medium text-white/95"
+          :title="location?.path || lastKnownLocation || undefined"
         >
           <UIcon
             name="i-lucide-map-pin"
-            class="size-3 shrink-0"
+            class="size-3.5 shrink-0 text-white/65"
           />
-          <span class="line-clamp-1">{{ location?.path || `Last known: ${lastKnownLocation}` }}</span>
+          <span class="truncate">{{ location?.path || lastKnownLocation || 'No location' }}</span>
         </div>
       </div>
-    </UCard>
-  </NuxtLink>
+      <div class="pt-3">
+        <h3
+          class="min-h-10 text-sm leading-5 font-semibold text-highlighted line-clamp-2"
+          :title="title"
+        >{{ title }}</h3>
+        <p
+          class="mt-1 truncate text-xs text-muted"
+          :title="author"
+        >{{ author || 'Unknown author' }}</p>
+      </div>
+    </NuxtLink>
+    <div
+      class="mt-2 flex min-h-7 flex-wrap items-start gap-1"
+      aria-label="Book tags"
+    >
+      <UButton
+        v-for="tag in visibleTags"
+        :key="tag"
+        color="neutral"
+        variant="soft"
+        size="xs"
+        class="max-w-full rounded-md px-1.5 py-0.5 text-[10px]"
+        :title="`Filter by tag: ${tag}`"
+        :aria-label="`Filter by tag: ${tag}`"
+        :ui="{ label: 'truncate' }"
+        @click="emit('tag-selected', tag)"
+      >
+        {{ tag }}
+      </UButton>
+      <UBadge
+        v-if="hiddenTagCount"
+        color="neutral"
+        variant="subtle"
+        size="sm"
+        class="rounded-md text-[10px]"
+      >
+        +{{ hiddenTagCount }}
+      </UBadge>
+    </div>
+    <p
+      v-if="!coverUrl && (enrichmentStatus || enrichmentMessage)"
+      class="mt-1 flex items-center gap-1 text-[10px] text-muted"
+    >
+      <UIcon
+        v-if="enrichmentStatus === 'queued' || enrichmentStatus === 'preparing' || enrichmentStatus === 'retrying'"
+        name="i-lucide-loader-2"
+        class="size-3 animate-spin"
+      />
+      {{ enrichmentMessage || 'Finding book details' }}
+    </p>
+  </article>
 </template>

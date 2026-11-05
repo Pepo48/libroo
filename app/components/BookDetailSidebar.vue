@@ -30,25 +30,31 @@ const readingSummary = computed(() => useReadingSummary(
           class="block h-auto w-full shadow-md"
         />
         <div
-          v-else-if="isCoverEnrichmentInProgress"
-          class="flex aspect-2/3 items-center justify-center bg-muted"
-          role="status"
+          v-else
+          class="relative isolate aspect-2/3 overflow-hidden shadow-md"
+          role="img"
+          :aria-label="`Generated cover for ${book.title}`"
         >
-          <span class="sr-only">Preparing book cover</span>
-          <UIcon
-            name="i-lucide-loader-2"
-            class="animate-spin text-4xl text-primary"
+          <BookJacket
+            :title="book.title"
+            :author="book.author"
+          />
+          <div
+            class="pointer-events-none absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent"
             aria-hidden="true"
           />
-        </div>
-        <div
-          v-else
-          class="flex aspect-2/3 items-center justify-center bg-muted"
-        >
-          <UIcon
-            name="i-lucide-book"
-            class="text-6xl text-muted"
-          />
+          <p
+            v-if="isCoverEnrichmentInProgress"
+            class="absolute right-4 bottom-4 left-4 flex items-center gap-2 text-xs text-white/80"
+            role="status"
+          >
+            <UIcon
+              name="i-lucide-loader-2"
+              class="size-3.5 animate-spin"
+              aria-hidden="true"
+            />
+            Preparing book cover
+          </p>
         </div>
       </div>
 

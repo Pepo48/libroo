@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { addManualBook, bulkFixtureIsbns, fixtureIsbn, fixtureIsbnTitle, libraryBookLink, optimisticBulkIsbns, pasteBulkIsbns } from './support/books'
-import { storageState } from './support/auth'
+import { registerUser, storageState } from './support/auth'
 import { addBookTabs } from './support/selectors'
 
 const libraryRefreshPaths = new Set(['/api/books', '/api/preferences', '/api/tags', '/api/locations'])
@@ -162,12 +162,93 @@ test('shows bulk added books before the post-save library refresh completes', as
     await expect(page).toHaveURL(/\/library(?:\?.*)?$/)
     await expect(libraryBookLink(page, 'Bulk Fixture Book 13')).toBeVisible()
     await expect(libraryBookLink(page, 'Bulk Fixture Book 14')).toBeVisible()
-    const bulkBookCover = page.locator('img[alt="Bulk Fixture Book 13"]')
+    const bulkBookCover = page.getByRole('img', { name: 'Cover of Bulk Fixture Book 13', exact: true })
     await expect.poll(() => bulkBookCover.evaluate(image => (image as HTMLImageElement).naturalWidth > 0), {
       timeout: 30_000
     }).toBe(true)
   } finally {
     await refreshGate.release()
+    await context.close()
+  }
+})
+
+test('returns to a cached empty library before preferences finish, without refetching books', async ({ browser }) => {
+  await storageState(browser, 'admin')
+  const context = await browser.newContext()
+  const page = await context.newPage()
+  let releasePreferences!: () => void
+  const preferencesGate = new Promise<void>((resolve) => {
+    releasePreferences = resolve
+  })
+  let bookRequests = 0
+  try {
+    await registerUser(page)
+    await expect(page.getByRole('heading', { name: /^(Your library is empty|No books in this view)$/ })).toBeVisible()
+    await page.getByRole('link', { name: 'Add Book', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Look Up Book', exact: true })).toBeVisible()
+    await page.route('**/api/preferences', async (route) => {
+      const response = await route.fetch()
+      await preferencesGate
+      await route.fulfill({ response })
+    })
+    await page.route('**/api/books?*', async (route) => {
+      bookRequests++
+      await route.continue()
+    })
+    await page.getByRole('link', { name: 'Back to Library', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'My Library', exact: true })).toBeVisible()
+    releasePreferences()
+    await expect(page.getByRole('heading', { name: /^(Your library is empty|No books in this view)$/ })).toBeVisible()
+    expect(bookRequests).toBe(0)
+  } finally {
+    releasePreferences()
+    await context.close()
+  }
+})
+
+test('opens the library before slow requests finish and uses the saved wishlist view', async ({ browser }) => {
+  await storageState(browser, 'admin')
+  const context = await browser.newContext()
+  const page = await context.newPage()
+  let releasePreferences!: () => void
+  let releaseBooks!: () => void
+  const preferencesGate = new Promise<void>((resolve) => {
+    releasePreferences = resolve
+  })
+  const booksGate = new Promise<void>((resolve) => {
+    releaseBooks = resolve
+  })
+  const bookQueries: string[] = []
+  const title = `Saved wishlist ${Date.now()}`
+  try {
+    await registerUser(page)
+    expect((await context.request.put('/api/preferences', { data: { defaultLibraryStateFilter: ['wishlisted'] } })).ok()).toBe(true)
+    expect((await context.request.post('/api/books/manual', { data: { title, authors: ['Wishlist Author'], libraryState: 'wishlisted' } })).ok()).toBe(true)
+    // A full visit to Add starts without an in-memory library result.
+    await page.goto('/library/add')
+    await page.route('**/api/preferences', async (route) => {
+      const response = await route.fetch()
+      await preferencesGate
+      await route.fulfill({ response })
+    })
+    await page.route('**/api/books?*', async (route) => {
+      bookQueries.push(new URL(route.request().url()).searchParams.get('libraryState') ?? '')
+      const response = await route.fetch()
+      await booksGate
+      await route.fulfill({ response })
+    })
+    await page.getByRole('link', { name: 'Back to Library', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'My Library', exact: true })).toBeVisible()
+    expect(bookQueries).toEqual([])
+    releasePreferences()
+    await expect.poll(() => bookQueries).toEqual(['wishlisted'])
+    await expect(page.getByRole('heading', { name: title, exact: true })).toHaveCount(0)
+    releaseBooks()
+    await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible()
+    expect(bookQueries).toEqual(['wishlisted'])
+  } finally {
+    releasePreferences()
+    releaseBooks()
     await context.close()
   }
 })
