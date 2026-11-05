@@ -1,3 +1,5 @@
+import { LibraryCleanupRepositoryLive, type LibraryCleanupRepository } from '../repositories/library-cleanup.repository'
+import { LibraryCleanupServiceLive, type LibraryCleanupService } from '../services/library-cleanup.service'
 import { BookSearchServiceLive, type BookSearchService } from '../services/book-search.service'
 import { BookMetadataSourcesLive } from '#libroo-metadata-sources'
 import { BookRefreshServiceLive, type BookRefreshService } from '../services/book-refresh.service'
@@ -43,6 +45,7 @@ const RepositoriesLive = Layer.provideMerge(
     AuditRepositoryLive,
     LocationRepositoryLive,
     LibraryTransferRepositoryLive,
+    LibraryCleanupRepositoryLive,
     PreferencesRepositoryLive,
     AuthRepositoryLive,
     AccountDeletionRepositoryLive,
@@ -60,7 +63,7 @@ const MetadataSourcesLive = BookMetadataSourcesLive.pipe(Layer.provideMerge(Repo
 
 // Service layer (depends on repositories)
 const CoreServicesLive = Layer.provideMerge(
-  Layer.mergeAll(BookSearchServiceLive, BookRefreshServiceLive, BookServiceLive, BookEditServiceLive, BookEnrichmentServiceLive, LendingServiceLive, AdminServiceLive, AuditServiceLive, LocationServiceLive, LibraryTransferServiceLive, PreferencesServiceLive, AccountDeletionServiceLive, SignupInviteServiceLive, EmailCapabilityServiceLive, AuthCapabilityServiceLive, HealthServiceLive, LegalServiceLive, RateLimitServiceLive, MetricsServiceLive),
+  Layer.mergeAll(LibraryCleanupServiceLive, BookSearchServiceLive, BookRefreshServiceLive, BookServiceLive, BookEditServiceLive, BookEnrichmentServiceLive, LendingServiceLive, AdminServiceLive, AuditServiceLive, LocationServiceLive, LibraryTransferServiceLive, PreferencesServiceLive, AccountDeletionServiceLive, SignupInviteServiceLive, EmailCapabilityServiceLive, AuthCapabilityServiceLive, HealthServiceLive, LegalServiceLive, RateLimitServiceLive, MetricsServiceLive),
   MetadataSourcesLive
 )
 
@@ -77,7 +80,9 @@ export const MainLive = Layer.provideMerge(
 
 // Type for all available services
 export type MainServices
-  = BookSearchService
+  = LibraryCleanupService
+    | LibraryCleanupRepository
+    | BookSearchService
     | BookRefreshService
     | BookEditService
     | BookEditRepository

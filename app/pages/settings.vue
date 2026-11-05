@@ -135,6 +135,7 @@ const isImporting = ref(false)
 const importProgress = ref({ processed: 0, total: 0 })
 const importReport = ref<LibraryImportReport | null>(null)
 const importReportOpen = ref(false)
+const clearLibraryOpen = ref(false)
 const isExporting = ref(false)
 const LIBRARY_IMPORT_MAX_BYTES = 10 * 1024 * 1024
 
@@ -950,7 +951,6 @@ async function importLibraryCsvFile() {
               </div>
             </div>
             <UButton
-              :icon="twoFactorEnabled ? undefined : 'i-lucide-shield-plus'"
               color="neutral"
               variant="outline"
               @click="requestRecentAuth(twoFactorEnabled ? 'two-factor-manage' : 'two-factor-setup', twoFactorEnabled ? openTwoFactorManagement : openTwoFactorSetup)"
@@ -1036,8 +1036,7 @@ async function importLibraryCsvFile() {
             </div>
             <UButton
               color="error"
-              variant="subtle"
-              icon="i-lucide-trash-2"
+              variant="outline"
               @click="requestRecentAuth('delete', openAccountDeletion)"
             >
               Delete account
@@ -1046,7 +1045,10 @@ async function importLibraryCsvFile() {
         </div>
       </UCard>
 
-      <UCard class="mt-6">
+      <UCard
+        id="library-data"
+        class="mt-6"
+      >
         <template #header>
           <div class="flex items-center gap-2">
             <UIcon
@@ -1107,8 +1109,36 @@ async function importLibraryCsvFile() {
               Import CSV
             </UButton>
           </div>
+          <div class="flex flex-col gap-4 py-5 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex flex-col gap-4 py-5 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex items-start gap-3">
+              <UIcon
+                name="i-lucide-trash-2"
+                class="mt-0.5 size-5 shrink-0 text-muted"
+              />
+              <div>
+                <p class="font-medium">
+                  Clear library
+                </p>
+                <p class="text-sm text-muted">
+                  Remove all owned, wishlisted and previously owned records. Books with active loans are kept. Export a backup first.
+                </p>
+              </div>
+            </div>
+            <UButton
+              color="error"
+              variant="outline"
+              @click="clearLibraryOpen = true"
+            >
+              Clear library
+            </UButton>
+          </div>
         </div>
       </UCard>
+      <LibraryBulkDeleteModal
+        v-model:open="clearLibraryOpen"
+        all
+      />
 
       <UModal
         v-if="showPasswordManagement"
@@ -1411,6 +1441,9 @@ async function importLibraryCsvFile() {
               :items="importConflictItems"
               legend="When a book already exists"
             />
+            <p class="text-sm text-muted">
+              Import adds or updates books. It does not remove records missing from the CSV or clean up existing duplicates.
+            </p>
             <UCheckbox
               v-model="importEnrich"
               :disabled="isImporting"

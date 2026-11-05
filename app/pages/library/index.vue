@@ -59,8 +59,9 @@ const {
 } = storeToRefs(dashboardStore)
 
 const layout = useCookie<'shelves' | 'grid'>('libroo-library-layout', { default: () => 'shelves', sameSite: 'lax' })
+const selectionMode = ref(false)
 const useShelfPagination = computed(() => layout.value !== 'grid' && !search.value.trim())
-const useShelfLayout = computed(() => useShelfPagination.value)
+const useShelfLayout = computed(() => useShelfPagination.value && !selectionMode.value)
 
 const {
   clearNeedsSync: clearNeedsSyncAction,
@@ -188,7 +189,7 @@ const { data: availableTags } = useFetch<TagWithCount[]>('/api/tags', {
 })
 
 // Fetch books with pagination
-const { data, refresh, status } = await useFetch<PaginatedResponse>('/api/books', {
+const { data, refresh, status, error: libraryFetchError } = await useFetch<PaginatedResponse>('/api/books', {
   headers: useRequestHeaders(['cookie']),
   immediate: shouldFetchInitial && !deferInitialBooks,
   lazy: true,
@@ -388,12 +389,11 @@ onBeforeRouteLeave((to) => {
 const books = computed(() => allBooks.value)
 const pagination = computed(() => paginationState.value)
 const hasBooks = computed(() => books.value.length > 0)
-const isDefaultLibraryState = computed(() =>
-  libraryState.value.length === DEFAULT_LIBRARY_STATE_FILTER.length
-  && libraryState.value.every(state => DEFAULT_LIBRARY_STATE_FILTER.includes(state))
-)
-const hasNonDefaultLibraryView = computed(() =>
-  !isDefaultLibraryState.value && hasLibraryStateFilter(libraryState.value)
+// Even the default Owned view is a filter; an empty view does not prove
+// that wishlist or previously owned records have been removed.
+const hasRestrictedLibraryView = computed(() => hasLibraryStateFilter(libraryState.value))
+const emptyLibraryViewDescription = computed(() =>
+  `This view shows ${libraryState.value.map(state => state.replaceAll('_', ' ')).join(' and ')} books. Other library states may still contain records.`
 )
 const hasActiveFilters = computed(() =>
   Boolean(search.value.trim())
@@ -603,6 +603,11 @@ function updateBrowserQuery(state: Parameters<typeof buildLibraryRouteQuery>[0])
   window.history.replaceState(window.history.state, '', nextUrl)
 }
 
+async function showAllBooks() {
+  libraryState.value = []
+  await clearFilters()
+}
+
 async function clearFilters() {
   isApplyingFilters.value = true
   suppressFilterWatcher.value = true
@@ -634,17 +639,50 @@ const revealBookId = ref<string | null>(null)
 watch(layout, () => {
   revealBookId.value = null
 })
+const selectedBookIds = ref<string[]>([])
+const bulkDeleteOpen = ref(false)
+watch(selectionMode, () => {
+  selectedBookIds.value = []
+})
+watch(activeResultCacheKey, () => {
+  selectedBookIds.value = []
+})
+
+function toggleBookSelection(id: string, checked: boolean | 'indeterminate') {
+  selectedBookIds.value = checked === true
+    ? [...selectedBookIds.value.filter(item => item !== id), id]
+    : selectedBookIds.value.filter(item => item !== id)
+}
+
+function onBulkRemoved(ids: string[]) {
+  selectedBookIds.value = selectedBookIds.value.filter(id => !ids.includes(id))
+}
+
+async function onBulkFinished() {
+  try {
+    // Deletions shift every offset. Restart at page one before loading more.
+    await syncLoadedPages(1)
+    clearNeedsSyncAction()
+  } catch {
+    toast.add({ title: 'Unable to reload remaining books', description: 'Open the library at page 1 to retry.', color: 'error' })
+  }
+}
 
 // Load more
 async function loadMore() {
   if (pagination.value?.hasMore && !isLoadingMore.value) {
     isLoadingMore.value = true
+    const previousPage = page.value
     const previousIds = new Set(books.value.map(book => book.id))
     try {
       page.value++
       await refresh()
+      if (libraryFetchError.value) throw libraryFetchError.value
       await nextTick()
       if (useShelfLayout.value) revealBookId.value = books.value.find(book => !previousIds.has(book.id))?.id ?? null
+    } catch {
+      page.value = previousPage
+      toast.add({ title: 'Unable to load more books', description: 'Please try again.', color: 'error' })
     } finally {
       isLoadingMore.value = false
     }
@@ -659,11 +697,13 @@ async function syncLoadedPages(targetPages: number) {
   try {
     page.value = 1
     await refresh()
+    if (libraryFetchError.value) throw libraryFetchError.value
 
     for (let currentPage = 2; currentPage <= normalizedTargetPages; currentPage++) {
       if (!paginationState.value?.hasMore) break
       page.value = currentPage
       await refresh()
+      if (libraryFetchError.value) throw libraryFetchError.value
     }
   } catch (error) {
     allBooks.value = previousAllBooks
@@ -681,6 +721,17 @@ async function syncLoadedPages(targetPages: number) {
       :description="pagination ? `${pagination.totalItems} ${pagination.totalItems === 1 ? 'book' : 'books'}` : undefined"
     >
       <template #links>
+        <UButton
+          color="neutral"
+          variant="outline"
+          icon="i-lucide-list-checks"
+          :aria-pressed="selectionMode"
+          :aria-label="selectionMode ? 'Done selecting' : 'Select books'"
+          :title="selectionMode ? 'Done selecting' : 'Select books'"
+          @click="selectionMode = !selectionMode"
+        >
+          <span class="hidden sm:inline">{{ selectionMode ? 'Done selecting' : 'Select books' }}</span>
+        </UButton>
         <UButton
           icon="i-lucide-map"
           size="lg"
@@ -704,6 +755,37 @@ async function syncLoadedPages(targetPages: number) {
 
     <!-- Page Body -->
     <UPageBody>
+      <div
+        v-if="selectionMode"
+        class="flex flex-wrap items-center gap-3 rounded-lg border border-default p-4"
+      >
+        <span role="status">{{ selectedBookIds.length }} selected</span>
+        <UButton
+          color="neutral"
+          variant="soft"
+          @click="selectedBookIds = books.map(book => book.id)"
+        >
+          Select loaded books ({{ books.length }})
+        </UButton>
+        <UButton
+          color="neutral"
+          variant="ghost"
+          :disabled="!selectedBookIds.length"
+          @click="selectedBookIds = []"
+        >
+          Deselect all
+        </UButton>
+        <UButton
+          color="error"
+          :disabled="!selectedBookIds.length"
+          @click="bulkDeleteOpen = true"
+        >
+          Delete selected
+        </UButton>
+        <p class="w-full text-sm text-muted">
+          Only loaded books are selected. Load more to include more results. Books with active loans will be skipped.
+        </p>
+      </div>
       <section
         class="rounded-2xl border border-default bg-elevated/40 p-4 sm:p-5"
         aria-label="Find books"
@@ -894,7 +976,7 @@ async function syncLoadedPages(targetPages: number) {
 
       <!-- Empty State -->
       <UCard
-        v-else-if="!hasBooks && !hasActiveFilters && !hasNonDefaultLibraryView"
+        v-else-if="!hasBooks && !hasActiveFilters && !hasRestrictedLibraryView"
         class="text-center py-12"
       >
         <UIcon
@@ -925,22 +1007,38 @@ async function syncLoadedPages(targetPages: number) {
           class="text-6xl text-muted mx-auto mb-4"
         />
         <h2 class="text-xl font-semibold mb-2">
-          {{ hasNonDefaultLibraryView && !hasActiveFilters ? 'No books in this view' : 'No books found' }}
+          {{ hasRestrictedLibraryView && !hasActiveFilters ? 'No books in this view' : 'No books found' }}
         </h2>
         <p class="text-muted mb-6">
-          {{ hasNonDefaultLibraryView && !hasActiveFilters
-            ? 'Choose another view to see a different set of books.'
+          {{ hasRestrictedLibraryView && !hasActiveFilters
+            ? emptyLibraryViewDescription
             : 'Try a different title, author, ISBN, tag, or shelf location.' }}
         </p>
-        <UButton
-          v-if="hasActiveFilters"
-          color="neutral"
-          variant="outline"
-          icon="i-lucide-x"
-          @click="clearFilters"
-        >
-          Clear filters
-        </UButton>
+        <div class="flex flex-wrap justify-center gap-3">
+          <UButton
+            v-if="hasRestrictedLibraryView"
+            icon="i-lucide-library"
+            @click="showAllBooks"
+          >
+            Show all books
+          </UButton>
+          <UButton
+            v-if="hasActiveFilters"
+            color="neutral"
+            variant="outline"
+            icon="i-lucide-x"
+            @click="clearFilters"
+          >
+            Clear filters
+          </UButton>
+          <UButton
+            to="/settings#library-data"
+            color="neutral"
+            variant="outline"
+          >
+            Manage library data
+          </UButton>
+        </div>
       </UCard>
 
       <!-- Cover-led shelves, with a grid for search and selection. -->
@@ -969,7 +1067,7 @@ async function syncLoadedPages(targetPages: number) {
               :variant="useShelfLayout ? 'solid' : 'ghost'"
               class="rounded-lg"
               :aria-pressed="useShelfLayout"
-              :disabled="!!search.trim()"
+              :disabled="selectionMode || !!search.trim()"
               @click="layout = 'shelves'"
             >
               Shelves
@@ -981,6 +1079,7 @@ async function syncLoadedPages(targetPages: number) {
               :variant="!useShelfLayout ? 'solid' : 'ghost'"
               class="rounded-lg"
               :aria-pressed="!useShelfLayout"
+              :disabled="selectionMode"
               @click="layout = 'grid'"
             >
               Grid
@@ -1026,7 +1125,9 @@ async function syncLoadedPages(targetPages: number) {
                 v-for="book in group.books"
                 :key="book.id"
                 :book="book"
-
+                :selection-mode="selectionMode"
+                :selected="selectedBookIds.includes(book.id)"
+                @select="toggleBookSelection"
                 @tag="toggleTagFilter"
               />
             </div>
@@ -1040,7 +1141,9 @@ async function syncLoadedPages(targetPages: number) {
             v-for="book in books"
             :key="book.id"
             :book="book"
-
+            :selection-mode="selectionMode"
+            :selected="selectedBookIds.includes(book.id)"
+            @select="toggleBookSelection"
             @tag="toggleTagFilter"
           />
         </div>
@@ -1069,6 +1172,12 @@ async function syncLoadedPages(targetPages: number) {
           Showing {{ books.length }} of {{ pagination.totalItems }} books
         </div>
       </template>
+      <LibraryBulkDeleteModal
+        v-model:open="bulkDeleteOpen"
+        :ids="selectedBookIds"
+        @removed="onBulkRemoved"
+        @finished="onBulkFinished"
+      />
     </UPageBody>
   </UContainer>
 </template>

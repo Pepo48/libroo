@@ -1,4 +1,3 @@
-import { removeLibraryRecords } from '../repositories/library-removal-batch'
 import { BookMetadataSources, lookupCoreMetadata, lookupBatchMetadata } from './book-metadata-sources'
 import { Context, Effect, Layer, Result, Data } from 'effect'
 import type * as HttpClient from 'effect/http/HttpClient'
@@ -177,11 +176,6 @@ export interface BookServiceInterface {
     userId: string,
     options?: { confirmActiveLoan?: boolean }
   ) => Effect.Effect<void, BookNotFoundError | ActiveLoanRemovalError | DatabaseError, DbService>
-
-  batchRemoveFromLibrary: (
-    ids: string[],
-    userId: string
-  ) => Effect.Effect<BatchDeleteResult, never, DbService>
 
   getBookDetails: (
     userBookId: string,
@@ -693,17 +687,6 @@ export const BookServiceLive = Layer.effect(
       removeBookFromLibrary: (userBookId, userId, options) =>
         bookRepo.removeFromLibrary(userBookId, userId, options),
 
-      batchRemoveFromLibrary: (ids, userId) =>
-        Effect.gen(function* () {
-          const database = yield* DbService
-          const removedIds = yield* Effect.tryPromise({
-            try: () => removeLibraryRecords(database, userId, ids),
-            catch: error => error
-          }).pipe(Effect.catch(error => Effect.logError(error).pipe(Effect.as([] as string[]))))
-          const removed = new Set(removedIds)
-          return { removedIds, failedIds: [...new Set(ids)].filter(id => !removed.has(id)) }
-        }),
-
       getBookDetails: (userBookId, userId) =>
         Effect.gen(function* () {
           const details = yield* bookRepo.getUserBookWithDetails(userBookId, userId)
@@ -1004,9 +987,6 @@ export const removeBookFromLibrary = (
   options?: { confirmActiveLoan?: boolean }
 ) =>
   Effect.flatMap(BookService, service => service.removeBookFromLibrary(userBookId, userId, options))
-
-export const batchRemoveFromLibrary = (ids: string[], userId: string) =>
-  Effect.flatMap(BookService, service => service.batchRemoveFromLibrary(ids, userId))
 
 export const getBookDetails = (userBookId: string, userId: string) =>
   Effect.flatMap(BookService, service => service.getBookDetails(userBookId, userId))

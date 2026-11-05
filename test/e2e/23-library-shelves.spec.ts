@@ -106,6 +106,9 @@ test('shows every non-empty shelf on the first page and keeps grid pagination se
     await page.getByRole('button', { name: 'Shelves', exact: true }).click()
     await expect(page.getByTestId('book-card')).toHaveCount(18)
     await expect(page.getByRole('region', { name: 'Later shelf books', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Select books', exact: true }).click()
+    await expect(page.getByTestId('book-card')).toHaveCount(18)
+    await expect(page.getByRole('button', { name: 'Select loaded books (18)', exact: true })).toBeVisible()
   } finally {
     await context.close()
   }
