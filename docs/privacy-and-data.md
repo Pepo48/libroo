@@ -131,12 +131,14 @@ The Settings importer sends sequential requests of up to 25 rows, reduced for ro
 
 Duplicate detection matches ISBN, or title plus a matching author when no ISBN is supplied, across all locations. Title and author matching use consistent Unicode-aware case and whitespace normalization; SQLite ASCII-only `lower()` is not used for title comparisons. This prevents repeated imports of Slovak titles from creating new copies. Existing duplicate records are not automatically merged or deleted. A skipped duplicate does not create another physical copy or another location. Location values containing ` - ` represent a hierarchy, such as `Miša - BK` for the BK child under Miša. Wishlisted books are separate from owned inventory and do not receive a physical location.
 
+
 Key retention nuances:
 
 - Borrowed-loan rows can remain after a borrower account is deleted, with the borrower account link and accepted state cleared.
 - Admin audit rows survive user deletion with actor/target foreign keys nulled.
 - Shared Open Library metadata can remain after account deletion because it is shared catalog data.
 - Backups can retain deleted data until the operator's retention window expires.
+
 
 Saved-book refresh previews contact only registered metadata providers using the
 ISBN supplied in the editor. Existing titles, descriptions, notes, locations,
@@ -156,6 +158,8 @@ Use **My Library → Select books** to select individual records or all currentl
 Both tools use the existing removal behavior: records leave the active library without deleting shared book metadata, covers or loan history. There is no restore button in the app. CSV import adds or updates records; neither conflict option removes existing duplicates or records missing from the CSV.
 
 The default **Owned** view can be empty while wishlist or previously owned records remain. **Show all books** reveals every library state; duplicate review always includes all states. Use **Settings → Library data → Clear library** to remove records across states, rather than selecting only the books visible in one view.
+
+Every text notification has a **Copy** button that copies its title and description, with a **Copied** confirmation. Copying keeps the notification open. If clipboard access fails, select the text and copy it manually. Notification titles and descriptions also support text selection and copying. Swipe-to-dismiss is disabled so dragging over a notification selects its text; use its close button to dismiss it.
 
 ### Library layout
 
