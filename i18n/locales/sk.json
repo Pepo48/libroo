@@ -3,6 +3,7 @@
     "description": "Správa súkromnej knižnice, evidencia kníh, výpožičiek a umiestnení."
   },
   "library": {
+    "locationsLoadFailed": "Miesta sa nepodarilo načítať",
     "loadedBooks": "Načítané knihy: {count}",
     "shelfLabel": "Knihy na polici {title}",
     "coverOf": "Obal knihy {title}",
@@ -197,6 +198,7 @@
     "never": "Nikdy"
   },
   "lending": {
+    "loadFailed": "Výpožičky sa nepodarilo načítať",
     "noEmail": "Bez uloženého e-mailu",
     "saved": "Kniha bola označená ako vypožičaná",
     "sentWithLink": "Pozvánka bola odoslaná e-mailom. Odkaz na zdieľanie nájdete nižšie.",

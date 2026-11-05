@@ -4,7 +4,7 @@ import type { DuplicateBookGroup } from '~~/shared/types/library-cleanup'
 const { t } = useI18n()
 
 usePageTitle(() => t('ui.reviewDuplicates'))
-const { data: groups, status, error, refresh } = await useFetch<DuplicateBookGroup[]>('/api/library/duplicates')
+const { data: groups, status, error, refresh } = await useFetch<DuplicateBookGroup[]>('/api/library/duplicates', { lazy: true })
 const included = ref<string[]>([])
 const keep = ref<Record<string, string>>({})
 const deletionOpen = ref(false)
@@ -81,7 +81,7 @@ async function reload() {
         :description="$t('ui.pleaseTryRefreshingThisPage')"
       />
       <p
-        v-else-if="status === 'pending'"
+        v-else-if="status === 'idle' || status === 'pending'"
         role="status"
       >
         {{ $t('ui.checkingYourLibrary') }}

@@ -16,6 +16,7 @@ const token = route.params.token as string
 const isAccepting = ref(false)
 
 const { data: invite, status } = await useFetch<InvitePreview | null>(`/api/invite/${token}`, {
+  lazy: true,
   default: () => null
 })
 
@@ -66,15 +67,9 @@ async function acceptBook() {
 
 <template>
   <UContainer class="py-10 max-w-3xl">
-    <div
-      v-if="status === 'pending'"
-      class="flex justify-center py-12"
-    >
-      <UIcon
-        name="i-lucide-loader-2"
-        class="animate-spin text-4xl text-muted"
-      />
-    </div>
+    <PageDataLoading
+      v-if="status === 'idle' || status === 'pending'"
+    />
 
     <UCard
       v-else-if="!invite"

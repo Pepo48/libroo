@@ -41,16 +41,15 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo('/login')
   }
 
-  const { data: emailCapabilities, error: emailCapabilitiesError } = await useEmailCapabilities()
   const canUseUnverifiedAccount = to.path === '/settings' || to.path.startsWith('/verify-email')
-  const enforceVerificationGate = emailCapabilitiesError.value
-    ? true
-    : emailCapabilities.value.emailVerificationEnabled
-  if (enforceVerificationGate && user.emailVerified !== true && !canUseUnverifiedAccount) {
-    return navigateTo({
-      path: '/settings',
-      query: { verify: 'required', redirect: to.fullPath }
-    })
+  if (user.emailVerified !== true && !canUseUnverifiedAccount) {
+    const { data: emailCapabilities, error: emailCapabilitiesError } = await useEmailCapabilities()
+    if (emailCapabilitiesError.value || emailCapabilities.value.emailVerificationEnabled) {
+      return navigateTo({
+        path: '/settings',
+        query: { verify: 'required', redirect: to.fullPath }
+      })
+    }
   }
 
   if (to.path.startsWith('/admin')) {

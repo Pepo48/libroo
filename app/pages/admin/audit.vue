@@ -45,6 +45,7 @@ const { data: auditPage, status, error } = await useAsyncData<AdminAuditLogPage>
     }
   }),
   {
+    lazy: true,
     default: () => emptyAuditPage(currentPage.value),
     watch: [currentPage, currentCategory]
   }

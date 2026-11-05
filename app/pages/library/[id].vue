@@ -7,8 +7,10 @@ const config = useRuntimeConfig()
 const userBookId = route.params.id as string
 
 const isEditModalOpen = ref(false)
+const hasOpenedEditModal = ref(false)
 const isLocationModalOpen = ref(false)
 const isLendingModalOpen = ref(false)
+const hasOpenedLendingModal = ref(false)
 const isReadingModalOpen = ref(false)
 const isTagModalOpen = ref(false)
 const isBookNoteModalOpen = ref(false)
@@ -23,6 +25,7 @@ const bookNoteDraft = ref('')
 const loanNoteDraft = ref('')
 
 const { data: book, error, status, refresh } = await useFetch<BookDetails>(`/api/books/${userBookId}`, {
+  lazy: true,
   headers: useRequestHeaders(['cookie'])
 })
 
@@ -204,15 +207,9 @@ async function onTagsSaved() {
 <template>
   <UContainer>
     <UPageBody>
-      <div
-        v-if="status === 'pending' && !book"
-        class="flex justify-center py-12"
-      >
-        <UIcon
-          name="i-lucide-loader-2"
-          class="animate-spin text-4xl text-muted"
-        />
-      </div>
+      <PageDataLoading
+        v-if="(status === 'idle' || status === 'pending') && !book"
+      />
 
       <UCard
         v-else-if="!book"
@@ -231,7 +228,8 @@ async function onTagsSaved() {
 
       <template v-else>
         <div class="grid gap-6 lg:grid-cols-[17.5rem_minmax(0,1fr)] lg:gap-8">
-          <BookEditModal
+          <LazyBookEditModal
+            v-if="hasOpenedEditModal"
             v-model:open="isEditModalOpen"
             :book="book"
             @saved="updated => { book = updated; useLibraryDashboardStore().updateBookDetails(updated) }"
@@ -244,7 +242,7 @@ async function onTagsSaved() {
               :is-deleting="isDeleting"
               :is-updating-library-state="isUpdatingLibraryState"
               :format-date="formatDate"
-              @edit="isEditModalOpen = true"
+              @edit="hasOpenedEditModal = isEditModalOpen = true"
               @move-to-library="requestMoveToLibrary"
               @move-to-wishlist="isMoveToWishlistDialogOpen = true"
               @mark-previously-owned="isOwnershipDialogOpen = true"
@@ -384,7 +382,7 @@ async function onTagsSaved() {
                     variant="link"
                     size="sm"
                     trailing-icon="i-lucide-chevron-right"
-                    @click="isLendingModalOpen = true"
+                    @click="hasOpenedLendingModal = isLendingModalOpen = true"
                   >
                     {{ $t('ui.lendThisBook') }}
                   </UButton>
@@ -516,8 +514,8 @@ async function onTagsSaved() {
           :current-location="book.location"
           @saved="onLocationSaved"
         />
-        <BookLendingModal
-          v-if="isOwnedBook"
+        <LazyBookLendingModal
+          v-if="isOwnedBook && hasOpenedLendingModal"
           v-model:open="isLendingModalOpen"
           :user-book-id="userBookId"
           @saved="onLoanSaved"

@@ -6,6 +6,7 @@ defineProps<{
   description: string
   text: string
   errorMessage?: string
+  loading?: boolean
 }>()
 
 const comarkPlugins = [
@@ -25,8 +26,10 @@ const comarkPlugins = [
     />
 
     <UPageBody>
+      <PageDataLoading v-if="loading && !text" />
+
       <UAlert
-        v-if="errorMessage"
+        v-else-if="errorMessage"
         color="error"
         variant="subtle"
         icon="i-lucide-triangle-alert"

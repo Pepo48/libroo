@@ -28,8 +28,8 @@ const route = useRoute()
 const authStore = useAuthStore()
 const dashboardStore = useLibraryDashboardStore()
 const { user } = storeToRefs(authStore)
-const { data: emailCapabilities } = await useEmailCapabilities()
-const { data: authCapabilities } = await useAuthCapabilities()
+const { data: emailCapabilities, status: emailCapabilitiesStatus } = useEmailCapabilities({ lazy: true })
+const { data: authCapabilities, status: authCapabilitiesStatus } = useAuthCapabilities({ lazy: true })
 
 const emailState = reactive({
   email: user.value?.email ?? '',
@@ -77,6 +77,9 @@ const hasPasswordCredential = ref(false)
 const showPasswordManagement = computed(() =>
   canShowPasswordManagement(authCapabilities.value, hasPasswordCredential.value)
 )
+const emailCapabilitiesLoading = computed(() => emailCapabilitiesStatus.value === 'idle' || emailCapabilitiesStatus.value === 'pending')
+const accountCapabilitiesLoading = computed(() => emailCapabilitiesLoading.value
+  || authCapabilitiesStatus.value === 'idle' || authCapabilitiesStatus.value === 'pending')
 const showEmailManagement = computed(() => canShowEmailManagement(authCapabilities.value))
 const oidcProvider = computed(() => authCapabilities.value.oauthProvider)
 const accountMethodsLoaded = ref(false)
@@ -114,12 +117,13 @@ const emailForm = useTemplateRef<{ clear: (name?: string | RegExp) => void }>('e
 const passwordForm = useTemplateRef<{ clear: (name?: string | RegExp) => void }>('passwordForm')
 const deletionForm = useTemplateRef<{ clear: (name?: string | RegExp) => void }>('deletionForm')
 
-const { data: verificationStatus, refresh: refreshVerificationStatus } = await useFetch<{
+const { data: verificationStatus, refresh: refreshVerificationStatus } = useFetch<{
   enabled: boolean
   email: string
   verified: boolean
   pendingEmail: string | null
 }>('/api/auth/verification-status', {
+  lazy: true,
   default: () => ({
     enabled: emailCapabilities.value.emailVerificationEnabled,
     email: user.value?.email ?? '',
@@ -200,13 +204,22 @@ onBeforeUnmount(() => {
   deletionState.currentPassword = ''
 })
 
+const mounted = ref(false)
 onMounted(() => {
+  mounted.value = true
+})
+
+const accountCapabilitiesReady = computed(() => mounted.value && !accountCapabilitiesLoading.value)
+watch(accountCapabilitiesReady, (ready) => {
+  if (!ready) return
   if (showPasskeyManagement.value) void refreshPasskeys()
   void completeOidcRecentAuth()
   void initializeOidcLinking()
-})
+}, { once: true })
 
-if (route.query.verify === 'required') {
+const showVerificationWarning = computed(() => mounted.value && !emailCapabilitiesLoading.value)
+watch(showVerificationWarning, (ready) => {
+  if (!ready || route.query.verify !== 'required') return
   toast.add({
     title: t('ui.verifyYourEmail'),
     description: emailCapabilities.value.emailVerificationEnabled
@@ -214,7 +227,7 @@ if (route.query.verify === 'required') {
       : t('copy.emailVerificationIsUnavailableContactTheAdministratorIfYourAccount'),
     color: 'warning'
   })
-}
+}, { once: true })
 
 function getFailureMessage(err: unknown, fallback: string) {
   return (err as { data?: { message?: string }, error?: { message?: string }, message?: string })?.data?.message
@@ -949,6 +962,7 @@ async function importLibraryCsvFile() {
           :description="$t('settings.languageDescription')"
         >
           <USelect
+            name="language"
             :model-value="locale"
             :items="languageOptions"
             class="mt-2 w-full sm:max-w-xs"
@@ -968,7 +982,17 @@ async function importLibraryCsvFile() {
           </div>
         </template>
 
-        <div class="divide-y divide-default">
+        <p
+          v-if="accountCapabilitiesLoading"
+          role="status"
+          class="text-sm text-muted"
+        >
+          {{ $t('ui.loading') }}
+        </p>
+        <div
+          v-else
+          class="divide-y divide-default"
+        >
           <div
             v-if="showEmailManagement"
             class="flex flex-col gap-4 py-5 first:pt-0 sm:flex-row sm:items-center sm:justify-between"
@@ -1537,6 +1561,7 @@ async function importLibraryCsvFile() {
           <div class="space-y-5">
             <input
               ref="importFileInput"
+              name="library-import-file"
               type="file"
               accept=".csv,.zip,text/csv,application/zip"
               class="hidden"
@@ -1575,6 +1600,7 @@ async function importLibraryCsvFile() {
             </p>
             <UCheckbox
               v-model="importEnrich"
+              name="enrich-imported-books"
               :disabled="isImporting"
               :label="$t('ui.findMissingCoversAndBookDetails')"
               :description="$t('ui.afterImportValidIsbnsCanFillBlank')"

@@ -865,6 +865,7 @@ async function syncLoadedPages(targetPages: number) {
           <div class="contents md:flex md:flex-1 md:items-center md:gap-2">
             <UInput
               v-model="search"
+              name="library-search"
               icon="i-lucide-search"
               size="lg"
               :aria-label="$t('ui.searchLibrary')"
@@ -984,6 +985,7 @@ async function syncLoadedPages(targetPages: number) {
                 <UInput
                   v-if="showPhysicalFilters"
                   v-model="location"
+                  name="location-path-filter"
                   icon="i-lucide-map-pin"
                   :aria-label="$t('ui.filterByLocationPath')"
                   :placeholder="$t('ui.searchLocationPath')"

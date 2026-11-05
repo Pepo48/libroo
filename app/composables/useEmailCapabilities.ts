@@ -9,10 +9,10 @@ const defaultEmailCapabilities = (): EmailCapabilities => ({
   reminderEmailEnabled: false
 })
 
-export function useEmailCapabilities() {
+export function useEmailCapabilities({ lazy = false } = {}) {
   return useAsyncData<EmailCapabilities>(
     'email-capabilities',
     () => $fetch<EmailCapabilities>('/api/capabilities/email'),
-    { default: defaultEmailCapabilities }
+    { default: defaultEmailCapabilities, lazy }
   )
 }

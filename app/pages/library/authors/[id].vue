@@ -11,6 +11,7 @@ const pagination = ref<AuthorLibrary['pagination'] | null>(null)
 const isLoadingMore = ref(false)
 
 const { data, refresh, status } = await useFetch<AuthorLibrary>(`/api/authors/${authorId}/books`, {
+  lazy: true,
   headers: useRequestHeaders(['cookie']),
   watch: false,
   query: computed(() => ({
@@ -73,15 +74,9 @@ async function loadMore() {
     </UPageHeader>
 
     <UPageBody>
-      <div
-        v-if="status === 'pending' && !hasBooks"
-        class="flex justify-center py-12"
-      >
-        <UIcon
-          name="i-lucide-loader-2"
-          class="animate-spin text-4xl text-muted"
-        />
-      </div>
+      <PageDataLoading
+        v-if="(status === 'idle' || status === 'pending') && !hasBooks"
+      />
 
       <UCard
         v-else-if="!hasBooks"
