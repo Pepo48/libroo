@@ -18,13 +18,14 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const { t } = useI18n()
 const emit = defineEmits<{ 'tag-selected': [tag: string] }>()
 const visibleTags = computed(() => props.tags?.slice(0, 2) ?? [])
 const hiddenTagCount = computed(() => Math.max(0, (props.tags?.length ?? 0) - visibleTags.value.length))
 const enrichmentMessage = computed(() => {
-  if (props.enrichmentStatus === 'no_cover') return 'Cover unavailable'
-  if (props.enrichmentStatus === 'not_found') return 'Details not found'
-  if (props.enrichmentStatus === 'failed') return 'Enrichment failed'
+  if (props.enrichmentStatus === 'no_cover') return t('library.coverUnavailable')
+  if (props.enrichmentStatus === 'not_found') return t('library.detailsNotFound')
+  if (props.enrichmentStatus === 'failed') return t('library.enrichmentFailed')
   return null
 })
 
@@ -50,7 +51,7 @@ const coverUrl = computed(() => {
         <NuxtImg
           v-if="coverUrl"
           :src="coverUrl"
-          :alt="`Cover of ${title}`"
+          :alt="$t('library.coverOf', { title })"
           width="300"
           height="450"
           class="absolute inset-0 size-full object-contain"
@@ -72,21 +73,21 @@ const coverUrl = computed(() => {
             variant="solid"
             size="sm"
             class="rounded-md shadow-sm"
-          >Lent out</UBadge>
+          >{{ $t('ui.lentOut') }}</UBadge>
           <UBadge
             v-else-if="libraryState === 'wishlisted'"
             color="info"
             variant="solid"
             size="sm"
             class="rounded-md shadow-sm"
-          >Wishlist</UBadge>
+          >{{ $t('ui.wishlist') }}</UBadge>
           <UBadge
             v-else-if="libraryState === 'previously_owned'"
             color="neutral"
             variant="solid"
             size="sm"
             class="rounded-md shadow-sm"
-          >Previously owned</UBadge>
+          >{{ $t('ui.previouslyOwned') }}</UBadge>
         </div>
         <div
           data-testid="book-card-location"
@@ -97,7 +98,7 @@ const coverUrl = computed(() => {
             name="i-lucide-map-pin"
             class="size-3.5 shrink-0 text-white/65"
           />
-          <span class="truncate">{{ location?.path || lastKnownLocation || 'No location' }}</span>
+          <span class="truncate">{{ location?.path || lastKnownLocation || $t('ui.noLocation') }}</span>
         </div>
       </div>
       <div class="pt-3">
@@ -108,12 +109,12 @@ const coverUrl = computed(() => {
         <p
           class="mt-1 truncate text-xs text-muted"
           :title="author"
-        >{{ author || 'Unknown author' }}</p>
+        >{{ author || $t('library.unknownAuthor') }}</p>
       </div>
     </NuxtLink>
     <div
       class="mt-2 flex min-h-7 flex-wrap items-start gap-1"
-      aria-label="Book tags"
+      :aria-label="$t('ui.bookTags')"
     >
       <UButton
         v-for="tag in visibleTags"
@@ -122,8 +123,8 @@ const coverUrl = computed(() => {
         variant="soft"
         size="xs"
         class="max-w-full rounded-md px-1.5 py-0.5 text-[10px]"
-        :title="`Filter by tag: ${tag}`"
-        :aria-label="`Filter by tag: ${tag}`"
+        :title="$t('library.filterTagName', { tag })"
+        :aria-label="$t('library.filterTagName', { tag })"
         :ui="{ label: 'truncate' }"
         @click="emit('tag-selected', tag)"
       >
@@ -148,7 +149,7 @@ const coverUrl = computed(() => {
         name="i-lucide-loader-2"
         class="size-3 animate-spin"
       />
-      {{ enrichmentMessage || 'Finding book details' }}
+      {{ enrichmentMessage || $t('library.findingBookDetails') }}
     </p>
   </article>
 </template>

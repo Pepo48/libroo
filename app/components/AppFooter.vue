@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { LegalStatus } from '~~/shared/types/legal'
 
+const { t } = useI18n()
+
 const config = useRuntimeConfig()
 const { data: legalStatus } = await useFetch<LegalStatus>('/api/legal/status')
 
@@ -20,21 +22,21 @@ const termsConfigured = computed(() =>
 const links = computed(() => [
   ...(privacyPolicyConfigured.value
     ? [{
-        label: 'Privacy',
+        label: t('ui.privacy'),
         to: privacyPolicyUrl.value || '/privacy',
         external: Boolean(privacyPolicyUrl.value)
       }]
     : []),
   ...(imprintConfigured.value
     ? [{
-        label: 'Imprint',
+        label: t('ui.imprint'),
         to: imprintUrl.value || '/imprint',
         external: Boolean(imprintUrl.value)
       }]
     : []),
   ...(termsConfigured.value
     ? [{
-        label: 'Terms',
+        label: t('ui.terms'),
         to: termsUrl.value || '/terms',
         external: Boolean(termsUrl.value)
       }]
@@ -52,7 +54,7 @@ const links = computed(() => [
 
       <nav
         class="flex flex-wrap items-center gap-x-4 gap-y-2"
-        aria-label="Legal"
+        :aria-label="$t('ui.legal')"
       >
         <ULink
           v-for="link in links"

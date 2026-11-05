@@ -1,3 +1,4 @@
+import { getClientTranslator } from '../utils/client-message'
 import type { BookEnrichmentPatch, BookLookupResult, BulkBookLookupItem, BulkBookLookupResponse, LibraryBook, LibraryState } from '~~/shared/types/book'
 import { getApiErrorMessage } from '~~/shared/utils/api-error'
 import { MAX_BULK_ISBN_COUNT } from '~~/shared/utils/schemas'
@@ -42,6 +43,7 @@ interface LookupOptions {
 }
 
 export const useIsbnLookupStore = defineStore('isbn-lookup', () => {
+  const textFor = getClientTranslator()
   const dashboardStore = useLibraryDashboardStore()
 
   const pendingLookups = ref(0)
@@ -143,7 +145,7 @@ export const useIsbnLookupStore = defineStore('isbn-lookup', () => {
       }
     } catch (err: unknown) {
       if (requestVersion === resetVersion) {
-        enrichmentError.value = getErrorMessage(err, 'Book details are still being prepared')
+        enrichmentError.value = getErrorMessage(err, textFor('copy.lookupPreparing', 'Book details are still being prepared'))
       }
     } finally {
       unregisterEnrichmentController(requestVersion, controller)
@@ -199,7 +201,7 @@ export const useIsbnLookupStore = defineStore('isbn-lookup', () => {
       const response = await request
       if (isPrefetch) return { ok: true, result: response }
       if (!isActiveRequest(requestVersion, requestId)) {
-        return { ok: false, message: options.fallbackMessage || 'Failed to lookup book' }
+        return { ok: false, message: options.fallbackMessage || textFor('copy.failedToLookupBook', 'Failed to lookup book') }
       }
       activeLookupResult.value = response
       const result = activeLookupResult.value!
@@ -210,7 +212,7 @@ export const useIsbnLookupStore = defineStore('isbn-lookup', () => {
       }
       return { ok: true, result }
     } catch (err: unknown) {
-      const message = getErrorMessage(err, options.fallbackMessage || 'Failed to lookup book')
+      const message = getErrorMessage(err, options.fallbackMessage || textFor('copy.failedToLookupBook', 'Failed to lookup book'))
       if (!isPrefetch && isActiveRequest(requestVersion, requestId)) lookupError.value = message
       return { ok: false, message }
     } finally {
@@ -263,7 +265,7 @@ export const useIsbnLookupStore = defineStore('isbn-lookup', () => {
           }))
         } catch (err: unknown) {
           if (requestVersion !== resetVersion || controller.signal.aborted) break
-          const message = getErrorMessage(err, 'Failed to look up books')
+          const message = getErrorMessage(err, textFor('copy.lookupManyFailed', 'Failed to look up books'))
           lookupError.value = message
           batchItems = batch.map((isbn, index): BulkBookLookupItem => ({
             inputIndex: start + index,
@@ -324,7 +326,7 @@ export const useIsbnLookupStore = defineStore('isbn-lookup', () => {
 
           if (requestVersion !== resetVersion) break
         } catch (err: unknown) {
-          const message = getErrorMessage(err, 'Failed to add books')
+          const message = getErrorMessage(err, textFor('copy.scannerAddFailed', 'Failed to add books'))
           if (requestVersion !== resetVersion) break
 
           addError.value = message

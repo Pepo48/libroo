@@ -3,11 +3,13 @@ import * as z from 'zod'
 import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
 import { booleanConfigValue } from '~~/shared/utils/runtime-config'
 
+const { t } = useI18n()
+
 definePageMeta({
   auth: false
 })
 
-usePageTitle('Reset Password')
+usePageTitle(() => t('ui.resetPasswordText'))
 
 const toast = useToast()
 const config = useRuntimeConfig()
@@ -25,14 +27,14 @@ const fields: AuthFormField[] = [
   {
     name: 'email',
     type: 'email',
-    label: 'Email',
-    placeholder: 'Enter your email',
+    label: t('ui.email'),
+    placeholder: t('copy.enterYourEmail'),
     required: true
   }
 ]
 
 const schema = z.object({
-  email: z.email({ error: 'Please enter a valid email address' })
+  email: z.email({ error: t('copy.pleaseEnterAValidEmailAddress') })
 })
 
 type Schema = z.output<typeof schema>
@@ -48,10 +50,10 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
 
   if (turnstileEnabled.value && !turnstileToken.value) {
     toast.add({
-      title: 'Reset unavailable',
+      title: t('copy.resetUnavailable'),
       description: turnstileMissingConfig.value
-        ? 'Bot protection is enabled but the Turnstile site key is not configured.'
-        : 'Complete the bot protection check before requesting a reset email.',
+        ? t('copy.botProtectionIsEnabledButTheTurnstileSiteKeyIs')
+        : t('copy.completeTheBotProtectionCheckBeforeRequestingAResetEmail'),
       color: 'error'
     })
     return
@@ -73,14 +75,14 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
     })
     requestSent.value = true
     toast.add({
-      title: 'Reset email sent',
-      description: 'If this email exists in Libroo, a reset link has been sent.',
+      title: t('ui.resetEmailSent'),
+      description: t('ui.ifThisEmailExistsInLibrooA'),
       color: 'success'
     })
   } catch (err: unknown) {
     toast.add({
-      title: 'Reset unavailable',
-      description: getFailureMessage(err, 'Unable to send a password reset email.'),
+      title: t('copy.resetUnavailable'),
+      description: getFailureMessage(err, t('copy.unableToSendAPasswordResetEmail')),
       color: 'error'
     })
   } finally {
@@ -97,20 +99,20 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
   <UContainer class="py-12 max-w-md">
     <AuthStateCard
       v-if="!emailCapabilities.passwordResetEnabled"
-      title="Reset password"
-      description="Password reset email is unavailable. Contact your administrator to reset your password."
+      :title="$t('ui.resetPassword')"
+      :description="$t('ui.passwordResetEmailIsUnavailableContactYour')"
       icon="i-lucide-mail-x"
-      action-label="Back to sign in"
+      :action-label="$t('copy.backToSignIn')"
       action-to="/login"
       action-icon="i-lucide-log-in"
     />
 
     <AuthStateCard
       v-else-if="requestSent"
-      title="Reset email sent"
-      description="If this email exists in Libroo, a reset link has been sent."
+      :title="$t('ui.resetEmailSent')"
+      :description="$t('ui.ifThisEmailExistsInLibrooA')"
       icon="i-lucide-send"
-      action-label="Back to sign in"
+      :action-label="$t('copy.backToSignIn')"
       action-to="/login"
       action-icon="i-lucide-log-in"
     />
@@ -121,18 +123,18 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
         :schema="schema"
         :fields="fields"
         :loading="isSubmitting"
-        title="Reset password"
+        :title="$t('ui.resetPassword')"
         icon="i-lucide-key-round"
         submit-label="Send reset email"
         @submit="onSubmit"
       >
         <template #description>
-          Remember your password?
+          {{ $t('ui.rememberYourPassword') }}
           <ULink
             to="/login"
             class="text-primary font-medium"
           >
-            Sign in
+            {{ $t('ui.signIn') }}
           </ULink>
         </template>
 
@@ -154,13 +156,13 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
             color="warning"
             variant="subtle"
             icon="i-lucide-shield-alert"
-            title="Bot protection is not configured"
+            :title="$t('ui.botProtectionIsNotConfigured')"
           />
         </template>
 
         <template #footer>
           <p class="text-center text-sm text-muted">
-            Libroo - Your Library, Managed
+            {{ $t('ui.librooYourLibraryManaged') }}
           </p>
         </template>
       </UAuthForm>

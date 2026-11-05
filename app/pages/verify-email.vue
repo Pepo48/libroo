@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { getEmailVerificationFailureStatus } from '~~/shared/utils/email-verification'
 
+const { t } = useI18n()
+
 definePageMeta({
   auth: false
 })
 
-usePageTitle('Email Verification')
+usePageTitle(() => t('ui.emailVerificationText'))
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -14,15 +16,15 @@ const status = ref<'pending' | 'success' | 'expired' | 'invalid' | 'failure'>('p
 const message = computed(() => {
   switch (status.value) {
     case 'success':
-      return 'Your email address has been verified.'
+      return t('copy.yourEmailAddressHasBeenVerified')
     case 'expired':
-      return 'This verification link has expired. Request a new email from settings.'
+      return t('copy.thisVerificationLinkHasExpiredRequestANewEmailFrom')
     case 'invalid':
-      return 'This verification link is invalid or has already been used.'
+      return t('copy.thisVerificationLinkIsInvalidOrHasAlreadyBeenUsed')
     case 'failure':
-      return 'Unable to verify this email address. Request a new email from settings.'
+      return t('copy.unableToVerifyThisEmailAddressRequestANewEmail')
     default:
-      return 'Checking your verification link.'
+      return t('copy.checkingYourVerificationLink')
   }
 })
 
@@ -40,9 +42,9 @@ const icon = computed(() => {
 const actionLabel = computed(() => {
   if (status.value === 'pending') return ''
   if (status.value === 'success') {
-    return isAuthenticated.value ? 'Go to your library' : 'Go to sign in'
+    return isAuthenticated.value ? t('copy.goToYourLibrary') : t('copy.goToSignIn')
   }
-  return 'Open settings'
+  return t('copy.openSettings')
 })
 const actionTo = computed(() => {
   if (status.value === 'pending') return undefined
@@ -103,7 +105,7 @@ onMounted(async () => {
 <template>
   <UContainer class="py-12 max-w-md">
     <AuthStateCard
-      title="Email verification"
+      :title="$t('ui.emailVerification')"
       :description="message"
       :icon="icon"
       :action-label="actionLabel"

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+const { t, locale } = useI18n()
+
 const props = defineProps<{
   progress: ReadingProgress
   totalPages: number | null
@@ -17,18 +19,18 @@ const displayedPercent = computed(() => {
 })
 
 const statusLabel = computed(() => {
-  if (props.progress.status === 'read') return 'Read'
-  if (props.progress.status === 'reading') return 'Reading'
-  return 'Unread'
+  if (props.progress.status === 'read') return t('ui.read')
+  if (props.progress.status === 'reading') return t('ui.reading')
+  return t('ui.unread')
 })
 
 const progressLabel = computed(() => {
-  if (props.progress.status === 'read') return 'Finished'
+  if (props.progress.status === 'read') return t('ui.finished')
   if (props.progress.currentPage !== null && props.totalPages) {
-    return `${props.progress.currentPage} of ${props.totalPages} pages`
+    return t('reading.pages', { current: props.progress.currentPage, total: props.totalPages })
   }
-  if (props.progress.progressPercent !== null) return `${props.progress.progressPercent}% done`
-  return 'Not started'
+  if (props.progress.progressPercent !== null) return t('reading.done', { percent: props.progress.progressPercent })
+  return t('reading.notStarted')
 })
 
 const startedLabel = computed(() => formatDate(props.progress.startedAt))
@@ -38,7 +40,7 @@ function formatDate(value: Date | string | null): string | null {
   if (!value) return null
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return null
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString(locale.value === 'sk' ? 'sk-SK' : 'en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric'
@@ -51,7 +53,7 @@ function formatDate(value: Date | string | null): string | null {
     <div class="flex items-center justify-between gap-3">
       <div>
         <h2 class="text-lg font-semibold">
-          Reading Progress
+          {{ $t('ui.readingProgress') }}
         </h2>
         <p class="text-sm text-muted">
           {{ statusLabel }} · {{ progressLabel }}
@@ -64,7 +66,7 @@ function formatDate(value: Date | string | null): string | null {
         icon="i-lucide-pencil"
         @click="emit('edit')"
       >
-        Update
+        {{ $t('ui.update') }}
       </UButton>
     </div>
 
@@ -78,8 +80,8 @@ function formatDate(value: Date | string | null): string | null {
       v-if="startedLabel || finishedLabel"
       class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted"
     >
-      <span v-if="startedLabel">Started {{ startedLabel }}</span>
-      <span v-if="finishedLabel">Finished {{ finishedLabel }}</span>
+      <span v-if="startedLabel">{{ $t('ui.started') }} {{ startedLabel }}</span>
+      <span v-if="finishedLabel">{{ $t('ui.finished') }} {{ finishedLabel }}</span>
     </div>
   </div>
 </template>

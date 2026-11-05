@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { BorrowedBook, InvitePreview } from '~~/shared/types/book'
 
+const { t } = useI18n()
+
 definePageMeta({
   auth: false
 })
@@ -17,7 +19,7 @@ const { data: invite, status } = await useFetch<InvitePreview | null>(`/api/invi
   default: () => null
 })
 
-usePageTitle(computed(() => invite.value?.title ? `Invitation: ${invite.value.title}` : 'Book Invitation'))
+usePageTitle(computed(() => invite.value?.title ? `Invitation: ${invite.value.title}` : t('copy.bookInvitation')))
 
 const coverUrl = computed(() => invite.value?.coverPath ? `/api/invite/${token}/cover` : null)
 const redirectPath = computed(() => `/i/${token}`)
@@ -44,15 +46,15 @@ async function acceptBook() {
       credentials: 'same-origin'
     })
     toast.add({
-      title: 'Added to borrowed books',
+      title: t('copy.addedToBorrowedBooks'),
       color: 'success'
     })
     await navigateTo({ path: '/library/loans', query: { view: 'borrowed' } })
   } catch (err: unknown) {
     const message = (err as { data?: { message?: string } })?.data?.message
-      ?? (err instanceof Error ? err.message : 'This invitation is no longer available')
+      ?? (err instanceof Error ? err.message : t('copy.thisInvitationIsNoLongerAvailable'))
     toast.add({
-      title: 'Could not add book',
+      title: t('copy.couldNotAddBook'),
       description: message,
       color: 'error'
     })
@@ -83,10 +85,10 @@ async function acceptBook() {
         class="text-6xl text-muted mx-auto mb-4"
       />
       <h1 class="text-2xl font-bold mb-2">
-        Invitation unavailable
+        {{ $t('ui.invitationUnavailable') }}
       </h1>
       <p class="text-muted">
-        This invite may have already been used or canceled.
+        {{ $t('ui.thisInviteMayHaveAlreadyBeenUsed') }}
       </p>
     </UCard>
 
@@ -120,7 +122,7 @@ async function acceptBook() {
           variant="subtle"
           size="lg"
         >
-          This book was lent to you
+          {{ $t('ui.thisBookWasLentToYou') }}
         </UBadge>
         <div>
           <h1 class="text-3xl font-bold tracking-tight">
@@ -130,13 +132,13 @@ async function acceptBook() {
             {{ invite.author }}
           </p>
           <p class="mt-4 text-muted">
-            {{ invite.ownerName }} shared this book with you.
+            {{ $t('copy.sharedBy', { name: invite.ownerName }) }}
           </p>
           <p
             v-if="invite.dueAt"
             class="mt-2 text-sm text-muted"
           >
-            Due {{ formatDate(invite.dueAt) }}
+            {{ $t('ui.due') }} {{ formatDate(invite.dueAt) }}
           </p>
         </div>
 
@@ -145,8 +147,8 @@ async function acceptBook() {
           color="neutral"
           variant="subtle"
           icon="i-lucide-info"
-          title="This is your invite"
-          description="You created this lending invite, so it cannot be added to your borrowed books."
+          :title="$t('ui.thisIsYourInvite')"
+          :description="$t('ui.youCreatedThisLendingInviteSoIt')"
         />
 
         <UAlert
@@ -154,8 +156,8 @@ async function acceptBook() {
           color="warning"
           variant="subtle"
           icon="i-lucide-circle-alert"
-          title="This invite is no longer available"
-          description="It may have already been accepted, returned, or canceled."
+          :title="$t('ui.thisInviteIsNoLongerAvailable')"
+          :description="$t('ui.itMayHaveAlreadyBeenAcceptedReturned')"
         />
 
         <div class="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
@@ -167,7 +169,7 @@ async function acceptBook() {
               :disabled="isAccepting"
               @click="acceptBook"
             >
-              Add to borrowed books
+              {{ $t('ui.addToBorrowedBooks') }}
             </UButton>
           </template>
           <template v-else-if="invite.canAccept">
@@ -176,7 +178,7 @@ async function acceptBook() {
               icon="i-lucide-log-in"
               :to="{ path: '/login', query: { redirect: redirectPath } }"
             >
-              Sign in
+              {{ $t('ui.signIn') }}
             </UButton>
             <UButton
               size="lg"
@@ -185,7 +187,7 @@ async function acceptBook() {
               icon="i-lucide-user-plus"
               :to="{ path: '/register', query: { redirect: redirectPath } }"
             >
-              Create account
+              {{ $t('ui.createAccountText') }}
             </UButton>
           </template>
           <UButton
@@ -195,7 +197,7 @@ async function acceptBook() {
             icon="i-lucide-library"
             to="/library"
           >
-            Go to library
+            {{ $t('ui.goToLibrary') }}
           </UButton>
         </div>
       </div>

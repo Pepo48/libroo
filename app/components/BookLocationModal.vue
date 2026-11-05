@@ -15,6 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
+const { t } = useI18n()
 
 const selectedLocationId = ref<string>()
 const parentLocationId = ref<string>()
@@ -41,7 +42,7 @@ const locationOptions = computed(() =>
 )
 
 const parentOptions = computed(() => [
-  { label: 'Top level', value: TOP_LEVEL_VALUE },
+  { label: t('ui.topLevelLocation'), value: TOP_LEVEL_VALUE },
   ...locationOptions.value
 ])
 
@@ -86,14 +87,14 @@ async function createLocation() {
     parentLocationId.value = location.id
     await refresh()
     toast.add({
-      title: 'Location added',
+      title: t('ui.locationAdded'),
       color: 'success'
     })
   } catch (err: unknown) {
     const message = (err as { data?: { message?: string } })?.data?.message
-      ?? (err instanceof Error ? err.message : 'Unable to add location')
+      ?? (err instanceof Error ? err.message : t('ui.locationAddFailed'))
     toast.add({
-      title: 'Failed to add location',
+      title: t('ui.locationAddFailed'),
       description: message,
       color: 'error'
     })
@@ -118,9 +119,9 @@ async function saveLocation() {
     modalOpen.value = false
   } catch (err: unknown) {
     const message = (err as { data?: { message?: string } })?.data?.message
-      ?? (err instanceof Error ? err.message : 'Unable to save location')
+      ?? (err instanceof Error ? err.message : t('ui.locationSaveFailed'))
     toast.add({
-      title: 'Failed to save location',
+      title: t('ui.locationSaveFailed'),
       description: message,
       color: 'error'
     })
@@ -133,17 +134,17 @@ async function saveLocation() {
 <template>
   <UModal
     v-model:open="modalOpen"
-    title="Manage Location"
-    description="Choose where this book lives or add another nested location."
+    :title="$t('ui.manageLocation')"
+    :description="$t('ui.chooseWhereThisBookLivesOrAdd')"
     :ui="{ content: 'sm:max-w-xl', footer: 'justify-end gap-2' }"
   >
     <template #body>
       <div class="space-y-5">
-        <UFormField label="Book location">
+        <UFormField :label="$t('ui.bookLocation')">
           <USelect
             v-model="selectedLocationId"
             :items="locationOptions"
-            placeholder="No location"
+            :placeholder="$t('ui.noLocation')"
             :loading="isCreatingLocation"
             :disabled="isCreatingLocation"
             class="w-full"
@@ -156,13 +157,13 @@ async function saveLocation() {
           icon="i-lucide-x"
           @click="selectedLocationId = undefined"
         >
-          Clear location
+          {{ $t('ui.clearLocation') }}
         </UButton>
 
         <USeparator />
 
         <div class="space-y-3">
-          <UFormField label="Parent location">
+          <UFormField :label="$t('ui.parentLocation')">
             <USelect
               v-model="selectedParentLocation"
               :items="parentOptions"
@@ -174,7 +175,7 @@ async function saveLocation() {
           <div class="flex gap-2">
             <UInput
               v-model="newLocationName"
-              placeholder="Shelf B, Section A, Storage Box 4..."
+              :placeholder="$t('ui.shelfBSectionAStorageBox4')"
               icon="i-lucide-map-pin-plus"
               class="flex-1"
               @keyup.enter="createLocation"
@@ -185,7 +186,7 @@ async function saveLocation() {
               :disabled="!newLocationName.trim() || isCreatingLocation"
               @click="createLocation"
             >
-              Add
+              {{ $t('ui.add') }}
             </UButton>
           </div>
         </div>
@@ -198,7 +199,7 @@ async function saveLocation() {
         variant="soft"
         @click="() => { modalOpen = false }"
       >
-        Cancel
+        {{ $t('ui.cancel') }}
       </UButton>
       <UButton
         icon="i-lucide-save"
@@ -206,7 +207,7 @@ async function saveLocation() {
         :disabled="isSavingAssignment || isCreatingLocation"
         @click="saveLocation"
       >
-        Save location
+        {{ $t('ui.saveLocation') }}
       </UButton>
     </template>
   </UModal>

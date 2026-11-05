@@ -3,6 +3,9 @@ import { storeToRefs } from 'pinia'
 import { DEFAULT_LIBRARY_PAGE_SIZE, buildLibraryRouteQuery } from '~~/shared/utils/library-query'
 import { MAX_BULK_ISBN_INPUT_BYTES } from '~~/shared/utils/schemas'
 
+const { t } = useI18n()
+const { libraryStateItems } = useLibraryStateOptions()
+
 const toast = useToast()
 
 const bulkIsbnText = ref('')
@@ -33,8 +36,8 @@ const {
 async function handleBulkImport() {
   if (!bulkIsbnText.value.trim()) {
     toast.add({
-      title: 'No ISBNs entered',
-      description: 'Please enter at least one ISBN',
+      title: t('copy.noIsbnsEntered'),
+      description: t('copy.pleaseEnterAtLeastOneIsbn'),
       color: 'warning'
     })
     return
@@ -76,7 +79,7 @@ defineExpose({ reset })
           name="i-lucide-list"
           class="text-lg"
         />
-        <span class="font-semibold">Bulk Import</span>
+        <span class="font-semibold">{{ $t('ui.bulkImport') }}</span>
       </div>
     </template>
 
@@ -86,8 +89,8 @@ defineExpose({ reset })
       class="space-y-4"
     >
       <UFormField
-        label="Enter ISBNs"
-        hint="One per line, or separated by commas."
+        :label="$t('ui.enterIsbns')"
+        :hint="$t('ui.onePerLineOrSeparatedByCommas')"
       >
         <UTextarea
           v-model="bulkIsbnText"
@@ -100,10 +103,10 @@ defineExpose({ reset })
       </UFormField>
 
       <p class="text-sm text-muted">
-        {{ bulkIsbnBytes.toLocaleString() }} / {{ MAX_BULK_ISBN_INPUT_BYTES.toLocaleString() }} bytes · {{ bulkIsbnCount }} ISBN{{ bulkIsbnCount === 1 ? '' : 's' }} detected
+        {{ $t('copy.isbnInputSummary', { bytes: bulkIsbnBytes.toLocaleString(), limit: MAX_BULK_ISBN_INPUT_BYTES.toLocaleString(), count: bulkIsbnCount }) }}
       </p>
 
-      <UFormField label="Add as">
+      <UFormField :label="$t('ui.addAs')">
         <USelect
           v-model="targetLibraryState"
           :items="libraryStateItems"
@@ -112,7 +115,7 @@ defineExpose({ reset })
       </UFormField>
 
       <p class="text-sm text-muted">
-        Enter multiple ISBNs to look them all up at once. You can paste a list from a spreadsheet or text file.
+        {{ $t('ui.enterMultipleIsbnsToLookThemAll') }}
       </p>
 
       <UButton
@@ -123,7 +126,7 @@ defineExpose({ reset })
         :disabled="!bulkIsbnText.trim()"
         @click="handleBulkImport"
       >
-        Look Up All
+        {{ $t('ui.lookUpAll') }}
       </UButton>
     </div>
 
@@ -132,7 +135,7 @@ defineExpose({ reset })
       v-else
       class="space-y-4"
     >
-      <UFormField label="Add selected as">
+      <UFormField :label="$t('ui.addSelectedAs')">
         <USelect
           v-model="targetLibraryState"
           :items="libraryStateItems"

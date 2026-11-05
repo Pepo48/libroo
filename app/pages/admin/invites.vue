@@ -5,7 +5,9 @@ import { canShowInviteEmailInput } from '~~/shared/utils/email-capability-ui'
 import { booleanConfigValue } from '~~/shared/utils/runtime-config'
 import { formatAdminDateTime } from '~/utils/admin-date-format'
 
-usePageTitle('Admin Invites')
+const { t, locale } = useI18n()
+
+usePageTitle(() => t('ui.adminInvites'))
 
 const toast = useToast()
 const config = useRuntimeConfig()
@@ -69,14 +71,14 @@ watch(isInvalidPage, (invalid) => {
   }
 })
 
-const columns: TableColumn<SignupInvite>[] = [
-  { accessorKey: 'email', header: 'Invite' },
-  { accessorKey: 'status', header: 'Status' },
-  { accessorKey: 'createdAt', header: 'Created' },
-  { accessorKey: 'expiresAt', header: 'Expires' },
-  { accessorKey: 'acceptedAt', header: 'Accepted' },
-  { id: 'actions', header: '' }
-]
+const columns = computed<TableColumn<SignupInvite>[]>(() => [
+  { accessorKey: 'email', header: t('admin.columns.invite') },
+  { accessorKey: 'status', header: t('ui.status') },
+  { accessorKey: 'createdAt', header: t('admin.columns.created') },
+  { accessorKey: 'expiresAt', header: t('admin.columns.expires') },
+  { accessorKey: 'acceptedAt', header: t('admin.columns.accepted') },
+  { id: 'actions', header: t('admin.columns.actions') }
+])
 
 function inviteStatusColor(inviteStatus: SignupInvite['status']) {
   if (inviteStatus === 'pending') return 'warning'
@@ -117,18 +119,18 @@ async function createInvite() {
     await refreshInvites()
     toast.add({
       title: result.invite.email
-        ? 'Invite email sent'
-        : createdInviteCopied.value ? 'Invite link copied' : 'Invite link created',
+        ? t('admin.invites.sent')
+        : createdInviteCopied.value ? t('admin.invites.copied') : t('admin.invites.created'),
       description: result.invite.email || createdInviteCopied.value
         ? undefined
-        : 'Copy the link below to share it.',
+        : t('admin.invites.shareHelp'),
       color: 'success'
     })
   } catch (err: unknown) {
     const message = (err as { data?: { message?: string } })?.data?.message
-      ?? (err instanceof Error ? err.message : 'Unable to create invite')
+      ?? (err instanceof Error ? err.message : t('admin.invites.createFailed'))
     toast.add({
-      title: 'Could not create invite',
+      title: t('admin.invites.createFailed'),
       description: message,
       color: 'error'
     })
@@ -147,14 +149,14 @@ async function revokeInvite(invite: SignupInvite) {
     })
     await refreshInvites()
     toast.add({
-      title: 'Invite revoked',
+      title: t('admin.invites.revokedToast'),
       color: 'success'
     })
   } catch (err: unknown) {
     const message = (err as { data?: { message?: string } })?.data?.message
-      ?? (err instanceof Error ? err.message : 'Unable to revoke invite')
+      ?? (err instanceof Error ? err.message : t('admin.invites.revokeFailed'))
     toast.add({
-      title: 'Could not revoke invite',
+      title: t('admin.invites.revokeFailed'),
       description: message,
       color: 'error'
     })
@@ -167,7 +169,7 @@ async function copyInviteUrl(url: string) {
   const copied = await writeInviteUrlToClipboard(url)
   createdInviteCopied.value = copied
   toast.add({
-    title: copied ? 'Invite link copied' : 'Could not copy link',
+    title: copied ? t('admin.invites.copied') : t('admin.invites.copyFailed'),
     color: copied ? 'success' : 'warning'
   })
 }
@@ -208,8 +210,8 @@ function pageQuery(page: number) {
 <template>
   <UContainer>
     <UPageHeader
-      title="Invites"
-      description="Create signup links and manage pending invitations."
+      :title="$t('ui.invites')"
+      :description="$t('ui.createSignupLinksAndManagePendingInvitations')"
     />
 
     <UPageBody>
@@ -221,28 +223,28 @@ function pageQuery(page: number) {
           >
             <UFormField
               v-if="canSendInviteEmail"
-              label="Invite email"
+              :label="$t('ui.inviteEmail')"
               name="inviteEmail"
             >
               <UInput
                 v-model="inviteEmail"
                 type="email"
                 icon="i-lucide-mail"
-                placeholder="Optional email address"
+                :placeholder="$t('ui.optionalEmailAddress')"
               />
             </UFormField>
 
             <UFormField
-              label="Expires after"
+              :label="$t('ui.expiresAfter')"
               name="inviteExpiresInDays"
-              description="Days until the invite expires."
+              :description="$t('ui.daysUntilTheInviteExpires')"
             >
               <UInputNumber
                 v-model="inviteExpiresInDays"
                 :min="1"
                 :max="90"
                 :step="1"
-                aria-label="Invite expiration in days"
+                :aria-label="$t('ui.inviteExpirationInDays')"
               />
             </UFormField>
           </div>
@@ -252,7 +254,7 @@ function pageQuery(page: number) {
             :loading="isCreatingInvite"
             @click="createInvite"
           >
-            {{ canSendInviteEmail && inviteEmail.trim() ? 'Send invite' : 'Create link' }}
+            {{ canSendInviteEmail && inviteEmail.trim() ? $t('admin.invites.send') : $t('admin.invites.create') }}
           </UButton>
         </div>
 
@@ -262,8 +264,8 @@ function pageQuery(page: number) {
           color="neutral"
           variant="subtle"
           icon="i-lucide-mail-x"
-          title="Email delivery is not configured"
-          description="Invite links can still be created and shared manually."
+          :title="$t('ui.emailDeliveryIsNotConfigured')"
+          :description="$t('ui.inviteLinksCanStillBeCreatedAnd')"
         />
 
         <UAlert
@@ -272,7 +274,7 @@ function pageQuery(page: number) {
           color="success"
           variant="subtle"
           icon="i-lucide-link"
-          title="Invite link ready"
+          :title="$t('ui.inviteLinkReady')"
         >
           <template #description>
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -288,7 +290,7 @@ function pageQuery(page: number) {
                 color="success"
                 variant="subtle"
               >
-                Copied
+                {{ $t('ui.copied') }}
               </UBadge>
               <UButton
                 v-else
@@ -298,7 +300,7 @@ function pageQuery(page: number) {
                 icon="i-lucide-copy"
                 @click="copyInviteUrl(createdInviteUrl)"
               >
-                Copy
+                {{ $t('ui.copy') }}
               </UButton>
             </div>
           </template>
@@ -320,7 +322,7 @@ function pageQuery(page: number) {
         color="error"
         variant="subtle"
         icon="i-lucide-circle-alert"
-        title="Could not load invites"
+        :title="$t('ui.couldNotLoadInvites')"
         :description="invitesError.message"
       />
 
@@ -333,10 +335,10 @@ function pageQuery(page: number) {
           class="text-6xl text-muted mx-auto mb-4"
         />
         <h2 class="text-xl font-semibold mb-2">
-          No invites created yet.
+          {{ $t('ui.noInvitesCreatedYet') }}
         </h2>
         <p class="text-muted">
-          Created signup invites will appear here.
+          {{ $t('ui.createdSignupInvitesWillAppearHere') }}
         </p>
       </UCard>
 
@@ -346,7 +348,7 @@ function pageQuery(page: number) {
           :columns="columns"
         >
           <template #email-cell="{ row }">
-            <span class="font-medium">{{ originalInvite(row).email || 'Invite link' }}</span>
+            <span class="font-medium">{{ originalInvite(row).email || $t('admin.invites.link') }}</span>
           </template>
 
           <template #status-cell="{ row }">
@@ -354,20 +356,20 @@ function pageQuery(page: number) {
               :color="inviteStatusColor(originalInvite(row).status)"
               variant="subtle"
             >
-              {{ originalInvite(row).status }}
+              {{ $t(`admin.invites.${originalInvite(row).status}`) }}
             </UBadge>
           </template>
 
           <template #createdAt-cell="{ row }">
-            <span class="whitespace-nowrap">{{ formatAdminDateTime(originalInvite(row).createdAt) }}</span>
+            <span class="whitespace-nowrap">{{ formatAdminDateTime(originalInvite(row).createdAt, locale, $t('admin.never')) }}</span>
           </template>
 
           <template #expiresAt-cell="{ row }">
-            <span class="whitespace-nowrap">{{ formatAdminDateTime(originalInvite(row).expiresAt) }}</span>
+            <span class="whitespace-nowrap">{{ formatAdminDateTime(originalInvite(row).expiresAt, locale, $t('admin.never')) }}</span>
           </template>
 
           <template #acceptedAt-cell="{ row }">
-            <span class="whitespace-nowrap">{{ formatAdminDateTime(originalInvite(row).acceptedAt) }}</span>
+            <span class="whitespace-nowrap">{{ formatAdminDateTime(originalInvite(row).acceptedAt, locale, $t('admin.never')) }}</span>
           </template>
 
           <template #actions-cell="{ row }">
@@ -381,7 +383,7 @@ function pageQuery(page: number) {
                 :loading="revokingInviteId === originalInvite(row).id"
                 @click="revokeInvite(originalInvite(row))"
               >
-                Revoke
+                {{ $t('ui.revoke') }}
               </UButton>
             </div>
           </template>
@@ -389,7 +391,7 @@ function pageQuery(page: number) {
 
         <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p class="text-sm text-muted">
-            Showing {{ pageStart }}-{{ pageEnd }} of {{ totalInvites }} invites
+            {{ $t('admin.invites.showing', { start: pageStart, end: pageEnd, total: totalInvites }) }}
           </p>
 
           <UPagination

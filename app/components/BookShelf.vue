@@ -50,7 +50,7 @@ watch(() => props.revealBookId, async (id) => {
       <h2 class="text-lg font-semibold tracking-tight text-highlighted sm:text-xl">
         {{ title }}
       </h2>
-      <span class="shrink-0 text-xs text-muted">{{ books.length }} {{ hasMore ? 'loaded' : books.length === 1 ? 'book' : 'books' }}</span>
+      <span class="shrink-0 text-xs text-muted">{{ hasMore ? $t('library.loadedBooks', { count: books.length }) : $t('library.bookCount', books.length) }}</span>
       <div class="ms-auto flex shrink-0 gap-2">
         <UButton
           icon="i-lucide-chevron-left"
@@ -58,7 +58,7 @@ watch(() => props.revealBookId, async (id) => {
           variant="outline"
           size="sm"
           class="rounded-full"
-          aria-label="Previous books"
+          :aria-label="$t('ui.previousBooks')"
           :disabled="!canGoBack"
           @click="carousel?.emblaApi?.scrollPrev()"
         />
@@ -68,7 +68,7 @@ watch(() => props.revealBookId, async (id) => {
           variant="outline"
           size="sm"
           class="rounded-full"
-          aria-label="Next books"
+          :aria-label="$t('ui.nextBooks')"
           :loading="loading"
           :disabled="!canGoForward && !hasMore"
           @click="goForward"
@@ -81,7 +81,7 @@ watch(() => props.revealBookId, async (id) => {
       :items="books"
       align="start"
       :slides-to-scroll="1"
-      :aria-label="`${title} books`"
+      :aria-label="$t('library.shelfLabel', { title })"
       :ui="{
         root: 'relative',
         viewport: 'overflow-hidden pt-1 pb-2',

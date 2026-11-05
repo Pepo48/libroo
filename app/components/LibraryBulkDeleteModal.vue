@@ -2,6 +2,8 @@
 import { BOOK_BATCH_DELETE_MAX_IDS } from '~~/shared/utils/schemas'
 import type { LibraryRemovalPreview } from '~~/shared/types/library-cleanup'
 
+const { t } = useI18n()
+
 const open = defineModel<boolean>('open', { default: false })
 const props = withDefaults(defineProps<{ ids?: string[], all?: boolean }>(), { ids: () => [] })
 const preview = ref<LibraryRemovalPreview | null>(null)
@@ -29,7 +31,7 @@ watch(open, async (isOpen) => {
     try {
       preview.value = await $fetch<LibraryRemovalPreview>('/api/library/removal-preview')
     } catch {
-      error.value = 'Unable to load the library preview. Close this dialog and try again.'
+      error.value = t('copy.unableToLoadTheLibraryPreviewCloseThisDialogAnd')
     } finally {
       previewLoading.value = false
     }
@@ -60,18 +62,18 @@ async function removeSelected() {
       dashboard.removeBooks(result.removedIds)
       emit('removed', result.removedIds)
     }
-    if (failed.length) error.value = `${failed.length} ${failed.length === 1 ? 'record' : 'records'} could not be deleted. Books with active loans are protected. Review the remaining books before retrying.`
+    if (failed.length) error.value = t('copy.deleteProtected', failed.length)
     else open.value = false
   } catch (cause: unknown) {
     requestFailed.value = true
     const failure = cause as { statusCode?: number, status?: number, data?: { message?: string } }
     const status = failure.statusCode ?? failure.status
-    error.value = `Deletion stopped${status ? ` (HTTP ${status})` : ''}. ${failure.data?.message || 'The request could not finish.'} Some records may already be deleted. You can safely retry the remaining selection.`
+    error.value = [t('copy.deletionStopped') + (status ? ` (HTTP ${status})` : '') + '.', failure.data?.message || t('copy.theRequestCouldNotFinish'), t('copy.someRecordsMayAlreadyBeDeletedYouCanSafelyRetry')].join(' ')
     dashboard.markNeedsSync()
   } finally {
     busy.value = false
     emit('finished')
-    if (removed.length) toast.add({ title: `${removed.length} ${removed.length === 1 ? 'book deleted' : 'books deleted'}`, color: 'success' })
+    if (removed.length) toast.add({ title: t('copy.deletedBooks', removed.length), color: 'success' })
   }
 }
 </script>
@@ -79,8 +81,8 @@ async function removeSelected() {
 <template>
   <UModal
     v-model:open="open"
-    :title="all ? 'Clear your library?' : 'Delete selected books?'"
-    :description="all ? 'Remove owned, wishlisted and previously owned books across all locations and pages.' : `Delete ${ids.length} selected library ${ids.length === 1 ? 'record' : 'records'}?`"
+    :title="all ? $t('copy.clearYourLibrary') : $t('copy.deleteSelectedBooks')"
+    :description="all ? $t('copy.removeOwnedWishlistedAndPreviouslyOwnedBooksAcrossAllLocations') : $t('copy.deleteSelectedCount', { count: ids.length })"
     :dismissible="!busy"
     :close="!busy"
   >
@@ -90,11 +92,11 @@ async function removeSelected() {
           v-if="previewLoading"
           role="status"
         >
-          Counting all library records…
+          {{ $t('ui.countingAllLibraryRecords') }}
         </p>
         <template v-if="all && preview">
-          <p>{{ preview.total }} records in your library. {{ ids.length }} can be removed; {{ preview.protectedLoanCount }} with active loans will be kept.</p>
-          <UFormField label="Type DELETE LIBRARY to confirm">
+          <p>{{ $t('copy.clearLibraryPreview', { total: preview.total, eligible: ids.length, protectedCount: preview.protectedLoanCount }) }}</p>
+          <UFormField :label="$t('copy.clearLibraryConfirmation')">
             <UInput
               v-model="confirmation"
               placeholder="DELETE LIBRARY"
@@ -103,20 +105,20 @@ async function removeSelected() {
             />
           </UFormField>
         </template>
-        <p>Notes, ratings and reading progress on these records will no longer appear in your library. {{ all ? 'Your account is kept.' : 'Unselected records and your account are kept.' }}</p>
+        <p>{{ $t('ui.notesRatingsAndReadingProgressOnThese') }} {{ all ? $t('copy.yourAccountIsKept') : $t('copy.unselectedRecordsAndYourAccountAreKept') }}</p>
         <p class="text-sm text-muted">
-          Export a backup in Settings before cleaning up your library. Books with active loans will be skipped.
+          {{ $t('ui.exportABackupInSettingsBeforeCleaning') }}
         </p>
         <p
           v-if="busy"
           role="status"
         >
-          Processed {{ processed }} of {{ total }} records. Keep this page open.
+          {{ $t('copy.deleteProgress', { processed, total }) }}
         </p>
         <UAlert
           v-if="error"
           color="warning"
-          title="Review remaining records"
+          :title="$t('ui.reviewRemainingRecords')"
           :description="error"
         />
       </div>
@@ -128,7 +130,7 @@ async function removeSelected() {
         :disabled="busy"
         @click="open = false"
       >
-        Cancel
+        {{ $t('ui.cancel') }}
       </UButton>
       <UButton
         color="error"
@@ -136,7 +138,7 @@ async function removeSelected() {
         :disabled="previewLoading || !ids.length || (!!error && !requestFailed) || (all && confirmation !== 'DELETE LIBRARY')"
         @click="removeSelected"
       >
-        {{ requestFailed ? 'Retry remaining records' : all ? 'Clear library' : `Delete ${ids.length} ${ids.length === 1 ? 'record' : 'records'}` }}
+        {{ requestFailed ? $t('copy.retryRemainingRecords') : all ? $t('ui.clearLibrary') : $t('copy.deleteRecordCount', ids.length) }}
       </UButton>
     </template>
   </UModal>

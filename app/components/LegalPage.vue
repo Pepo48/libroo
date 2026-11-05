@@ -30,7 +30,7 @@ const comarkPlugins = [
         color="error"
         variant="subtle"
         icon="i-lucide-triangle-alert"
-        title="This legal page could not be loaded."
+        :title="$t('ui.thisLegalPageCouldNotBeLoaded')"
         :description="errorMessage"
       />
 
@@ -39,8 +39,8 @@ const comarkPlugins = [
         color="neutral"
         variant="subtle"
         icon="i-lucide-file-text"
-        title="No legal document has been published here yet."
-        description="Please check back later."
+        :title="$t('ui.noLegalDocumentHasBeenPublishedHere')"
+        :description="$t('ui.pleaseCheckBackLater')"
       />
 
       <section

@@ -36,7 +36,7 @@ const props = withDefaults(defineProps<{
           </UButton>
 
           <p class="text-center text-sm text-muted">
-            Libroo - Your Library, Managed
+            {{ $t('ui.librooYourLibraryManaged') }}
           </p>
         </div>
       </template>

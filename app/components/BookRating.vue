@@ -40,7 +40,7 @@ function isStarFilled(star: number): boolean {
         v-if="showTitle"
         class="text-lg font-semibold"
       >
-        Rating
+        {{ $t('ui.rating') }}
       </h2>
       <span
         v-if="showValue && rating"
@@ -51,7 +51,7 @@ function isStarFilled(star: number): boolean {
     </div>
     <div
       role="group"
-      :aria-label="`Book rating: ${rating ? `${rating} out of 5 stars` : 'unrated'}`"
+      :aria-label="rating ? $t('copy.bookRatingValue', { rating }) : $t('ui.notRated')"
       class="flex items-center gap-1"
       @mouseleave="hoveredStar = 0"
     >

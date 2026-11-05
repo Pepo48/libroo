@@ -91,6 +91,7 @@ export default defineNuxtConfig({
     '@nuxt/image',
     '@nuxt/scripts',
     '@nuxtjs/turnstile',
+    '@nuxtjs/i18n',
     '@nuxt/test-utils',
     '@comark/nuxt',
     ...metadataModules
@@ -331,6 +332,20 @@ export default defineNuxtConfig({
         logs: false,
         devtools: false
       }
+    }
+  },
+
+  i18n: {
+    strategy: 'no_prefix',
+    defaultLocale: 'en',
+    locales: [
+      { code: 'en', language: 'en-US', name: 'English', file: 'en.json' },
+      { code: 'sk', language: 'sk-SK', name: 'Slovenčina', file: 'sk.json' }
+    ],
+    detectBrowserLanguage: {
+      useCookie: true,
+      cookieKey: 'libroo_locale',
+      redirectOn: 'all'
     }
   },
 

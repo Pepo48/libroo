@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { LegalDocument } from '~~/shared/types/legal'
 
+const { t } = useI18n()
+
 definePageMeta({
   auth: false
 })
@@ -25,14 +27,14 @@ const errorMessage = computed(() => error.value
   : '')
 
 useHead({
-  title: 'Imprint'
+  title: t('ui.imprint')
 })
 </script>
 
 <template>
   <LegalPage
-    title="Imprint"
-    description="Legal notice for Libroo."
+    :title="$t('ui.imprint')"
+    :description="$t('ui.legalNoticeForLibroo')"
     :text="text"
     :error-message="errorMessage"
   />

@@ -3,7 +3,7 @@
     v-slot="{ open }"
     :modal="false"
     :items="[{
-      label: 'Starter',
+      label: $t('copy.starterTemplate'),
       to: 'https://starter-template.nuxt.dev/',
       color: 'primary',
       checked: true,
@@ -35,7 +35,7 @@
     size="xs"
   >
     <UButton
-      label="Starter"
+      :label="$t('copy.starterTemplate')"
       variant="subtle"
       trailing-icon="i-lucide-chevron-down"
       size="xs"

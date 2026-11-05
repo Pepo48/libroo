@@ -5,6 +5,7 @@ type CopyAction = NonNullable<Toast['actions']>[number] & { 'aria-label': string
 
 export default defineNuxtPlugin(() => {
   const { toasts } = useToast()
+  const textFor = getClientTranslator()
   const copies = new Map<Toast['id'], { action: CopyAction, text: string }>()
   const notificationText = (toast: Toast) => [toast.title, toast.description]
     .filter((value): value is string => typeof value === 'string' && value.length > 0)
@@ -21,8 +22,8 @@ export default defineNuxtPlugin(() => {
       let copy = copies.get(toast.id)
       if (!copy) {
         const action = shallowReactive<CopyAction>({
-          'label': 'Copy',
-          'aria-label': 'Copy notification',
+          'label': textFor('ui.copy', 'Copy'),
+          'aria-label': textFor('copy.copyNotification', 'Copy notification'),
           'icon': 'i-lucide-copy',
           'color': 'neutral',
           'variant': 'ghost',
@@ -32,12 +33,12 @@ export default defineNuxtPlugin(() => {
             if (!current) return
             try {
               await navigator.clipboard.writeText(notificationText(current))
-              action.label = 'Copied'
-              action['aria-label'] = 'Notification copied'
+              action.label = textFor('ui.copied', 'Copied')
+              action['aria-label'] = textFor('copy.notificationCopied', 'Notification copied')
               action.icon = 'i-lucide-check'
             } catch {
-              action.label = 'Copy failed'
-              action['aria-label'] = 'Copy failed — select text to copy'
+              action.label = textFor('copy.copyFailed', 'Copy failed')
+              action['aria-label'] = textFor('copy.copyFailedSelectText', 'Copy failed — select text to copy')
               action.icon = 'i-lucide-triangle-alert'
             }
           }
@@ -47,8 +48,8 @@ export default defineNuxtPlugin(() => {
       }
       if (copy.text !== text) {
         copy.text = text
-        copy.action.label = 'Copy'
-        copy.action['aria-label'] = 'Copy notification'
+        copy.action.label = textFor('ui.copy', 'Copy')
+        copy.action['aria-label'] = textFor('copy.copyNotification', 'Copy notification')
         copy.action.icon = 'i-lucide-copy'
       }
       // Preserve any existing notification actions and keep copying non-dismissive.

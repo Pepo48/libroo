@@ -1,8 +1,10 @@
 <script setup lang="ts">
+const { t } = useI18n()
+
 // Input mode tabs
 type InputMode = 'isbn' | 'title' | 'manual' | 'scan' | 'bulk'
 
-usePageTitle('Add Book')
+usePageTitle(() => t('ui.addBook'))
 
 const route = useRoute()
 const router = useRouter()
@@ -25,10 +27,10 @@ const bulkImportRef = ref<{ reset: () => void } | null>(null)
 // Tab items
 const modeItems = [
   { value: 'isbn', label: 'ISBN', icon: 'i-lucide-keyboard' },
-  { value: 'title', label: 'Title', icon: 'i-lucide-search' },
-  { value: 'manual', label: 'Manual', icon: 'i-lucide-pencil-line' },
-  { value: 'scan', label: 'Scan', icon: 'i-lucide-scan-barcode' },
-  { value: 'bulk', label: 'Bulk', icon: 'i-lucide-list' }
+  { value: 'title', label: t('ui.title'), icon: 'i-lucide-search' },
+  { value: 'manual', label: t('ui.manual'), icon: 'i-lucide-pencil-line' },
+  { value: 'scan', label: t('ui.scan'), icon: 'i-lucide-scan-barcode' },
+  { value: 'bulk', label: t('ui.bulk'), icon: 'i-lucide-list' }
 ]
 
 watch(
@@ -65,8 +67,8 @@ watch(inputMode, (mode, previousMode) => {
   <UContainer>
     <!-- Page Header -->
     <UPageHeader
-      title="Add Book"
-      description="Add books to your library by entering details manually, searching by title or ISBN, scanning a barcode, or importing multiple books at once."
+      :title="$t('ui.addBook')"
+      :description="$t('ui.addBooksToYourLibraryByEntering')"
     >
       <template #links>
         <UButton
@@ -75,7 +77,7 @@ watch(inputMode, (mode, previousMode) => {
           variant="outline"
           icon="i-lucide-arrow-left"
         >
-          Back to Library
+          {{ $t('ui.backToLibrary') }}
         </UButton>
       </template>
     </UPageHeader>

@@ -3,6 +3,9 @@ import type { AddLibraryState } from '~/stores/isbnScanner'
 import { storeToRefs } from 'pinia'
 import { defaultContinuousMode } from '~/utils/cameraScanDefaults'
 
+const { t } = useI18n()
+const { libraryStateItems } = useLibraryStateOptions()
+
 const toast = useToast()
 
 // Default to continuous: user testing showed the toggle was missed, and bulk intake is primary; single scan remains available.
@@ -51,14 +54,14 @@ async function onIsbnDetected(isbn: string) {
     const book = scannedBooks.value[0]
     if (book?.status === 'not_found') {
       toast.add({
-        title: 'Book not found',
-        description: book.result?.message || 'Could not find this book on OpenLibrary',
+        title: t('ui.bookNotFound'),
+        description: book.result?.message || t('copy.couldNotFindThisBookOnOpenlibrary'),
         color: 'warning'
       })
     } else if (book?.status === 'error') {
       toast.add({
-        title: 'Lookup failed',
-        description: book.errorMessage || 'Failed to lookup book',
+        title: t('copy.lookupFailed'),
+        description: book.errorMessage || t('copy.failedToLookupBook'),
         color: 'error'
       })
     }
@@ -119,7 +122,7 @@ defineExpose({ reset })
             name="i-lucide-scan-barcode"
             class="text-lg"
           />
-          <span class="font-semibold">Scan Barcode</span>
+          <span class="font-semibold">{{ $t('ui.scanBarcode') }}</span>
         </div>
 
         <!-- Continuous mode toggle (hide when showing single result) -->
@@ -131,10 +134,10 @@ defineExpose({ reset })
             v-model="targetLibraryState"
             :items="libraryStateItems"
             size="sm"
-            aria-label="Add scanned books as"
+            :aria-label="$t('ui.addScannedBooksAs')"
             class="w-32"
           />
-          <span class="text-sm text-muted">Continuous</span>
+          <span class="text-sm text-muted">{{ $t('ui.continuous') }}</span>
           <USwitch v-model="continuousMode" />
         </div>
       </div>
@@ -169,7 +172,7 @@ defineExpose({ reset })
           class="animate-spin text-3xl text-primary mb-3"
         />
         <p class="text-muted">
-          Looking up book...
+          {{ $t('ui.lookingUpBook') }}
         </p>
       </div>
     </template>
@@ -183,10 +186,10 @@ defineExpose({ reset })
         />
         <p class="text-muted mb-4">
           <template v-if="continuousMode">
-            Scan multiple book barcodes in a row
+            {{ $t('ui.scanMultipleBookBarcodesInARow') }}
           </template>
           <template v-else>
-            Scan a book barcode to look it up
+            {{ $t('ui.scanABookBarcodeToLookIt') }}
           </template>
         </p>
         <UButton
@@ -194,7 +197,7 @@ defineExpose({ reset })
           size="lg"
           @click="() => { showScanner = true }"
         >
-          Start Camera
+          {{ $t('ui.startCamera') }}
         </UButton>
       </div>
     </template>
@@ -213,7 +216,7 @@ defineExpose({ reset })
           variant="outline"
           @click="() => { showScanner = false }"
         >
-          Stop Camera
+          {{ $t('ui.stopCamera') }}
         </UButton>
       </div>
     </template>

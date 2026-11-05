@@ -30,7 +30,7 @@ function toggleColorMode() {
       color="neutral"
       variant="link"
       :icon="isDark ? 'i-lucide-moon' : 'i-lucide-sun'"
-      aria-label="Toggle color mode"
+      :aria-label="$t('ui.toggleColorMode')"
       @click.stop="toggleColorMode"
     />
     <template #fallback>

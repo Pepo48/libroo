@@ -3,7 +3,9 @@ import type { TableColumn, TableRow } from '@nuxt/ui/components/Table.vue'
 import type { AdminAuditCategory, AdminAuditEntry, AdminAuditLogPage } from '~~/shared/types/admin-audit'
 import { formatAdminDateTime } from '~/utils/admin-date-format'
 
-usePageTitle('Admin Audit')
+const { t, locale, te } = useI18n()
+
+usePageTitle(() => t('ui.adminAudit'))
 
 const route = useRoute()
 const router = useRouter()
@@ -56,11 +58,11 @@ const pageEnd = computed(() => Math.min(currentPage.value * pageSize, totalEntri
 const isLoadingEntries = computed(() => ['idle', 'pending'].includes(status.value))
 const isInvalidPage = computed(() => !isLoadingEntries.value && currentPage.value > totalPages.value)
 const isInitialLoading = computed(() => (isLoadingEntries.value || isInvalidPage.value) && entries.value.length === 0)
-const categoryFilters: Array<{ label: string, value: AuditCategoryFilter, icon: string }> = [
-  { label: 'Both', value: 'all', icon: 'i-lucide-list-filter' },
-  { label: 'Admin', value: 'admin', icon: 'i-lucide-shield-check' },
-  { label: 'Auth', value: 'auth', icon: 'i-lucide-key-round' }
-]
+const categoryFilters = computed<Array<{ label: string, value: AuditCategoryFilter, icon: string }>>(() => [
+  { label: t('admin.audit.both'), value: 'all', icon: 'i-lucide-list-filter' },
+  { label: t('ui.admin'), value: 'admin', icon: 'i-lucide-shield-check' },
+  { label: t('admin.audit.auth'), value: 'auth', icon: 'i-lucide-key-round' }
+])
 
 if (isInvalidPage.value) {
   await navigateTo({ path: route.path, query: pageQuery(totalPages.value) }, { replace: true })
@@ -72,24 +74,22 @@ watch(isInvalidPage, (invalid) => {
   }
 })
 
-const columns: TableColumn<AdminAuditEntry>[] = [
-  { accessorKey: 'createdAt', header: 'When' },
-  { accessorKey: 'category', header: 'Type' },
-  { id: 'actor', header: 'Actor' },
-  { accessorKey: 'action', header: 'Action' },
-  { id: 'target', header: 'Target' },
-  { accessorKey: 'metadata', header: 'Details' }
-]
+const columns = computed<TableColumn<AdminAuditEntry>[]>(() => [
+  { accessorKey: 'createdAt', header: t('admin.columns.when') },
+  { accessorKey: 'category', header: t('admin.columns.type') },
+  { id: 'actor', header: t('admin.columns.actor') },
+  { accessorKey: 'action', header: t('admin.columns.action') },
+  { id: 'target', header: t('admin.columns.target') },
+  { accessorKey: 'metadata', header: t('admin.columns.details') }
+])
 
 function originalEntry(row: TableRow<AdminAuditEntry>) {
   return row.original
 }
 
 function formatAction(action: AdminAuditEntry['action']) {
-  return action
-    .split('.')
-    .map(part => part.replaceAll('_', ' '))
-    .join(' ')
+  const key = `admin.auditActions.${action.replaceAll('.', '_')}`
+  return te(key) ? t(key) : action.replace(/[._]/g, ' ')
 }
 
 function actionColor(action: AdminAuditEntry['action']) {
@@ -105,15 +105,15 @@ function categoryColor(category: AdminAuditCategory) {
 }
 
 function formatCategory(category: AdminAuditCategory) {
-  return category === 'auth' ? 'Auth' : 'Admin'
+  return category === 'auth' ? t('admin.audit.auth') : t('ui.admin')
 }
 
 function userDisplayName(entry: AdminAuditEntry, kind: 'actor' | 'target') {
   const user = entry[kind]
   if (user?.name) return user.name
   const userId = kind === 'actor' ? entry.actorUserId : entry.targetUserId
-  if (userId) return 'Deleted user'
-  return kind === 'actor' ? 'Unauthenticated' : 'No user target'
+  if (userId) return t('admin.audit.deletedUser')
+  return kind === 'actor' ? t('admin.audit.unauthenticated') : t('admin.audit.noTarget')
 }
 
 function userDisplayDetail(entry: AdminAuditEntry, kind: 'actor' | 'target') {
@@ -121,7 +121,7 @@ function userDisplayDetail(entry: AdminAuditEntry, kind: 'actor' | 'target') {
   if (user?.email) return user.email
   const userId = kind === 'actor' ? entry.actorUserId : entry.targetUserId
   if (userId) return userId
-  return kind === 'actor' ? 'No signed-in user' : 'System or invite link'
+  return kind === 'actor' ? t('admin.audit.noSignedInUser') : t('admin.audit.systemOrInvite')
 }
 
 function metadataRows(metadata: Record<string, unknown> | null) {
@@ -131,18 +131,23 @@ function metadataRows(metadata: Record<string, unknown> | null) {
     .filter(([, value]) => value !== null && value !== undefined && value !== '')
     .map(([key, value]) => ({
       label: formatMetadataKey(key),
-      value: formatMetadataValue(value)
+      value: formatMetadataValue(key, value)
     }))
 }
 
 function formatMetadataKey(key: string) {
+  const translation = `admin.auditMetadata.${key}`
+  if (te(translation)) return t(translation)
   return key.replace(/([A-Z])/g, ' $1').replace(/^./, char => char.toUpperCase())
 }
 
-function formatMetadataValue(value: unknown) {
-  if (value instanceof Date) return formatAdminDateTime(value)
-  if (typeof value === 'boolean') return value ? 'yes' : 'no'
-  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) return formatAdminDateTime(value)
+function formatMetadataValue(key: string, value: unknown) {
+  if (key.endsWith('Role') && (value === 'admin' || value === 'user')) return t(`admin.users.${value}`)
+  if (key.endsWith('Status') && (value === 'pending' || value === 'accepted' || value === 'expired' || value === 'revoked')) return t(`admin.invites.${value}`)
+  if (key === 'scope' && (value === 'all' || value === 'other')) return t(value === 'all' ? 'admin.audit.scopeAll' : 'admin.audit.scopeOther')
+  if (value instanceof Date) return formatAdminDateTime(value, locale.value)
+  if (typeof value === 'boolean') return t(value ? 'ui.yes' : 'ui.no')
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) return formatAdminDateTime(value, locale.value)
   return String(value)
 }
 
@@ -177,8 +182,8 @@ function pageQuery(page: number) {
 <template>
   <UContainer>
     <UPageHeader
-      title="Audit log"
-      description="Sensitive admin activity across users and invites."
+      :title="$t('ui.auditLog')"
+      :description="$t('ui.sensitiveAdminActivityAcrossUsersAndInvites')"
     />
 
     <UPageBody>
@@ -211,7 +216,7 @@ function pageQuery(page: number) {
         color="error"
         variant="subtle"
         icon="i-lucide-circle-alert"
-        title="Could not load audit log"
+        :title="$t('ui.couldNotLoadAuditLog')"
         :description="error.message"
       />
 
@@ -224,10 +229,10 @@ function pageQuery(page: number) {
           class="text-6xl text-muted mx-auto mb-4"
         />
         <h2 class="text-xl font-semibold mb-2">
-          No audit entries yet.
+          {{ $t('ui.noAuditEntriesYet') }}
         </h2>
         <p class="text-muted">
-          Sensitive admin actions will appear here.
+          {{ $t('ui.sensitiveAdminActionsWillAppearHere') }}
         </p>
       </UCard>
 
@@ -239,7 +244,7 @@ function pageQuery(page: number) {
             class="min-w-7xl"
           >
             <template #createdAt-cell="{ row }">
-              <span class="whitespace-nowrap">{{ formatAdminDateTime(originalEntry(row).createdAt) }}</span>
+              <span class="whitespace-nowrap">{{ formatAdminDateTime(originalEntry(row).createdAt, locale, $t('admin.never')) }}</span>
             </template>
 
             <template #category-cell="{ row }">
@@ -304,7 +309,7 @@ function pageQuery(page: number) {
                 v-else
                 class="text-sm text-muted"
               >
-                No details
+                {{ $t('ui.noDetails') }}
               </span>
             </template>
           </UTable>
@@ -312,7 +317,7 @@ function pageQuery(page: number) {
 
         <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p class="text-sm text-muted">
-            Showing {{ pageStart }}-{{ pageEnd }} of {{ totalEntries }} entries
+            {{ $t('admin.audit.showing', { start: pageStart, end: pageEnd, total: totalEntries }) }}
           </p>
 
           <UPagination

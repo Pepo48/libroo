@@ -3,11 +3,13 @@ import * as z from 'zod'
 import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
 import { newPasswordSchema } from '~~/shared/utils/password'
 
+const { t } = useI18n()
+
 definePageMeta({
   auth: false
 })
 
-usePageTitle('Set New Password')
+usePageTitle(() => t('ui.setNewPasswordText'))
 
 const route = useRoute()
 const toast = useToast()
@@ -24,24 +26,24 @@ const fields: AuthFormField[] = [
   {
     name: 'newPassword',
     type: 'password',
-    label: 'New password',
-    placeholder: 'Enter your new password',
+    label: t('ui.newPassword'),
+    placeholder: t('copy.enterYourNewPassword'),
     required: true
   },
   {
     name: 'confirmPassword',
     type: 'password',
-    label: 'Confirm new password',
-    placeholder: 'Confirm your new password',
+    label: t('ui.confirmNewPassword'),
+    placeholder: t('copy.confirmYourNewPassword'),
     required: true
   }
 ]
 
 const schema = z.object({
   newPassword: newPasswordSchema(),
-  confirmPassword: z.string({ error: 'Confirm Password is required' }).min(1, { error: 'Please confirm your password' })
+  confirmPassword: z.string({ error: t('copy.confirmPasswordIsRequired') }).min(1, { error: t('copy.pleaseConfirmYourPassword') })
 }).refine(data => data.newPassword === data.confirmPassword, {
-  error: 'Passwords do not match',
+  error: t('copy.passwordsDoNotMatch'),
   path: ['confirmPassword']
 })
 
@@ -83,14 +85,14 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
     })
     isComplete.value = true
     toast.add({
-      title: 'Password updated',
-      description: 'Sign in with your new password.',
+      title: t('ui.passwordUpdated'),
+      description: t('ui.signInWithYourNewPassword'),
       color: 'success'
     })
   } catch (err: unknown) {
     toast.add({
-      title: 'Password reset failed',
-      description: getFailureMessage(err, 'This reset link is invalid or expired.'),
+      title: t('copy.passwordResetFailed'),
+      description: getFailureMessage(err, t('copy.thisResetLinkIsInvalidOrExpired')),
       color: 'error'
     })
   } finally {
@@ -103,20 +105,20 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
   <UContainer class="py-12 max-w-md">
     <AuthStateCard
       v-if="!token"
-      title="Set new password"
-      description="Open the password reset link from your email."
+      :title="$t('ui.setNewPassword')"
+      :description="$t('ui.openThePasswordResetLinkFromYour')"
       icon="i-lucide-circle-alert"
-      action-label="Request a reset link"
+      :action-label="$t('copy.requestAResetLink')"
       action-to="/forgot-password"
       action-icon="i-lucide-send"
     />
 
     <AuthStateCard
       v-else-if="isComplete"
-      title="Password updated"
-      description="Sign in with your new password."
+      :title="$t('ui.passwordUpdated')"
+      :description="$t('ui.signInWithYourNewPassword')"
       icon="i-lucide-check"
-      action-label="Go to sign in"
+      :action-label="$t('copy.goToSignIn')"
       action-to="/login"
       action-icon="i-lucide-log-in"
     />
@@ -127,18 +129,18 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
         :schema="schema"
         :fields="fields"
         :loading="isSubmitting"
-        title="Set new password"
+        :title="$t('ui.setNewPassword')"
         icon="i-lucide-key-round"
         submit-label="Update password"
         @submit="onSubmit"
       >
         <template #description>
-          Remember your password?
+          {{ $t('ui.rememberYourPassword') }}
           <ULink
             to="/login"
             class="text-primary font-medium"
           >
-            Sign in
+            {{ $t('ui.signIn') }}
           </ULink>
         </template>
 
@@ -157,7 +159,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
                 variant="ghost"
                 size="xs"
                 :icon="showNewPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
-                :aria-label="showNewPassword ? 'Hide new password' : 'Show new password'"
+                :aria-label="showNewPassword ? $t('copy.hideNewPassword') : $t('copy.showNewPassword')"
                 @click="() => { showNewPassword = !showNewPassword }"
               />
             </template>
@@ -179,7 +181,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
                 variant="ghost"
                 size="xs"
                 :icon="showConfirmPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
-                :aria-label="showConfirmPassword ? 'Hide confirmed password' : 'Show confirmed password'"
+                :aria-label="showConfirmPassword ? $t('copy.hideConfirmedPassword') : $t('copy.showConfirmedPassword')"
                 @click="() => { showConfirmPassword = !showConfirmPassword }"
               />
             </template>
@@ -188,7 +190,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
 
         <template #footer>
           <p class="text-center text-sm text-muted">
-            Libroo - Your Library, Managed
+            {{ $t('ui.librooYourLibraryManaged') }}
           </p>
         </template>
       </UAuthForm>
