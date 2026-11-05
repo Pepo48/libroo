@@ -6,7 +6,7 @@ import {
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event)
-  if (config.cloudflarePreview !== 'true') {
+  if (config.cloudflarePreview !== 'true' && config.cloudflareAccessEnabled !== 'true') {
     return
   }
 
@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
   if (!audience || !teamDomain) {
     throw createError({
       statusCode: 503,
-      statusMessage: 'Preview access protection is not configured'
+      statusMessage: 'Cloudflare Access protection is not configured'
     })
   }
 
@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
     console.error('Cloudflare Access verification is unavailable', error)
     throw createError({
       statusCode: 503,
-      statusMessage: 'Preview access verification is unavailable'
+      statusMessage: 'Cloudflare Access verification is unavailable'
     })
   }
 })

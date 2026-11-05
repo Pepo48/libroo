@@ -45,6 +45,17 @@ if (config) {
     errors.push('Production Worker must have workers_dev disabled or omitted')
   }
 
+  if (process.env.NUXT_CLOUDFLARE_ACCESS_ENABLED === 'true') {
+    for (const key of ['NUXT_CLOUDFLARE_ACCESS_ENABLED', 'NUXT_CLOUDFLARE_ACCESS_AUDIENCE', 'NUXT_CLOUDFLARE_ACCESS_TEAM_DOMAIN']) {
+      if (!process.env[key] || config.vars?.[key] !== process.env[key]) {
+        errors.push(`Production config must preserve ${key}`)
+      }
+    }
+    if (config.preview_urls !== false) {
+      errors.push('Access-protected production must disable Worker preview URLs')
+    }
+  }
+
   const routes = config.routes ?? []
   const productionRoute = routes.find(route =>
     typeof route === 'object'

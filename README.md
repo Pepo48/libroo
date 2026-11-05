@@ -280,36 +280,18 @@ The full first-release manual QA pass lives in [docs/first-release-qa.md](docs/f
 
 ## Hosted Cloudflare/NuxtHub
 
-The hosted profile uses NuxtHub with Cloudflare D1 and R2-compatible blob
-storage. It requires Wrangler and Cloudflare credentials.
+For a private Cloudflare deployment, follow the
+[Cloudflare deployment guide](docs/cloudflare.md). Its setup command
+configures GitHub, discovers Cloudflare resources, and starts deployment with
+Cloudflare Access and private R2 storage. Email delivery is optional.
 
-```bash
-NUXT_LIBROO_RUNTIME_PROFILE=cloudflare pnpm build:cloudflare
-```
-
-Hosted deployment secrets and environment variables:
-
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ACCOUNT_ID`
-- `NUXT_HUB_CLOUDFLARE_DATABASE_ID`
-- `NUXT_HUB_CLOUDFLARE_BUCKET_NAME`
-- `NUXT_BETTER_AUTH_SECRET`
-- `NUXT_BETTER_AUTH_URL`
-- `NUXT_PLUNK_API_KEY`, when email delivery is enabled
-
-Recommended hosted variables:
-
-- `NUXT_EMAIL_PROVIDER=plunk`
-- `NUXT_EMAIL_FROM=no-reply@your-domain.example`
-- `NUXT_EMAIL_VERIFICATION_ENABLED=true`
-- `NUXT_PUBLIC_REGISTRATION_ENABLED=false`, after the first admin account exists
-- `NUXT_PUBLIC_OPEN_LIBRARY_LINKS_ENABLED=false`
-
-Deployments should apply D1 migrations immediately before `wrangler deploy`. The repository's deployment notes include the CI promotion policy, preview caveats, rollback expectations, and full variable tables in [docs/deployment.md](docs/deployment.md).
+The [deployment reference](docs/cloudflare.md#runtime-and-deployment-reference) covers the full
+configuration, previews, migrations, and rollback.
 
 ## First Admin Setup
 
-Start every new install with an empty database and public registration enabled:
+For Cloudflare, use the [Cloudflare deployment guide](docs/cloudflare.md#3-create-your-account-and-finish).
+For local and self-hosted installs, start with an empty database and public registration enabled:
 
 ```bash
 NUXT_PUBLIC_REGISTRATION_ENABLED=true
@@ -372,6 +354,7 @@ Future work toward v1:
 
 ## More Documentation
 
-- [Deployment](docs/deployment.md)
+- [Cloudflare deployment](docs/cloudflare.md)
+- [Deployment reference](docs/deployment.md)
 - [Backup And Restore](docs/backup-restore.md)
 - [Account Deletion And Retention](docs/account-deletion.md)
