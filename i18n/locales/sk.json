@@ -50,6 +50,22 @@
     "useField": "Použiť údaj: {field}"
   },
   "settings": {
+    "backup": {
+      "summary": "Knihy v zálohe: {books}. Dostupné obaly: {covers}.",
+      "exportWithCovers": "Exportovať s obalmi (.zip)",
+      "restoreDescription": "Obnovte knihy zo súboru Libroo CSV alebo zo zálohy ZIP s obalmi.",
+      "importFile": "Importovať súbor",
+      "chooseFile": "Vybrať CSV alebo ZIP",
+      "confirmDescription": "Knižnica sa aktualizuje podľa vybraného súboru.",
+      "couldNotOpen": "Importovaný súbor sa nepodarilo otvoriť",
+      "coverExportWarning": "Niektoré obaly sa nepodarilo zahrnúť ({count}).",
+      "missingCovers": "V súbore ZIP chýbajú obaly ({count}). Knihy môžete napriek tomu importovať.",
+      "coverProgress": "Obnovujú sa obaly ({processed} z {total})",
+      "missingCover": "V súbore ZIP chýba súbor s obalom.",
+      "coverRestoreFailed": "Tento obal sa nepodarilo obnoviť.",
+      "coverRestoreWarning": "Niektoré obaly sa nepodarilo obnoviť ({count}). Pozrite si podrobnosti riadkov.",
+      "coverWarning": "Obal: {reason}"
+    },
     "connectProvider": "Pripojiť {provider}",
     "enrichImported": "doplniť údaje pri nových aj skôr importovaných knihách a zachovať uložené hodnoty",
     "enrichNewOnly": "doplniť údaje iba pri nových záznamoch a preskočiť existujúce knihy",

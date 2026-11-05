@@ -50,6 +50,22 @@
     "useField": "Use {field}"
   },
   "settings": {
+    "backup": {
+      "summary": "Books in the backup: {books}. Covers available: {covers}.",
+      "exportWithCovers": "Export with covers (.zip)",
+      "restoreDescription": "Restore books from a Libroo CSV or a ZIP backup with covers.",
+      "importFile": "Import file",
+      "chooseFile": "Choose CSV or ZIP",
+      "confirmDescription": "This will update your library using the selected file.",
+      "couldNotOpen": "Could not open import file",
+      "coverExportWarning": "Some cover files could not be included ({count}).",
+      "missingCovers": "Cover files missing from the ZIP ({count}). You can still import the books.",
+      "coverProgress": "Restoring covers ({processed} of {total})",
+      "missingCover": "Cover file is missing from the ZIP.",
+      "coverRestoreFailed": "Could not restore this cover.",
+      "coverRestoreWarning": "Some covers could not be restored ({count}). See the row details.",
+      "coverWarning": "Cover: {reason}"
+    },
     "connectProvider": "Connect {provider}",
     "enrichImported": "look up new and previously CSV-imported books without replacing stored values",
     "enrichNewOnly": "look up only newly created imports; matched library books are skipped",

@@ -6,6 +6,7 @@ import { decodeCoverImage, InvalidManualCoverError, InvalidReadingProgressError 
 import { deleteBlob, putCoverImage } from './storage.service'
 import { detectImageContentType, UNKNOWN_IMAGE_CONTENT_TYPE } from '../../shared/utils/image-content-type'
 import { normalizeIsbnIdentity } from '../../shared/utils/isbn'
+import type { LibraryImportConflictStrategy } from '../../shared/types/library-transfer'
 import type { BookEditSchema } from '../../shared/utils/schemas'
 
 export class BookEditConflictError extends Data.TaggedError('BookEditConflictError')<{ message: string }> {}
@@ -42,6 +43,27 @@ export const makeBookEditService = Effect.gen(function* () {
         )
       }
       return yield* books.getUserBookWithDetails(userBookId, userId)
+    }),
+    restoreCover: (userId: string, userBookId: string, data: string, strategy: LibraryImportConflictStrategy) => Effect.gen(function* () {
+      const current = yield* books.getUserBookWithDetails(userBookId, userId)
+      if (strategy === 'existing' && current.coverPath) return { restored: false }
+      const bytes = yield* decodeCoverImage(data)
+      const cover = yield* putCoverImage(`covers/manual/${userId}/${crypto.randomUUID()}.webp`, bytes)
+      yield* repository.restoreCover(userId, userBookId, current.bookId, current.coverPath, cover.pathname).pipe(
+        Effect.flatMap(saved => saved ? Effect.void : Effect.fail(new BookEditConflictError({ message: 'This book changed during cover restore. Try importing the backup again.' }))),
+        Effect.tapError(() => repository.isCoverReferenced(cover.pathname).pipe(
+          Effect.flatMap(referenced => referenced ? Effect.void : deleteBlob(cover.pathname)),
+          Effect.catch(error => Effect.logWarning(`Could not clean up staged cover: ${String(error)}`))
+        ))
+      )
+      if (current.coverPath?.startsWith(`covers/manual/${userId}/`)) {
+        const oldPath = current.coverPath
+        yield* repository.isCoverReferenced(oldPath).pipe(
+          Effect.flatMap(referenced => referenced ? Effect.void : deleteBlob(oldPath)),
+          Effect.catch(error => Effect.logWarning(`Could not clean up replaced cover: ${String(error)}`))
+        )
+      }
+      return { restored: true }
     }),
     previewCover: (userId: string, userBookId: string, isbn: string) => Effect.gen(function* () {
       yield* books.getUserBookWithDetails(userBookId, userId)

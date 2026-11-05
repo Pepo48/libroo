@@ -15,7 +15,7 @@ const isLibraryMatch = (row: LibraryImportRowDetail) => (row.status === 'updated
 const visible = computed(() => details.value.filter(row => filter.value === 'all'
   || (filter.value === 'matched' && isLibraryMatch(row))
   || (filter.value === 'repeated' && 'repeatedInFile' in row && row.repeatedInFile)
-  || (filter.value === 'errors' && ['failed', 'unconfirmed', 'not_processed'].includes(row.status))))
+  || (filter.value === 'errors' && (['failed', 'unconfirmed', 'not_processed'].includes(row.status) || row.coverWarning))))
 const matchedCount = computed(() => props.result.updated + props.result.skipped)
 const libraryMatches = computed(() => details.value.filter(isLibraryMatch).length)
 const repeats = computed(() => details.value.filter(row => row.repeatedInFile === true && (row.status === 'updated' || row.status === 'skipped')).length)
@@ -116,6 +116,12 @@ watch(() => props.result, () => {
                 class="whitespace-pre-wrap text-muted"
               >
                 {{ row.reason }}
+              </p>
+              <p
+                v-if="row.coverWarning"
+                class="text-warning"
+              >
+                {{ $t('settings.backup.coverWarning', { reason: row.coverWarning }) }}
               </p>
               <NuxtLink
                 v-if="'userBookId' in row && row.userBookId"

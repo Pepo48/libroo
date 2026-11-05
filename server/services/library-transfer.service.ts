@@ -11,6 +11,8 @@ import { bookEditionFieldsSchema } from '../../shared/utils/schemas'
 import { BOOK_LOCATION_PATH_SEPARATOR_PATTERN } from '../../shared/utils/book-location'
 import { LOCATION_MAX_DEPTH } from '../../shared/utils/location-hierarchy'
 import type {
+  LibraryBackupExport,
+  LibraryExportRecord,
   LibraryImportBookInput,
   LibraryImportConflictStrategy,
   LibraryImportResult
@@ -30,6 +32,7 @@ export class InvalidLibraryCsvError extends Data.TaggedError('InvalidLibraryCsvE
 
 export interface LibraryTransferServiceInterface {
   exportLibraryCsv: (userId: string) => Effect.Effect<string, DatabaseError, DbService>
+  exportLibraryBackup: (userId: string) => Effect.Effect<LibraryBackupExport, DatabaseError, DbService>
   importLibraryCsv: (
     userId: string,
     csv: string,
@@ -152,6 +155,34 @@ function toImportRecord(row: LibraryCsvRow): LibraryImportBookInput {
   }
 }
 
+function toExportRow(record: LibraryExportRecord): LibraryCsvRow {
+  return {
+    title: record.title,
+    authors: formatCsvList(record.authors),
+    isbn: record.isbn ?? '',
+    tags: formatCsvList(record.tags),
+    location: record.location ?? '',
+    library_state: record.libraryState,
+    reading_status: record.readingStatus,
+    current_page: record.currentPage?.toString() ?? '',
+    progress_percent: record.progressPercent?.toString() ?? '',
+    rating: record.rating?.toString() ?? '',
+    note: record.note ?? '',
+    added_date: serializeDate(record.addedAt),
+    active_loan_status: record.activeLoan?.status ?? '',
+    active_loan_borrower: record.activeLoan?.borrowerDisplayName ?? '',
+    active_loan_loaned_at: serializeDate(record.activeLoan?.loanedAt),
+    active_loan_due_at: serializeDate(record.activeLoan?.dueAt),
+    format_version: '2',
+    source: record.source,
+    open_library_key: record.openLibraryKey ?? '',
+    libroo_user_book_id: record.userBookId,
+    language: record.language ?? '',
+    series: record.series ?? '',
+    series_position: record.seriesPosition ?? ''
+  }
+}
+
 export const LibraryTransferServiceLive = Layer.effect(
   LibraryTransferService,
   Effect.gen(function* () {
@@ -161,31 +192,30 @@ export const LibraryTransferServiceLive = Layer.effect(
       exportLibraryCsv: userId =>
         Effect.gen(function* () {
           const records = yield* transferRepo.listExportRecords(userId)
-          return formatLibraryCsv(records.map(record => ({
-            title: record.title,
-            authors: formatCsvList(record.authors),
-            isbn: record.isbn ?? '',
-            tags: formatCsvList(record.tags),
-            location: record.location ?? '',
-            library_state: record.libraryState,
-            reading_status: record.readingStatus,
-            current_page: record.currentPage?.toString() ?? '',
-            progress_percent: record.progressPercent?.toString() ?? '',
-            rating: record.rating?.toString() ?? '',
-            note: record.note ?? '',
-            added_date: serializeDate(record.addedAt),
-            active_loan_status: record.activeLoan?.status ?? '',
-            active_loan_borrower: record.activeLoan?.borrowerDisplayName ?? '',
-            active_loan_loaned_at: serializeDate(record.activeLoan?.loanedAt),
-            active_loan_due_at: serializeDate(record.activeLoan?.dueAt),
-            format_version: '2',
-            source: record.source,
-            open_library_key: record.openLibraryKey ?? '',
-            libroo_user_book_id: record.userBookId,
-            language: record.language ?? '',
-            series: record.series ?? '',
-            series_position: record.seriesPosition ?? ''
-          })))
+          return formatLibraryCsv(records.map(toExportRow))
+        }),
+
+      exportLibraryBackup: userId =>
+        Effect.gen(function* () {
+          const records = yield* transferRepo.listExportRecords(userId)
+          const covers: LibraryBackupExport['covers'] = []
+          const filesByPath = new Map<string, string>()
+          const rows = records.map((record, index) => {
+            const row = toExportRow(record)
+            const path = record.coverPath
+            const extension = path?.match(/\.(webp|jpe?g|png|gif)$/i)?.[1]?.toLowerCase()
+            if (path && extension) {
+              let file = filesByPath.get(path)
+              if (!file) {
+                file = `covers/${index + 1}.${extension}`
+                filesByPath.set(path, file)
+                covers.push({ file, url: `/api/blob/${path.split('/').map(encodeURIComponent).join('/')}` })
+              }
+              row.cover_file = file
+            }
+            return row
+          })
+          return { csv: formatLibraryCsv(rows, true), covers }
         }),
 
       importLibraryCsv: (userId, csv, conflictStrategy, enrich) =>
@@ -259,6 +289,9 @@ export const LibraryTransferServiceLive = Layer.effect(
 
 export const exportLibraryCsv = (userId: string) =>
   Effect.flatMap(LibraryTransferService, service => service.exportLibraryCsv(userId))
+
+export const exportLibraryBackup = (userId: string) =>
+  Effect.flatMap(LibraryTransferService, service => service.exportLibraryBackup(userId))
 
 export const importLibraryCsv = (
   userId: string,

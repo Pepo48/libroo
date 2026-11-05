@@ -1,5 +1,5 @@
 import { Context, Effect, Layer } from 'effect'
-import { and, eq, exists, isNull, not, sql } from 'drizzle-orm'
+import { and, eq, exists, getTableColumns, isNull, not, sql } from 'drizzle-orm'
 import { authors, bookAuthors, books, bookSystemTags, tags, userBookTags, userBooks } from '../db/schema'
 import { DbService, type AtomicDbStatement, type AtomicDbStatements } from '../services/db.service'
 import { DatabaseError } from './book.repository'
@@ -8,6 +8,7 @@ import type { BookEditSchema } from '../../shared/utils/schemas'
 
 export class BookEditRepository extends Context.Service<BookEditRepository, {
   isCoverReferenced: (path: string) => Effect.Effect<boolean, DatabaseError>
+  restoreCover: (userId: string, userBookId: string, bookId: string, oldPath: string | null, newPath: string) => Effect.Effect<boolean, DatabaseError>
   replace: (userId: string, userBookId: string, input: BookEditSchema, coverPath: string | null) => Effect.Effect<boolean, DatabaseError>
 }>()('BookEditRepository') {}
 
@@ -17,6 +18,44 @@ export const BookEditRepositoryLive = Layer.effect(BookEditRepository, Effect.ge
     isCoverReferenced: path => Effect.tryPromise({
       try: async () => (await database.db.select({ id: books.id }).from(books).where(eq(books.coverPath, path)).limit(1)).length > 0,
       catch: error => new DatabaseError({ message: `Could not check cover references: ${error}`, operation: 'book.edit.coverReferences' })
+    }),
+    restoreCover: (userId, userBookId, bookId, oldPath, newPath) => Effect.tryPromise({
+      try: async () => {
+        const db = database.db
+        const entry = and(eq(userBooks.id, userBookId), eq(userBooks.userId, userId), eq(userBooks.bookId, bookId), isNull(userBooks.removedAt))
+        const current = and(eq(books.id, bookId), oldPath === null ? isNull(books.coverPath) : eq(books.coverPath, oldPath))
+        const owned = and(eq(books.source, 'manual'), eq(books.createdByUserId, userId))
+        const otherCopies = db.select({ id: userBooks.id }).from(userBooks).where(and(eq(userBooks.bookId, bookId), not(eq(userBooks.id, userBookId))))
+        const privateBook = and(owned, not(exists(otherCopies)))
+        const updated = await db.update(books).set({ coverPath: newPath }).where(and(
+          current, privateBook, exists(db.select({ id: userBooks.id }).from(userBooks).where(entry))
+        )).returning({ id: books.id })
+        if (updated.length) return true
+
+        // A shared book needs a private copy so this user's restore can't change anyone else's cover.
+        const newBookId = crypto.randomUUID()
+        const rows = await database.executeAtomic(tx => [
+          tx.insert(books).select(tx.select({
+            ...getTableColumns(books),
+            id: sql<string>`${newBookId}`.as('id'),
+            coverPath: sql<string>`${newPath}`.as('cover_path'),
+            source: sql<'manual'>`'manual'`.as('source'),
+            entrySource: sql<'manual_entry'>`'manual_entry'`.as('entry_source'),
+            createdByUserId: sql<string>`${userId}`.as('created_by_user_id')
+          }).from(books).innerJoin(userBooks, entry).where(and(current, not(sql`coalesce(${privateBook}, 0)`)))),
+          tx.insert(bookAuthors).select(tx.select({
+            ...getTableColumns(bookAuthors), bookId: sql<string>`${newBookId}`.as('book_id')
+          }).from(bookAuthors).innerJoin(books, eq(books.id, newBookId)).where(eq(bookAuthors.bookId, bookId))),
+          tx.insert(bookSystemTags).select(tx.select({
+            ...getTableColumns(bookSystemTags), bookId: sql<string>`${newBookId}`.as('book_id')
+          }).from(bookSystemTags).innerJoin(books, eq(books.id, newBookId)).where(eq(bookSystemTags.bookId, bookId))),
+          tx.update(userBooks).set({ bookId: newBookId }).where(and(
+            entry, exists(tx.select({ id: books.id }).from(books).where(eq(books.id, newBookId)))
+          )).returning({ id: userBooks.id })
+        ])
+        return (rows.at(-1) as Array<{ id: string }>).length === 1
+      },
+      catch: error => new DatabaseError({ message: `Could not restore book cover: ${error}`, operation: 'book.edit.restoreCover' })
     }),
     replace: (userId, userBookId, input, coverPath) => Effect.tryPromise({
       try: async () => {

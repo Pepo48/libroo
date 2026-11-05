@@ -22,9 +22,9 @@ test('keeps row details collapsed and identifies a duplicate across import batch
     title: value, authors: '["Import Author"]', library_state: 'owned'
   } as LibraryCsvRow))
   await page.goto('/settings')
-  await page.getByRole('button', { name: 'Import CSV', exact: true }).click()
+  await page.getByRole('button', { name: 'Import file', exact: true }).click()
   await page.locator('input[type="file"][accept*="csv"]').setInputFiles({ name: 'duplicates.csv', mimeType: 'text/csv', buffer: Buffer.from(formatLibraryCsv(rows)) })
-  await page.getByRole('button', { name: 'Import CSV', exact: true }).click()
+  await page.getByRole('button', { name: 'Import file', exact: true }).click()
   await page.getByRole('button', { name: 'Confirm import', exact: true }).click()
   const report = page.getByRole('dialog', { name: 'Import result', exact: true })
   await expect(report).toContainText(`${LIBRARY_IMPORT_BATCH_SIZE} created, 0 updated, 1 skipped, 0 failed.`)
@@ -61,10 +61,10 @@ test('separates pre-import library matches from CSV repeats, including repeats o
     title, authors: '["Import Author"]', library_state: 'owned', location: `Shelf ${index}`
   } as LibraryCsvRow))
   await page.goto('/settings')
-  await page.getByRole('button', { name: 'Import CSV', exact: true }).click()
+  await page.getByRole('button', { name: 'Import file', exact: true }).click()
   await page.locator('input[type="file"][accept*="csv"]').setInputFiles({ name: 'match-origins.csv', mimeType: 'text/csv', buffer: Buffer.from(formatLibraryCsv(rows)) })
   await page.getByRole('radio', { name: 'Use CSV data', exact: true }).check()
-  await page.getByRole('button', { name: 'Import CSV', exact: true }).click()
+  await page.getByRole('button', { name: 'Import file', exact: true }).click()
   await page.getByRole('button', { name: 'Confirm import', exact: true }).click()
   const report = page.getByRole('dialog', { name: 'Import result', exact: true })
   await expect(report).toContainText('Row outcomes: 1 created, 3 updated, 0 skipped, 0 failed.')
@@ -152,7 +152,7 @@ test('imports library data from CSV and renders imported metadata', async ({ pag
   await registerSettingsUser(page, testInfo.title, 'settings-import')
 
   await page.goto('/settings')
-  await page.getByRole('button', { name: 'Import CSV' }).click()
+  await page.getByRole('button', { name: 'Import file' }).click()
   await selectSettingsCsvFile(page)
   await expect(page.getByRole('button', { name: /library-import\.csv/ })).toBeVisible()
 
@@ -160,7 +160,7 @@ test('imports library data from CSV and renders imported metadata', async ({ pag
   const importResponse = page.waitForResponse(response =>
     response.url().includes('/api/library/import') && response.request().method() === 'POST'
   )
-  await page.getByRole('button', { name: 'Import CSV' }).click()
+  await page.getByRole('button', { name: 'Import file' }).click()
   await page.getByRole('button', { name: 'Confirm import' }).click()
   const response = await importResponse
   expect(response.ok()).toBe(true)
@@ -198,9 +198,9 @@ test('imports a CSV in small requests and keeps the result report visible', asyn
   })
   try {
     await page.goto('/settings')
-    await page.getByRole('button', { name: 'Import CSV', exact: true }).click()
+    await page.getByRole('button', { name: 'Import file', exact: true }).click()
     await page.locator('input[type="file"][accept=".csv,text/csv"]').setInputFiles({ name: 'batch.csv', mimeType: 'text/csv', buffer: Buffer.from(formatLibraryCsv(rows)) })
-    await page.getByRole('button', { name: 'Import CSV', exact: true }).click()
+    await page.getByRole('button', { name: 'Import file', exact: true }).click()
     await page.getByRole('button', { name: 'Confirm import', exact: true }).click()
     await expect(page.getByText(`Processed ${LIBRARY_IMPORT_BATCH_SIZE} of ${LIBRARY_IMPORT_BATCH_SIZE * 2 + 1} rows. Keep this page open.`, { exact: true })).toBeVisible()
     releaseSecond()
@@ -226,9 +226,9 @@ test('keeps confirmed import counts and the error when a later request fails', a
     title: `Partial import ${i}`, authors: '["Partial Writer"]', library_state: 'owned', reading_status: i === LIBRARY_IMPORT_BATCH_SIZE ? 'invalid-status' : 'unread'
   })) as import('../../shared/utils/library-transfer-csv').LibraryCsvRow[]
   await page.goto('/settings')
-  await page.getByRole('button', { name: 'Import CSV', exact: true }).click()
+  await page.getByRole('button', { name: 'Import file', exact: true }).click()
   await page.locator('input[type="file"][accept=".csv,text/csv"]').setInputFiles({ name: 'partial.csv', mimeType: 'text/csv', buffer: Buffer.from(formatLibraryCsv(rows)) })
-  await page.getByRole('button', { name: 'Import CSV', exact: true }).click()
+  await page.getByRole('button', { name: 'Import file', exact: true }).click()
   await page.getByRole('button', { name: 'Confirm import', exact: true }).click()
   const report = page.getByRole('dialog', { name: 'Import result', exact: true })
   await expect(report).toContainText(`${LIBRARY_IMPORT_BATCH_SIZE} created, 0 updated, 0 skipped, 1 failed.`)

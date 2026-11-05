@@ -2,8 +2,14 @@ import type { BookEditionFields, LibraryState, ReadingStatus } from './book'
 
 export type LibraryImportConflictStrategy = 'existing' | 'csv'
 
+export interface LibraryBackupExport {
+  csv: string
+  covers: Array<{ file: string, url: string }>
+}
+
 export interface LibraryExportRecord extends BookEditionFields {
   userBookId: string
+  coverPath?: string | null
   title: string
   authors: string[]
   isbn: string | null
@@ -54,6 +60,7 @@ export interface LibraryImportRowDetail {
   matchedTitle?: string
   firstRow?: number
   repeatedInFile?: boolean
+  coverWarning?: string
   reason?: string
 }
 

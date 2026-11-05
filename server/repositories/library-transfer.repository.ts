@@ -78,6 +78,7 @@ export const LibraryTransferRepositoryLive = Layer.effect(
                 userBookId: userBooks.id,
                 bookId: books.id,
                 title: books.title,
+                coverPath: books.coverPath,
                 isbn: books.isbn,
                 source: books.source,
                 openLibraryKey: books.openLibraryKey,
@@ -152,6 +153,7 @@ export const LibraryTransferRepositoryLive = Layer.effect(
             return rows.map(row => ({
               userBookId: row.userBookId,
               title: row.title,
+              coverPath: row.coverPath,
               authors: authorsByBook.get(row.bookId) ?? ['Unknown Author'],
               isbn: row.isbn ?? null,
               tags: tagsByUserBook.get(row.userBookId) ?? [],

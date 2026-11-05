@@ -9,12 +9,14 @@ import {
   type AccountEmailChangeSchema,
   type AccountPasswordChangeSchema
 } from '~~/shared/utils/account-settings'
-import type { LibraryImportConflictStrategy, LibraryImportResult } from '~~/shared/types/library-transfer'
+import type { LibraryBackupExport, LibraryImportConflictStrategy, LibraryImportResult } from '~~/shared/types/library-transfer'
 import { importLibraryCsvInBatches, type LibraryImportReport } from '~~/shared/utils/library-import-batches'
 import { roleIncludesAdmin } from '~~/shared/utils/auth-roles'
 import { canShowVerificationResendAction, canUseVerifiedEmailChange, getPasswordUpdatedDescription } from '~~/shared/utils/email-capability-ui'
 import { canShowEmailManagement, canShowPasskeyManagement, canShowPasswordManagement, canShowTwoFactorManagement } from '~~/shared/utils/auth-capability-ui'
 import { authClient } from '~/utils/auth-client'
+import type { openLibraryBackup } from '~/utils/library-backup'
+import { LIBRARY_CSV_MAX_BYTES } from '~~/shared/utils/library-transfer-csv'
 
 const { locale, locales, setLocale, t } = useI18n()
 const languageOptions = computed(() => locales.value.map(item => ({ label: item.name ?? item.code, value: item.code })))
@@ -138,8 +140,12 @@ const importProgress = ref({ processed: 0, total: 0 })
 const importReport = ref<LibraryImportReport | null>(null)
 const importReportOpen = ref(false)
 const clearLibraryOpen = ref(false)
-const isExporting = ref(false)
-const LIBRARY_IMPORT_MAX_BYTES = 10 * 1024 * 1024
+const exportingFormat = ref<'csv' | 'zip' | null>(null)
+const importBackup = shallowRef<Awaited<ReturnType<typeof openLibraryBackup>> | null>(null)
+const coverRestoreProgress = ref<{ processed: number, total: number } | null>(null)
+const coverRestoreIssues = ref(0)
+const isReadingImport = ref(false)
+let importSelection = 0
 
 const importConflictItems = computed(() => [
   { label: t('ui.keepExistingData'), value: 'existing' },
@@ -763,21 +769,31 @@ async function deleteAccount(payload: FormSubmitEvent<AccountDeletionSchema>) {
   }
 }
 
-async function downloadLibraryCsv() {
-  if (!import.meta.client) return
+async function downloadLibrary(format: 'csv' | 'zip') {
+  if (!import.meta.client || exportingFormat.value) return
 
-  isExporting.value = true
+  exportingFormat.value = format
   try {
-    const csv = await $fetch<string>('/api/library/export', { responseType: 'text' })
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    let blob: Blob
+    if (format === 'zip') {
+      const { createLibraryBackup } = await import('~/utils/library-backup')
+      const backup = await createLibraryBackup(await $fetch<LibraryBackupExport>('/api/library/backup'))
+      blob = backup.blob
+      if (backup.missing) {
+        toast.add({ title: t('settings.backup.coverExportWarning', { count: backup.missing }), color: 'warning' })
+      }
+    } else {
+      const csv = await $fetch<string>('/api/library/export', { responseType: 'text' })
+      blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    }
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
-    anchor.download = `libroo-library-${new Date().toISOString().slice(0, 10)}.csv`
+    anchor.download = `libroo-library-${new Date().toISOString().slice(0, 10)}.${format}`
     document.body.appendChild(anchor)
     anchor.click()
     anchor.remove()
-    URL.revokeObjectURL(url)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
   } catch (err: unknown) {
     toast.add({
       title: 'Export failed',
@@ -785,11 +801,15 @@ async function downloadLibraryCsv() {
       color: 'error'
     })
   } finally {
-    isExporting.value = false
+    exportingFormat.value = null
   }
 }
 
 function resetImport() {
+  importSelection++
+  isReadingImport.value = false
+  void importBackup.value?.close()
+  importBackup.value = null
   importFileName.value = ''
   importCsv.value = ''
   importConflictStrategy.value = 'existing'
@@ -804,18 +824,36 @@ async function handleImportFileChange(event: Event) {
   const file = input.files?.[0]
   if (!file) return
 
-  if (file.size > LIBRARY_IMPORT_MAX_BYTES) {
+  const selection = ++importSelection
+  void importBackup.value?.close()
+  importBackup.value = null
+  importFileName.value = ''
+  importCsv.value = ''
+  isReadingImport.value = true
+  try {
+    if (/\.zip$/i.test(file.name)) {
+      const { openLibraryBackup } = await import('~/utils/library-backup')
+      const backup = await openLibraryBackup(file)
+      if (selection !== importSelection) {
+        await backup.close()
+        return
+      }
+      importBackup.value = backup
+      importCsv.value = backup.csv
+    } else {
+      if (file.size > LIBRARY_CSV_MAX_BYTES) throw new Error('Choose a CSV file under 10 MB.')
+      const csv = await file.text()
+      if (selection !== importSelection) return
+      importCsv.value = csv
+    }
+    importFileName.value = file.name
+  } catch (error) {
+    if (selection !== importSelection) return
     resetImport()
-    toast.add({
-      title: 'CSV file is too large',
-      description: 'Choose a CSV file under 10 MB.',
-      color: 'warning'
-    })
-    return
+    toast.add({ title: t('settings.backup.couldNotOpen'), description: getFailureMessage(error, 'Unable to open this file'), color: 'error' })
+  } finally {
+    if (selection === importSelection) isReadingImport.value = false
   }
-
-  importFileName.value = file.name
-  importCsv.value = await file.text()
 }
 
 function openImportConfirmation() {
@@ -829,16 +867,55 @@ async function importLibraryCsvFile() {
   isImporting.value = true
   try {
     importReport.value = null
+    coverRestoreIssues.value = 0
+    coverRestoreProgress.value = null
+    const backup = importBackup.value
+    const conflictStrategy = importConflictStrategy.value
     const report = await importLibraryCsvInBatches({
       csv: importCsv.value,
-      conflictStrategy: importConflictStrategy.value,
+      conflictStrategy,
       enrich: importEnrich.value
     }, body => $fetch<LibraryImportResult>('/api/library/import', { method: 'POST', body }), (processed, total) => {
       importProgress.value = { processed, total }
     })
 
+    if (backup) {
+      const rows = (report.result.details ?? []).flatMap(row =>
+        row.userBookId && (row.status === 'created' || row.status === 'updated' || row.status === 'skipped') && backup.files[row.row - 2]
+          ? [{ row, userBookId: row.userBookId, name: backup.files[row.row - 2]! }]
+          : []
+      )
+      coverRestoreProgress.value = { processed: 0, total: rows.length }
+      // Keep repeated rows for one book in file order while restoring different books in parallel.
+      const byBook = new Map<string, typeof rows>()
+      for (const item of rows) {
+        const group = byBook.get(item.userBookId) ?? []
+        group.push(item)
+        byBook.set(item.userBookId, group)
+      }
+      const groups = [...byBook.values()]
+      for (let offset = 0; offset < groups.length; offset += 4) {
+        await Promise.all(groups.slice(offset, offset + 4).map(async (group) => {
+          for (const { row, userBookId, name } of group) {
+            try {
+              if (!backup.available(name)) throw new Error(t('settings.backup.missingCover'))
+              const coverImage = await backup.readCover(name)
+              await $fetch<{ restored: boolean }>(`/api/library/backup/${encodeURIComponent(userBookId)}/cover`, {
+                method: 'PUT',
+                body: { coverImage, conflictStrategy: row.status === 'created' ? 'csv' : conflictStrategy }
+              })
+            } catch (error) {
+              coverRestoreIssues.value++
+              row.coverWarning = getFailureMessage(error, t('settings.backup.coverRestoreFailed'))
+            }
+            coverRestoreProgress.value!.processed++
+          }
+        }))
+      }
+    }
     importConfirmOpen.value = false
     libraryImportOpen.value = false
+    resetImport()
     importReport.value = report
     importReportOpen.value = true
     // Preserve the current library, including successful rows from a partial run.
@@ -852,6 +929,7 @@ async function importLibraryCsvFile() {
     })
   } finally {
     isImporting.value = false
+    coverRestoreProgress.value = null
   }
 }
 </script>
@@ -1091,15 +1169,26 @@ async function importLibraryCsvFile() {
                 </p>
               </div>
             </div>
-            <UButton
-              color="neutral"
-              variant="outline"
-              :loading="isExporting"
-              :disabled="isExporting"
-              @click="downloadLibraryCsv"
-            >
-              {{ $t('ui.exportCsv') }}
-            </UButton>
+            <div class="flex flex-wrap gap-2">
+              <UButton
+                color="neutral"
+                variant="outline"
+                :loading="exportingFormat === 'csv'"
+                :disabled="!!exportingFormat"
+                @click="downloadLibrary('csv')"
+              >
+                {{ $t('ui.exportCsv') }}
+              </UButton>
+              <UButton
+                color="neutral"
+                variant="outline"
+                :loading="exportingFormat === 'zip'"
+                :disabled="!!exportingFormat"
+                @click="downloadLibrary('zip')"
+              >
+                {{ $t('settings.backup.exportWithCovers') }}
+              </UButton>
+            </div>
           </div>
 
           <div class="flex flex-col gap-4 py-5 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
@@ -1113,7 +1202,7 @@ async function importLibraryCsvFile() {
                   {{ $t('ui.importLibrary') }}
                 </p>
                 <p class="text-sm text-muted">
-                  {{ $t('ui.restoreBooksFromALibrooCsvExport') }}
+                  {{ $t('settings.backup.restoreDescription') }}
                 </p>
               </div>
             </div>
@@ -1122,7 +1211,7 @@ async function importLibraryCsvFile() {
               variant="outline"
               @click="openLibraryImport"
             >
-              {{ $t('ui.importCsv') }}
+              {{ $t('settings.backup.importFile') }}
             </UButton>
           </div>
           <div class="flex flex-col gap-4 py-5 sm:flex-row sm:items-center sm:justify-between">
@@ -1440,15 +1529,15 @@ async function importLibraryCsvFile() {
         v-model:open="libraryImportOpen"
         :dismissible="!isImporting"
         :close="!isImporting"
-        :title="$t('ui.importLibraryCsv')"
-        :description="$t('ui.restoreALibrooCsvExportIntoYour')"
+        :title="$t('ui.importLibrary')"
+        :description="$t('settings.backup.restoreDescription')"
       >
         <template #body>
           <div class="space-y-5">
             <input
               ref="importFileInput"
               type="file"
-              accept=".csv,text/csv"
+              accept=".csv,.zip,text/csv,application/zip"
               class="hidden"
               @change="handleImportFileChange"
             >
@@ -1457,10 +1546,11 @@ async function importLibraryCsvFile() {
                 icon="i-lucide-file-up"
                 color="neutral"
                 variant="outline"
-                :disabled="isImporting"
+                :disabled="isImporting || isReadingImport"
+                :loading="isReadingImport"
                 @click="importFileInput?.click()"
               >
-                {{ importFileName || 'Choose CSV' }}
+                {{ importFileName || $t('settings.backup.chooseFile') }}
               </UButton>
               <UButton
                 v-if="importCsv"
@@ -1505,7 +1595,7 @@ async function importLibraryCsvFile() {
             :loading="isImporting"
             @click="openImportConfirmation"
           >
-            {{ $t('ui.importCsv') }}
+            {{ $t('settings.backup.importFile') }}
           </UButton>
         </template>
       </UModal>
@@ -1594,8 +1684,8 @@ async function importLibraryCsvFile() {
         v-model:open="importConfirmOpen"
         :dismissible="!isImporting"
         :close="!isImporting"
-        :title="$t('ui.importLibraryCsvText')"
-        :description="$t('ui.thisWillUpdateYourLibraryUsingThe')"
+        :title="$t('ui.importLibrary')"
+        :description="$t('settings.backup.confirmDescription')"
         :ui="{ footer: 'justify-end gap-3' }"
       >
         <template #body>
@@ -1603,8 +1693,28 @@ async function importLibraryCsvFile() {
             <p>
               {{ $t('settings.importFile') }} <span class="font-medium">{{ importFileName }}</span>
             </p>
+            <p v-if="importBackup">
+              {{ $t('settings.backup.summary', { books: importBackup.files.length, covers: importBackup.coverCount }) }}
+            </p>
+            <UAlert
+              v-if="importBackup?.missing"
+              color="warning"
+              variant="subtle"
+              :title="$t('settings.backup.missingCovers', { count: importBackup.missing })"
+            />
             <div
-              v-if="isImporting"
+              v-if="coverRestoreProgress?.total"
+              role="status"
+              class="space-y-2"
+            >
+              <p>{{ $t('settings.backup.coverProgress', coverRestoreProgress) }}</p>
+              <UProgress
+                :model-value="coverRestoreProgress.processed"
+                :max="coverRestoreProgress.total"
+              />
+            </div>
+            <div
+              v-else-if="isImporting"
               role="status"
               class="space-y-2"
             >
@@ -1695,6 +1805,12 @@ async function importLibraryCsvFile() {
             >
               {{ $t('settings.enrichmentQueued', { count: importReport.result.enrichmentQueued }) }}
             </p>
+            <UAlert
+              v-if="coverRestoreIssues"
+              color="warning"
+              variant="subtle"
+              :title="$t('settings.backup.coverRestoreWarning', { count: coverRestoreIssues })"
+            />
             <LibraryImportDetails :result="importReport.result" />
           </div>
         </template>

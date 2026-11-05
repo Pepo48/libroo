@@ -631,6 +631,11 @@ export const bookEditionFieldsSchema = z.object({
   seriesPosition: trimmedNullableString(50, 'Volume').optional()
 })
 
+export const libraryBackupCoverSchema = z.object({
+  coverImage: manualBookCreateSchema.shape.coverImage.unwrap().unwrap().unwrap(),
+  conflictStrategy: z.enum(['existing', 'csv'])
+})
+
 export const bookEditSchema = bookEditionFieldsSchema.extend({
   title: manualBookCreateSchema.shape.title,
   authors: manualBookCreateSchema.shape.authors,

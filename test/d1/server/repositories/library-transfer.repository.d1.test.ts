@@ -1,3 +1,4 @@
+import { BookEditRepository, BookEditRepositoryLive } from '../../../../server/repositories/book-edit.repository'
 import { CanonicalBookEnrichmentRepository, CanonicalBookEnrichmentRepositoryLive } from '../../../../server/repositories/canonical-book-enrichment.repository'
 import { BookEnrichmentRepository, BookEnrichmentRepositoryLive } from '../../../../server/repositories/book-enrichment.repository'
 import canonicalEnrichmentMigration from '../../../../server/db/migrations/sqlite/0016_canonical_book_enrichment.sql?raw'
@@ -56,6 +57,39 @@ describe('LibraryTransferRepository.importRecords on D1', () => {
       await env.DB.prepare(`DELETE FROM ${table}`).run()
     }
     await seedUser(db)
+  })
+
+  it('restores a cover without changing the shared book or dropping its metadata', async () => {
+    await seedExistingBook(db)
+    await db.update(books).set({
+      source: 'open_library',
+      createdByUserId: null,
+      coverPath: 'covers/9781111111111.webp',
+      description: 'Shared description',
+      openLibraryKey: '/books/OL1M'
+    }).where(eq(books.id, 'book-existing'))
+    const now = new Date()
+    await db.insert(user).values({ id: 'other-user', name: 'Other', email: 'other@example.com', createdAt: now, updatedAt: now })
+    await db.insert(userBooks).values({ id: 'other-copy', userId: 'other-user', bookId: 'book-existing', addedAt: now })
+    const database = db as unknown as DbServiceInterface['db']
+    const restore = (userId: string, bookId: string, oldPath: string, path: string) => Effect.runPromise(Effect.flatMap(
+      BookEditRepository, repo => repo.restoreCover(userId, 'ub-existing', bookId, oldPath, path)
+    ).pipe(Effect.provide(BookEditRepositoryLive), Effect.provide(Layer.succeed(DbService, {
+      db: database, executeAtomic: build => database.batch(build(database))
+    }))))
+    const firstPath = 'covers/manual/user-1/first.webp'
+    const secondPath = 'covers/manual/user-1/second.webp'
+    expect(await restore('other-user', 'book-existing', 'covers/9781111111111.webp', firstPath)).toBe(false)
+    expect(await restore('user-1', 'book-existing', 'covers/9781111111111.webp', firstPath)).toBe(true)
+    const [copy] = await db.select().from(userBooks).where(eq(userBooks.id, 'ub-existing'))
+    const [saved] = await db.select().from(books).where(eq(books.id, copy!.bookId))
+    const [shared] = await db.select().from(books).where(eq(books.id, 'book-existing'))
+    expect(shared!.coverPath).toBe('covers/9781111111111.webp')
+    expect(saved).toMatchObject({ coverPath: firstPath, description: 'Shared description', openLibraryKey: '/books/OL1M', createdByUserId: 'user-1' })
+    expect(await db.select().from(bookAuthors).where(eq(bookAuthors.bookId, saved!.id))).toMatchObject([{ authorId: 'author-existing' }])
+    expect(await restore('user-1', saved!.id, firstPath, secondPath)).toBe(true)
+    expect(await restore('user-1', saved!.id, firstPath, secondPath)).toBe(false)
+    expect(await db.select().from(books).where(eq(books.id, saved!.id))).toMatchObject([{ coverPath: secondPath }])
   })
 
   it('pages every matching shelf independently and excludes removed and other-user records', async () => {
