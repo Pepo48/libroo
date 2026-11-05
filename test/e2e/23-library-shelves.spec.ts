@@ -1,5 +1,14 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 import { registerUser, storageState } from './support/auth'
+
+async function advanceToNextBatch(shelf: Locator) {
+  const next = shelf.getByRole('button', { name: 'Next books', exact: true })
+  const initialCount = await shelf.getByTestId('book-card').count()
+  for (let step = 0; step <= initialCount; step++) {
+    await next.click()
+    if (await next.isDisabled() || await shelf.getByTestId('book-card').count() > initialCount) break
+  }
+}
 
 test('browses cover shelves, filters with tags and remembers the grid layout @mobile', async ({ browser }, testInfo) => {
   await storageState(browser, 'admin')
@@ -30,17 +39,17 @@ test('browses cover shelves, filters with tags and remembers the grid layout @mo
     await expect(page.getByTestId('book-jacket')).toHaveAttribute('data-jacket-palette', palette!)
     await page.goto('/library')
     await expect(shelf).toBeVisible()
-    const next = shelf.getByRole('button', { name: /next/i })
+    const next = page.getByRole('region', { name: 'Living room', exact: true }).getByRole('button', { name: 'Next books', exact: true })
     await expect(next).toBeEnabled()
     await next.click()
-    await expect(shelf.getByRole('button', { name: /prev/i })).toBeEnabled()
+    await expect(page.getByRole('region', { name: 'Living room', exact: true }).getByRole('button', { name: 'Previous books', exact: true })).toBeEnabled()
     await page.screenshot({ path: testInfo.outputPath('shelves-light.png'), fullPage: true })
     await page.emulateMedia({ colorScheme: 'dark' })
     await page.reload()
     await expect(shelf).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath('shelves-dark.png'), fullPage: true })
     const loaded = page.waitForResponse(response => /\/api\/books\?/.test(response.url()) && new URL(response.url()).searchParams.get('page') === '2')
-    await page.getByRole('button', { name: 'Load More', exact: true }).click()
+    await advanceToNextBatch(page.getByRole('region', { name: 'Living room', exact: true }))
     const nextPage = await (await loaded).json()
     const newBook = shelf.getByRole('link').filter({ has: page.getByRole('heading', { name: nextPage.items[0].title, exact: true }) })
     await expect.poll(async () => {
@@ -80,9 +89,9 @@ test('shows every non-empty shelf on the first page and keeps grid pagination se
       expect(response.ok()).toBe(true)
       locations[name] = (await response.json()).id
     }
-    // The small shelf and unlocated books are older than an entire global page
+    // The later shelf and unlocated books are older than an entire global page
     // of Alpha books; they must still appear in the first shelf response.
-    for (const [name, count] of [['Later shelf', 2], ['', 2], ['Alpha shelves', 14]] as const) {
+    for (const [name, count] of [['Later shelf', 14], ['', 2], ['Alpha shelves', 14]] as const) {
       for (let i = 0; i < count; i++) {
         const response = await context.request.post('/api/books/manual', { data: { title: `${name || 'Unlocated'} ${i}`, authors: ['Shelf Author'] } })
         expect(response.ok()).toBe(true)
@@ -95,20 +104,27 @@ test('shows every non-empty shelf on the first page and keeps grid pagination se
     await expect(page.getByRole('region', { name: 'Later shelf books', exact: true })).toBeVisible()
     await expect(page.getByRole('region', { name: 'No location books', exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Empty shelf', exact: true })).toHaveCount(0)
-    await expect(page.getByTestId('book-card')).toHaveCount(16)
-    await expect(page.getByText('Showing 16 of 18 books', { exact: true })).toBeVisible()
-    await page.getByRole('button', { name: 'Load More', exact: true }).click()
-    await expect(page.getByTestId('book-card')).toHaveCount(18)
-    await expect(page.getByRole('button', { name: 'Load More', exact: true })).toHaveCount(0)
+    await expect(page.getByTestId('book-card')).toHaveCount(26)
+    await expect(page.getByText('Showing 26 of 30 books', { exact: true })).toBeVisible()
+    for (const [name, totalLoaded] of [['Alpha shelves', 28], ['Later shelf', 30]] as const) {
+      await advanceToNextBatch(page.getByRole('region', { name, exact: true }))
+      await expect(page.getByTestId('book-card')).toHaveCount(totalLoaded)
+      const shelf = page.getByRole('region', { name: `${name} books`, exact: true })
+      const firstNewBook = shelf.getByTestId('book-card').nth(12)
+      await expect(firstNewBook).toBeInViewport()
+    }
     await page.getByRole('button', { name: 'Grid', exact: true }).click()
     await expect(page.getByTestId('book-card')).toHaveCount(12)
-    await expect(page.getByText('Showing 12 of 18 books', { exact: true })).toBeVisible()
+    await expect(page.getByText('Showing 12 of 30 books', { exact: true })).toBeVisible()
+    await page.getByTestId('grid-end').scrollIntoViewIfNeeded()
+    await expect(page.getByTestId('book-card')).toHaveCount(24)
+
     await page.getByRole('button', { name: 'Shelves', exact: true }).click()
-    await expect(page.getByTestId('book-card')).toHaveCount(18)
+    await expect(page.getByTestId('book-card')).toHaveCount(26)
     await expect(page.getByRole('region', { name: 'Later shelf books', exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Select books', exact: true }).click()
-    await expect(page.getByTestId('book-card')).toHaveCount(18)
-    await expect(page.getByRole('button', { name: 'Select loaded books (18)', exact: true })).toBeVisible()
+    await expect(page.getByTestId('book-card')).toHaveCount(26)
+    await expect(page.getByRole('button', { name: 'Select loaded books (26)', exact: true })).toBeVisible()
   } finally {
     await context.close()
   }

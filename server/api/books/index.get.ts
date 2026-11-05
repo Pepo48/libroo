@@ -13,6 +13,6 @@ export default effectHandler((event, user) =>
       maxPageSize: MAX_PAGE_SIZE
     })
 
-    return yield* getUserLibrary(user.id, { ...filters, ...(query.layout === 'shelves' ? { perShelf: true } : {}) })
+    return yield* getUserLibrary(user.id, { ...filters, ...(query.layout === 'shelves' ? { perShelf: true, ...(typeof query.shelf === 'string' ? { shelf: query.shelf } : {}) } : {}) })
   })
 )

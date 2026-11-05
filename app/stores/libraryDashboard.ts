@@ -6,6 +6,8 @@ import { ref } from 'vue'
 
 export interface DashboardPagination {
   perShelf?: boolean
+  shelfCounts?: Record<string, number>
+  shelfNextPages?: Record<string, number>
   page: number
   pageSize: number
   totalItems: number

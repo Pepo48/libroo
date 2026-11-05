@@ -125,6 +125,7 @@ export interface ManualBookRepositoryInput {
 
 export interface BookLibraryFilters extends LibraryQueryFilters {
   perShelf?: boolean
+  shelf?: string
   locationPath?: string
 }
 
@@ -1556,6 +1557,9 @@ export const BookRepositoryLive = Layer.effect(
           const whereClause = and(
             eq(userBooks.userId, userId),
             isNull(userBooks.removedAt),
+            pagination.shelf === 'none'
+              ? isNull(userBooks.locationId)
+              : pagination.shelf ? eq(userBooks.locationId, pagination.shelf) : undefined,
             searchCondition,
             libraryStateCondition,
             pagination.loanStatus === 'loaned' ? activeLoanCondition : undefined,
@@ -1598,7 +1602,7 @@ export const BookRepositoryLive = Layer.effect(
           const countResult = yield* Effect.tryPromise({
             try: () => {
               const query = dbService.db
-                .select({ count: count() })
+                .select({ count: count(), shelf: sql<string | null>`min(${userBooks.locationId})` })
                 .from(userBooks)
                 .innerJoin(books, eq(userBooks.bookId, books.id))
                 .leftJoin(locations, eq(userBooks.locationId, locations.id))
@@ -1669,7 +1673,7 @@ export const BookRepositoryLive = Layer.effect(
               totalItems,
               totalPages,
               hasMore: page < totalPages,
-              ...(pagination.perShelf ? { perShelf: true } : {})
+              ...(pagination.perShelf ? { perShelf: true, shelfCounts: Object.fromEntries(countResult.map(row => [row.shelf ?? 'none', row.count])) } : {})
             }
           }
         }),
