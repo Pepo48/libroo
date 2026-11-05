@@ -22,10 +22,16 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
+    defaults:
+      run:
+        working-directory: app
     permissions:
       contents: read
       deployments: write
     env:
+      METADATA_PLUGIN_REPOSITORY: ${{ vars.METADATA_PLUGIN_REPOSITORY }}
+      METADATA_PLUGIN_REF: ${{ vars.METADATA_PLUGIN_REF }}
+      METADATA_PLUGIN_MODULE: ${{ vars.METADATA_PLUGIN_MODULE }}
       NUXT_HUB_CLOUDFLARE_DATABASE_ID: ${{ secrets.NUXT_HUB_CLOUDFLARE_DATABASE_ID }}
       NUXT_HUB_CLOUDFLARE_BUCKET_NAME: ${{ secrets.NUXT_HUB_CLOUDFLARE_BUCKET_NAME }}
       CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
@@ -75,19 +81,66 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          path: app
           persist-credentials: false
+
+      - name: Validate optional metadata module
+        id: metadata
+        env:
+          METADATA_PLUGIN_SSH_KEY: ${{ secrets.METADATA_PLUGIN_SSH_KEY }}
+        run: node scripts/production/metadata-module.mjs
+
+      - name: Checkout optional private module
+        if: steps.metadata.outputs.enabled == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: ${{ vars.METADATA_PLUGIN_REPOSITORY }}
+          ref: ${{ steps.metadata.outputs.ref }}
+          ssh-key: ${{ secrets.METADATA_PLUGIN_SSH_KEY }}
+          path: plugins
+          persist-credentials: false
+
+      - name: Record checked-out module commit
+        if: steps.metadata.outputs.enabled == 'true'
+        run: node scripts/production/metadata-module.mjs --record
 
       - name: Install pnpm
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          package_json_file: app/package.json
 
-      - name: Install node
+      - name: Install node for private module builds
+        if: steps.metadata.outputs.enabled == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24.22.2
+
+      - name: Install node with public dependency cache
+        if: steps.metadata.outputs.enabled != 'true'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 24.22.2
           cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+
+      - name: Install optional module dependencies
+        if: steps.metadata.outputs.enabled == 'true'
+        working-directory: plugins
+        run: node ../app/scripts/production/run-command.mjs pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Configure optional module
+        if: steps.metadata.outputs.enabled == 'true'
+        run: node scripts/production/metadata-module.mjs --configure
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: node scripts/production/run-command.mjs pnpm install --frozen-lockfile
+
+      - name: Test optional metadata module
+        if: steps.metadata.outputs.enabled == 'true'
+        working-directory: plugins
+        env:
+          LIBROO_CORE_DIR: ${{ github.workspace }}/app
+        run: node ../app/scripts/production/run-command.mjs pnpm test
 
       - name: Validate production runtime configuration
         run: |
@@ -194,7 +247,7 @@ jobs:
       - name: Build Cloudflare worker
         env:
           NODE_OPTIONS: --max-old-space-size=4096
-        run: pnpm build:cloudflare
+        run: node scripts/production/run-command.mjs pnpm build:cloudflare
 
       - name: Validate production Wrangler configuration
         run: node scripts/production/validate-wrangler-config.mjs .output/server/wrangler.json
@@ -213,6 +266,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               ref: context.sha,
+              payload: { metadata_plugin_commit: process.env.METADATA_PLUGIN_COMMIT || null },
               environment: 'production',
               auto_merge: false,
               required_contexts: [],
@@ -248,7 +302,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: pnpm exec wrangler deploy --config .output/server/wrangler.json
+        run: node scripts/production/run-command.mjs pnpm exec wrangler deploy --config .output/server/wrangler.json
 
       - name: Publish production status
         if: always()

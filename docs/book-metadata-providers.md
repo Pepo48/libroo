@@ -94,3 +94,29 @@ External modules own their dependencies, assets, provenance and tests. A private
 module can own the production workflow, check out a pinned public app revision,
 and build with its own module enabled. This keeps deployment secrets in the
 private repository and requires no private-repository token in public CI.
+
+
+## Deploy from a public repository with private modules
+
+The production workflow supports optional private modules using three Environment
+variables: `METADATA_PLUGIN_REPOSITORY` (`owner/repository`),
+`METADATA_PLUGIN_REF` (optional: a full 40-character commit SHA for a pin), and
+`METADATA_PLUGIN_MODULE` (a relative module file, default `module.mjs`). Store a
+read-only deploy key as the `METADATA_PLUGIN_SSH_KEY` Environment secret.
+With a repository configured, leave the ref unset or set it to `main` or `latest`
+to use the latest commit on its `main` branch when deployment starts. An explicit
+SHA keeps production pinned. Each run records its actual checkout SHA in the
+workflow summary and deployment metadata; branch updates do not change the
+checkout during that run. Private repo pushes still do not trigger deployment.
+Leave the repository and ref unset for an Open Library-only deployment.
+
+The public workflow checks out the app and module separately. Private-module
+builds do not restore or save dependency caches, upload source/build artifacts,
+or publish dependency, compiler, test or Worker-deploy output. Command output
+stays only on the ephemeral runner; reproduce a failing command locally for
+full diagnostics. The module's private repository remains private.
+
+Keep the `production` Environment restricted to `main`. Production runs only on
+main pushes or manual dispatch from main; fork pull requests cannot select or
+load private modules through this workflow. Standard public GitHub-hosted runners
+can run this deployment without using the private repository's compute allowance.
