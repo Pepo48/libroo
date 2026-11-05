@@ -163,7 +163,7 @@ Every text notification has a **Copy** button that copies its title and descript
 
 ### Library layout
 
-The library offers cover shelves grouped by location and a grid view. The first shelf request returns a bounded preview from every non-empty shelf, including books without a location; shelves are not discovered through global book pagination. Filters apply before grouping. Swipe a shelf or use its arrows to browse loaded books. Grid and shelf pages are cached separately. Counts refer to loaded results; **Load More** fetches the next batch from each shelf and moves the relevant shelf to the first newly loaded book. Searching and selecting books use the grid. Tags are clickable filters.
+The library offers cover shelves grouped by location and a grid view. The first shelf request returns a bounded preview from every non-empty shelf, including books without a location; shelves are not discovered through global book pagination. Filters apply before grouping. Swipe a shelf or use its arrows to browse loaded books. Grid and shelf pages are cached separately. Counts refer to loaded results. Reaching the end of a shelf loads its next batch and advances to the first new book. Grid mode loads the next page as you scroll down. Searching and selecting books use the grid. Tags are clickable filters.
 
 The `libroo-library-layout` first-party preference cookie remembers the chosen layout in the current browser; it contains only `shelves` or `grid`, not book or account data. Coverless books use local title-and-author jackets and do not trigger additional external requests.
 

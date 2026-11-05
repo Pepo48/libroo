@@ -75,6 +75,13 @@ describe('LibraryTransferRepository.importRecords on D1', () => {
     const counts = (items: typeof first.items) => Object.fromEntries(['Alpha', 'Beta', 'No location'].map(path => [path, items.filter(item => (item.location?.path ?? 'No location') === path).length]))
     expect(counts(first.items)).toEqual({ 'Alpha': 3, 'Beta': 2, 'No location': 1 })
     expect(first.pagination).toMatchObject({ totalItems: 21, totalPages: 6, perShelf: true, hasMore: true })
+    const alphaShelfId = first.items.find(item => item.location?.path === 'Alpha')!.location!.id
+    const alphaPage = await shelfLibrary(2, 3, undefined, true, alphaShelfId)
+    expect(alphaPage.items.map(item => item.location?.path)).toEqual(['Alpha', 'Alpha', 'Alpha'])
+    expect(alphaPage.pagination.shelfCounts).toEqual({ [alphaShelfId]: 18 })
+    const unlocated = await shelfLibrary(1, 3, undefined, true, 'none')
+    expect(unlocated.items.map(item => item.book.title)).toEqual(['Unlocated'])
+    expect(unlocated.pagination.shelfCounts).toEqual({ none: 1 })
     const grid = await shelfLibrary(1, 3, undefined, false)
     expect(grid.items).toHaveLength(3)
     expect(grid.pagination).toMatchObject({ totalItems: 21, totalPages: 7 })
@@ -775,10 +782,10 @@ function importRecord(overrides: Partial<LibraryImportBookInput>): LibraryImport
   }
 }
 
-async function shelfLibrary(page: number, pageSize: number, tags?: string[], perShelf = true) {
+async function shelfLibrary(page: number, pageSize: number, tags?: string[], perShelf = true, shelf?: string) {
   const database = db as unknown as DbServiceInterface['db']
   return Effect.runPromise(Effect.flatMap(BookRepository, repository => repository.getLibrary('user-1', {
-    page, pageSize, perShelf, sortBy: 'title', tags
+    page, pageSize, perShelf, shelf, sortBy: 'title', tags
   })).pipe(
     Effect.provide(BookRepositoryLive),
     Effect.provide(Layer.succeed(DbService, { db: database, executeAtomic: build => database.batch(build(database)) }))

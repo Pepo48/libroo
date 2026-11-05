@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { DashboardPagination } from '~/stores/libraryDashboard'
 import type { LibraryBook, LibraryBookEnrichmentUpdate, BookLocationWithCount, LibraryState, TagWithCount } from '~~/shared/types/book'
 import {
   buildLibraryRouteQuery,
@@ -13,14 +14,7 @@ import {
 
 interface PaginatedResponse {
   items: LibraryBook[]
-  pagination: {
-    perShelf?: boolean
-    page: number
-    pageSize: number
-    totalItems: number
-    totalPages: number
-    hasMore: boolean
-  }
+  pagination: DashboardPagination
 }
 
 interface PreferencesResponse {
@@ -189,25 +183,26 @@ const { data: availableTags } = useFetch<TagWithCount[]>('/api/tags', {
 })
 
 // Fetch books with pagination
+const bookQuery = computed(() => ({
+  page: page.value,
+  pageSize: pageSize.value,
+  layout: useShelfPagination.value ? 'shelves' : undefined,
+  search: search.value || undefined,
+  libraryState: hasLibraryStateFilter(libraryState.value) ? libraryState.value.join(',') : undefined,
+  loanStatus: showPhysicalFilters.value && loanStatus.value !== 'all' ? loanStatus.value : undefined,
+  readingStatus: showPhysicalFilters.value && readingStatus.value !== 'all' ? readingStatus.value : undefined,
+  tags: tags.value.length ? tags.value.join(',') : undefined,
+  location: showPhysicalFilters.value ? location.value || undefined : undefined,
+  locationId: showPhysicalFilters.value ? locationId.value || undefined : undefined,
+  includeLocationDescendants: showPhysicalFilters.value ? includeLocationDescendants.value || undefined : undefined,
+  sortBy: sortBy.value === 'dateAdded' ? undefined : sortBy.value
+}))
 const { data, refresh, status, error: libraryFetchError } = await useFetch<PaginatedResponse>('/api/books', {
   headers: useRequestHeaders(['cookie']),
   immediate: shouldFetchInitial && !deferInitialBooks,
   lazy: true,
   watch: false,
-  query: computed(() => ({
-    page: page.value,
-    pageSize: pageSize.value,
-    layout: useShelfPagination.value ? 'shelves' : undefined,
-    search: search.value || undefined,
-    libraryState: hasLibraryStateFilter(libraryState.value) ? libraryState.value.join(',') : undefined,
-    loanStatus: showPhysicalFilters.value && loanStatus.value !== 'all' ? loanStatus.value : undefined,
-    readingStatus: showPhysicalFilters.value && readingStatus.value !== 'all' ? readingStatus.value : undefined,
-    tags: tags.value.length ? tags.value.join(',') : undefined,
-    location: showPhysicalFilters.value ? location.value || undefined : undefined,
-    locationId: showPhysicalFilters.value ? locationId.value || undefined : undefined,
-    includeLocationDescendants: showPhysicalFilters.value ? includeLocationDescendants.value || undefined : undefined,
-    sortBy: sortBy.value === 'dateAdded' ? undefined : sortBy.value
-  }))
+  query: bookQuery
 })
 
 watch(data, (response) => {
@@ -635,10 +630,53 @@ async function clearFilters() {
   }
 }
 
-const revealBookId = ref<string | null>(null)
-watch(layout, () => {
-  revealBookId.value = null
-})
+const newBookByShelf = reactive(new Map<string, string>())
+const shelfRequests = reactive(new Map<string, AbortController>())
+const shelfHasMore = (group: { key: string, books: LibraryBook[] }) =>
+  group.books.length < (pagination.value?.shelfCounts?.[group.key] ?? 0)
+
+function resetShelfRequests() {
+  for (const controller of shelfRequests.values()) controller.abort()
+  shelfRequests.clear()
+  newBookByShelf.clear()
+}
+watch([layout, selectionMode, activeResultCacheKey, isApplyingFilters], resetShelfRequests)
+onBeforeUnmount(resetShelfRequests)
+
+async function loadShelf(group: { key: string, books: LibraryBook[] }) {
+  if (!useShelfLayout.value || isApplyingFilters.value || status.value === 'pending' || shelfRequests.has(group.key) || !shelfHasMore(group)) return
+  const currentPagination = paginationState.value
+  if (!currentPagination) return
+  const nextPage = currentPagination.shelfNextPages?.[group.key] ?? Math.floor(group.books.length / pageSize.value) + 1
+  const controller = new AbortController()
+  shelfRequests.set(group.key, controller)
+  try {
+    const result = await $fetch<PaginatedResponse>('/api/books', {
+      query: { ...bookQuery.value, shelf: group.key, page: nextPage },
+      signal: controller.signal
+    })
+    if (controller.signal.aborted || paginationState.value !== currentPagination) return
+    const existingIds = new Set(allBooks.value.map(book => book.id))
+    const added = result.items.filter(book => !existingIds.has(book.id))
+    allBooks.value.push(...added)
+    currentPagination.shelfNextPages ??= {}
+    currentPagination.shelfNextPages[group.key] = nextPage + 1
+    if (currentPagination.shelfCounts) {
+      currentPagination.shelfCounts[group.key] = result.pagination.hasMore
+        ? result.pagination.totalItems
+        : group.books.length + added.length
+    }
+    if (added[0]) newBookByShelf.set(group.key, added[0].id)
+    applyPendingEnrichmentUpdates()
+    cacheResultsAction(activeResultCacheKey.value)
+  } catch {
+    if (!controller.signal.aborted) {
+      toast.add({ title: 'Unable to load more books', description: 'Use the shelf arrow to try again.', color: 'error' })
+    }
+  } finally {
+    if (shelfRequests.get(group.key) === controller) shelfRequests.delete(group.key)
+  }
+}
 const selectedBookIds = ref<string[]>([])
 const bulkDeleteOpen = ref(false)
 watch(selectionMode, () => {
@@ -668,26 +706,37 @@ async function onBulkFinished() {
   }
 }
 
-// Load more
+const gridEnd = useTemplateRef<HTMLElement>('gridEnd')
+const gridLoadFailed = ref(false)
+watch(activeResultCacheKey, () => {
+  gridLoadFailed.value = false
+})
+
 async function loadMore() {
-  if (pagination.value?.hasMore && !isLoadingMore.value) {
-    isLoadingMore.value = true
-    const previousPage = page.value
-    const previousIds = new Set(books.value.map(book => book.id))
-    try {
-      page.value++
-      await refresh()
-      if (libraryFetchError.value) throw libraryFetchError.value
-      await nextTick()
-      if (useShelfLayout.value) revealBookId.value = books.value.find(book => !previousIds.has(book.id))?.id ?? null
-    } catch {
-      page.value = previousPage
-      toast.add({ title: 'Unable to load more books', description: 'Please try again.', color: 'error' })
-    } finally {
-      isLoadingMore.value = false
-    }
+  if (useShelfPagination.value || !pagination.value?.hasMore || isLoadingMore.value || isApplyingFilters.value || status.value === 'pending') return
+  isLoadingMore.value = true
+  gridLoadFailed.value = false
+  const previousPage = page.value
+  try {
+    page.value++
+    await refresh()
+    if (libraryFetchError.value) throw libraryFetchError.value
+  } catch {
+    page.value = previousPage
+    gridLoadFailed.value = true
+  } finally {
+    isLoadingMore.value = false
   }
 }
+
+watch(gridEnd, (target, _, onCleanup) => {
+  if (!target) return
+  const observer = new IntersectionObserver(([entry]) => {
+    if (entry?.isIntersecting) void loadMore()
+  }, { rootMargin: '160px' })
+  observer.observe(target)
+  onCleanup(() => observer.disconnect())
+}, { flush: 'post' })
 
 async function syncLoadedPages(targetPages: number) {
   const normalizedTargetPages = Math.max(1, targetPages)
@@ -1095,8 +1144,10 @@ async function syncLoadedPages(targetPages: number) {
             :key="group.key"
             :title="group.label"
             :books="group.books"
-            :more-loaded="!!pagination?.hasMore"
-            :reveal-book-id="revealBookId"
+            :has-more="shelfHasMore(group)"
+            :loading="shelfRequests.has(group.key)"
+            :reveal-book-id="newBookByShelf.get(group.key)"
+            @load-more="loadShelf(group)"
             @tag="toggleTagFilter"
           />
         </div>
@@ -1148,20 +1199,35 @@ async function syncLoadedPages(targetPages: number) {
           />
         </div>
 
-        <!-- Load More -->
         <div
-          v-if="pagination?.hasMore"
+          v-if="!useShelfPagination && pagination?.hasMore"
           class="mt-8 text-center"
         >
+          <span
+            v-if="isLoadingMore"
+            role="status"
+            aria-label="Loading more books"
+            class="inline-flex gap-1.5 text-muted"
+          >
+            <span class="size-1.5 rounded-full bg-current motion-safe:animate-bounce" />
+            <span class="size-1.5 rounded-full bg-current motion-safe:animate-bounce [animation-delay:120ms]" />
+            <span class="size-1.5 rounded-full bg-current motion-safe:animate-bounce [animation-delay:240ms]" />
+          </span>
           <UButton
+            v-else-if="gridLoadFailed"
             color="neutral"
             variant="outline"
-            :loading="isLoadingMore"
-            :disabled="isLoadingMore"
             @click="loadMore"
           >
-            Load More
+            Retry loading books
           </UButton>
+          <div
+            v-else-if="!isApplyingFilters && status !== 'pending'"
+            ref="gridEnd"
+            data-testid="grid-end"
+            class="h-px"
+            aria-hidden="true"
+          />
         </div>
 
         <!-- Pagination Info -->
