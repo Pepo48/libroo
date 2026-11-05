@@ -162,7 +162,13 @@ export interface BatchDeleteResult {
   failedIds: string[]
 }
 
-export interface BookDetails {
+export interface BookEditionFields {
+  language?: string | null
+  series?: string | null
+  seriesPosition?: string | null
+}
+
+export interface BookDetails extends BookEditionFields {
   id: string
   bookId: string
   libraryState: LibraryState

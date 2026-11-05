@@ -18,11 +18,15 @@ export const libraryCsvColumns = [
   'format_version',
   'source',
   'open_library_key',
-  'libroo_user_book_id'
+  'libroo_user_book_id',
+  'language',
+  'series',
+  'series_position'
 ] as const
 
 export type LibraryCsvColumn = typeof libraryCsvColumns[number]
-export type LibraryCsvRow = Record<LibraryCsvColumn, string>
+type EditionCsvColumn = 'language' | 'series' | 'series_position'
+export type LibraryCsvRow = Record<Exclude<LibraryCsvColumn, EditionCsvColumn>, string> & Partial<Record<EditionCsvColumn, string>>
 
 export const LIBRARY_CSV_MAX_BYTES = 10 * 1024 * 1024
 export const LIBRARY_CSV_MAX_DATA_ROWS = 10_000
@@ -156,7 +160,10 @@ export function* parseLibraryCsvRows(csv: string): Generator<LibraryCsvRow> {
         'format_version',
         'source',
         'open_library_key',
-        'libroo_user_book_id'
+        'libroo_user_book_id',
+        'language',
+        'series',
+        'series_position'
       ])
       const missingColumns = libraryCsvColumns.filter(column => !legacyOptionalColumns.has(column) && !parsedHeaderIndexes.has(column))
       if (missingColumns.length > 0) {

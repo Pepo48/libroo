@@ -80,7 +80,10 @@ describe('library transfer CSV', () => {
       format_version: '2',
       source: 'open_library',
       open_library_key: '/books/OL1M',
-      libroo_user_book_id: 'ub-1'
+      libroo_user_book_id: 'ub-1',
+      language: 'English',
+      series: 'Hainish Cycle',
+      series_position: '4'
     }])
 
     expect(parseLibraryCsv(csv)).toEqual([{
@@ -103,7 +106,10 @@ describe('library transfer CSV', () => {
       format_version: '2',
       source: 'open_library',
       open_library_key: '/books/OL1M',
-      libroo_user_book_id: 'ub-1'
+      libroo_user_book_id: 'ub-1',
+      language: 'English',
+      series: 'Hainish Cycle',
+      series_position: '4'
     }])
   })
 

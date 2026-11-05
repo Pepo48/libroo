@@ -71,7 +71,7 @@ export const BookEditRepositoryLive = Layer.effect(BookEditRepository, Effect.ge
               }).from(userBooks).innerJoin(tags, eq(tags.normalizedName, key)).where(predicate)).onConflictDoNothing()
             )
           }
-          statements.push(db.update(userBooks).set({ bookId }).where(predicate).returning({ id: userBooks.id }))
+          statements.push(db.update(userBooks).set({ bookId, language: input.language, series: input.series, seriesPosition: input.seriesPosition }).where(predicate).returning({ id: userBooks.id }))
           statements.push(db.delete(books).where(and(
             eq(books.id, input.expectedBookId), eq(books.source, 'manual'), eq(books.createdByUserId, userId),
             not(exists(db.select({ id: userBooks.id }).from(userBooks).where(eq(userBooks.bookId, input.expectedBookId))))

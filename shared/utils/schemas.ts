@@ -625,7 +625,13 @@ export const removeBookSchema = z.object({
 
 export type RemoveBookSchema = z.infer<typeof removeBookSchema>
 
-export const bookEditSchema = z.object({
+export const bookEditionFieldsSchema = z.object({
+  language: trimmedNullableString(100, 'Language').optional(),
+  series: trimmedNullableString(300, 'Series').optional(),
+  seriesPosition: trimmedNullableString(50, 'Volume').optional()
+})
+
+export const bookEditSchema = bookEditionFieldsSchema.extend({
   title: manualBookCreateSchema.shape.title,
   authors: manualBookCreateSchema.shape.authors,
   isbn: manualBookCreateSchema.shape.isbn,

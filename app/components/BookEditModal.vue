@@ -24,7 +24,7 @@ const coverFile = ref<File | null>(null)
 let version = 0
 const state = reactive({
   expectedBookId: '', title: '', authors: [''], isbn: '', publisher: '', publishDate: '',
-  numberOfPages: null as number | null, addTags: [] as string[], description: '',
+  language: '', series: '', seriesPosition: '', numberOfPages: null as number | null, addTags: [] as string[], description: '',
   coverImage: null as BookEditSchema['coverImage'], removeCover: false
 })
 const pagesInput = computed<string | number>({
@@ -52,6 +52,7 @@ watch(open, (value) => {
     expectedBookId: props.book.bookId, title: props.book.title,
     authors: props.book.authors.length ? props.book.authors.map(author => author.name) : [props.book.author || ''],
     isbn: props.book.isbn || '', publisher: props.book.publishers || '', publishDate: props.book.publishDate || '',
+    language: props.book.language ?? '', series: props.book.series ?? '', seriesPosition: props.book.seriesPosition ?? '',
     numberOfPages: props.book.numberOfPages, addTags: [], description: props.book.description || '', coverImage: null, removeCover: false
   })
   coverFile.value = null
@@ -221,6 +222,35 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
                 type="number"
                 :min="1"
                 :max="100000"
+                class="w-full"
+              />
+            </UFormField>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-3">
+            <UFormField
+              :label="$t('ui.language')"
+              name="language"
+            >
+              <UInput
+                v-model="state.language"
+                class="w-full"
+              />
+            </UFormField>
+            <UFormField
+              :label="$t('ui.series')"
+              name="series"
+            >
+              <UInput
+                v-model="state.series"
+                class="w-full"
+              />
+            </UFormField>
+            <UFormField
+              :label="$t('ui.volume')"
+              name="seriesPosition"
+            >
+              <UInput
+                v-model="state.seriesPosition"
                 class="w-full"
               />
             </UFormField>

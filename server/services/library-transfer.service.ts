@@ -7,6 +7,7 @@ import {
   parseLibraryCsvRows,
   type LibraryCsvRow
 } from '../../shared/utils/library-transfer-csv'
+import { bookEditionFieldsSchema } from '../../shared/utils/schemas'
 import { BOOK_LOCATION_PATH_SEPARATOR_PATTERN } from '../../shared/utils/book-location'
 import { LOCATION_MAX_DEPTH } from '../../shared/utils/location-hierarchy'
 import type {
@@ -122,7 +123,14 @@ function toImportRecord(row: LibraryCsvRow): LibraryImportBookInput {
     throw new Error('format_version must be a positive integer')
   }
 
+  const edition = bookEditionFieldsSchema.parse({
+    language: row.language?.trim() || undefined,
+    series: row.series?.trim() || undefined,
+    seriesPosition: row.series_position?.trim() || undefined
+  })
+
   return {
+    ...edition,
     sourceUserBookId: row.libroo_user_book_id.trim() || null,
     title,
     authors: parseList(row.authors, 'authors'),
@@ -173,7 +181,10 @@ export const LibraryTransferServiceLive = Layer.effect(
             format_version: '2',
             source: record.source,
             open_library_key: record.openLibraryKey ?? '',
-            libroo_user_book_id: record.userBookId
+            libroo_user_book_id: record.userBookId,
+            language: record.language ?? '',
+            series: record.series ?? '',
+            series_position: record.seriesPosition ?? ''
           })))
         }),
 

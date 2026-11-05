@@ -105,6 +105,29 @@ const menuItems = computed(() => [
         class="size-4"
       /> {{ book.numberOfPages }} {{ $t('ui.pagesText') }}</span>
       <span
+        v-if="book.language"
+        class="inline-flex items-center gap-1.5"
+      >
+        <UIcon
+          name="i-lucide-languages"
+          class="size-4"
+          aria-hidden="true"
+        /> {{ book.language }}
+      </span>
+      <span
+        v-if="book.series || book.seriesPosition"
+        class="inline-flex items-center gap-1.5"
+      >
+        <UIcon
+          name="i-lucide-library"
+          class="size-4"
+          aria-hidden="true"
+        />
+        {{ book.series }}<template v-if="book.seriesPosition">
+          {{ book.series ? ' · ' : '' }}{{ /^\d+$/.test(book.seriesPosition) ? $t('refresh.seriesBook', { number: book.seriesPosition }) : book.seriesPosition }}
+        </template>
+      </span>
+      <span
         v-if="book.isbn"
         class="inline-flex items-center gap-1.5"
       ><UIcon

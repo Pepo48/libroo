@@ -22,6 +22,7 @@ import enrichmentMigration from '../../../../server/db/migrations/sqlite/0012_im
 import authFactorsMigration from '../../../../server/db/migrations/sqlite/0013_auth-two-factor-passkeys.sql?raw'
 import recentAuthMigration from '../../../../server/db/migrations/sqlite/0014_recent-auth.sql?raw'
 import durableOpenLibraryPayloadMigration from '../../../../server/db/migrations/sqlite/0019_durable_open_library_payload.sql?raw'
+import editionFieldsMigration from '../../../../server/db/migrations/sqlite/0022_book_edition_fields.sql?raw'
 import { authors, bookAuthors, bookEnrichmentJobs, books, loans, locations, tags, user, userBooks, userBookTags } from '../../../../server/db/schema'
 import { LibraryTransferRepository, LibraryTransferRepositoryLive } from '../../../../server/repositories/library-transfer.repository'
 import { LibraryCleanupRepository, LibraryCleanupRepositoryLive } from '../../../../server/repositories/library-cleanup.repository'
@@ -209,6 +210,15 @@ describe('LibraryTransferRepository.importRecords on D1', () => {
     sizes.length = 0
     expect(await run('existing')).toMatchObject({ created: 0, skipped: 25, failed: [] })
     expect(sizes).toHaveLength(1)
+  })
+
+  it('imports and exports edition fields and preserves them on a legacy CSV update', async () => {
+    const edition = { language: 'Slovak', series: 'S láskou z…', seriesPosition: '6' }
+    const record = importRecord({ title: 'Edition details', ...edition })
+    expect(await importRecords([record], 'csv')).toMatchObject({ created: 1, failed: [] })
+    expect(await importRecords([importRecord({ title: record.title })], 'csv')).toMatchObject({ updated: 1, failed: [] })
+    const records = await runRepository(db, Effect.flatMap(LibraryTransferRepository, repo => repo.listExportRecords('user-1')))
+    expect(records).toMatchObject([edition])
   })
 
   it('rolls back a failed write batch and preserves valid row results and dimension IDs on fallback', async () => {
@@ -678,7 +688,7 @@ describe('LibraryTransferRepository.importRecords on D1', () => {
 })
 
 async function applyMigrations(database: D1Database) {
-  for (const migration of [initialMigration, termsMigration, locationRestrictMigration, libraryStateMigration, previouslyOwnedMigration, inviteEmailMigration, loanNoteMigration, borrowerSuggestionsMigration, enrichmentMigration, authFactorsMigration, recentAuthMigration, canonicalEnrichmentMigration, durableOpenLibraryPayloadMigration]) {
+  for (const migration of [initialMigration, termsMigration, locationRestrictMigration, libraryStateMigration, previouslyOwnedMigration, inviteEmailMigration, loanNoteMigration, borrowerSuggestionsMigration, enrichmentMigration, authFactorsMigration, recentAuthMigration, canonicalEnrichmentMigration, durableOpenLibraryPayloadMigration, editionFieldsMigration]) {
     for (const statement of migration.split('--> statement-breakpoint')) {
       const migrationStatement = statement.trim()
       if (migrationStatement) {

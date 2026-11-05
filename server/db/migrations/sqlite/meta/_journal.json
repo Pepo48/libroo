@@ -155,6 +155,13 @@
       "when": 1793758128182,
       "tag": "0021_catalog_request_controls",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "6",
+      "when": 1793892901121,
+      "tag": "0022_book_edition_fields",
+      "breakpoints": true
     }
   ]
 }

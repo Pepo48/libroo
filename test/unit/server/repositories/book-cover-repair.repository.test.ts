@@ -7,6 +7,7 @@ import inviteEmailMigration from '../../../../server/db/migrations/sqlite/0008_b
 import enrichmentMigration from '../../../../server/db/migrations/sqlite/0012_imported_book_enrichment.sql?raw'
 import authFactorsMigration from '../../../../server/db/migrations/sqlite/0013_auth-two-factor-passkeys.sql?raw'
 import durableOpenLibraryPayloadMigration from '../../../../server/db/migrations/sqlite/0019_durable_open_library_payload.sql?raw'
+import editionFieldsMigration from '../../../../server/db/migrations/sqlite/0022_book_edition_fields.sql?raw'
 import { Effect, Layer } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
 import { createClient } from '@libsql/client'
@@ -28,7 +29,7 @@ describe('BookRepository cover repair helpers', () => {
     db = drizzle(client)
     await client.execute('PRAGMA foreign_keys = ON')
 
-    for (const migration of [initialMigration, termsAcceptanceMigration, locationRestrictMigration, libraryStateMigration, previouslyOwnedMigration, inviteEmailMigration, enrichmentMigration, authFactorsMigration, durableOpenLibraryPayloadMigration]) {
+    for (const migration of [initialMigration, termsAcceptanceMigration, locationRestrictMigration, libraryStateMigration, previouslyOwnedMigration, inviteEmailMigration, enrichmentMigration, authFactorsMigration, durableOpenLibraryPayloadMigration, editionFieldsMigration]) {
       for (const statement of migration.split('--> statement-breakpoint')) {
         const sql = statement.trim()
         if (sql) {
