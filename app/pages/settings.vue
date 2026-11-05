@@ -23,6 +23,7 @@ const languageOptions = computed(() => locales.value.map(item => ({ label: item.
 usePageTitle(() => t('ui.settings'))
 
 const toast = useToast()
+const textFor = getClientTranslator()
 const route = useRoute()
 const authStore = useAuthStore()
 const dashboardStore = useLibraryDashboardStore()
@@ -209,8 +210,8 @@ if (route.query.verify === 'required') {
   toast.add({
     title: t('ui.verifyYourEmail'),
     description: emailCapabilities.value.emailVerificationEnabled
-      ? 'Open the verification link sent to your email before using the rest of Libroo.'
-      : 'Email verification is unavailable. Contact the administrator if your account is blocked.',
+      ? t('copy.openTheVerificationLinkSentToYourEmailBeforeUsing')
+      : t('copy.emailVerificationIsUnavailableContactTheAdministratorIfYourAccount'),
     color: 'warning'
   })
 }
@@ -239,8 +240,8 @@ async function refreshAccountMethods() {
       return true
     } catch (err: unknown) {
       toast.add({
-        title: 'Unable to load connected sign-in methods',
-        description: getFailureMessage(err, 'Try again shortly.'),
+        title: t('copy.unableToLoadConnectedSignInMethods'),
+        description: getFailureMessage(err, t('copy.tryAgainShortly')),
         color: 'error'
       })
       return false
@@ -269,12 +270,12 @@ async function initializeOidcLinking() {
   toast.add(oidcProviderLinked.value
     ? {
         title: `${oidcProvider.value.displayName} connected`,
-        description: 'You can now use this provider to sign in to your existing account.',
+        description: t('copy.youCanNowUseThisProviderToSignInTo'),
         color: 'success'
       }
     : {
-        title: 'Unable to confirm OIDC connection',
-        description: 'The provider did not appear in your connected sign-in methods. Try connecting it again.',
+        title: t('copy.unableToConfirmOidcConnection'),
+        description: t('copy.theProviderDidNotAppearInYourConnectedSignIn'),
         color: 'error'
       })
 }
@@ -293,7 +294,7 @@ async function connectOidcProvider() {
   } catch (err: unknown) {
     toast.add({
       title: `Unable to connect ${provider.displayName}`,
-      description: getFailureMessage(err, 'Try again shortly.'),
+      description: getFailureMessage(err, t('copy.tryAgainShortly')),
       color: 'error'
     })
     isLinkingOidc.value = false
@@ -335,7 +336,7 @@ async function requestRecentAuth(actionId: RecentAuthAction, action: () => void)
 async function startOidcRecentAuth(action: RecentAuthAction) {
   const provider = authCapabilities.value.oauthProvider
   if (!provider) {
-    toast.add({ title: 'Reauthentication unavailable', description: 'No sign-in method is configured for this account.', color: 'error' })
+    toast.add({ title: t('copy.reauthenticationUnavailable'), description: t('copy.noSignInMethodIsConfiguredForThisAccount'), color: 'error' })
     return
   }
 
@@ -350,9 +351,9 @@ async function startOidcRecentAuth(action: RecentAuthAction) {
         max_age: '0'
       }
     })
-    if (result.error) throw new Error(result.error.message || 'Unable to sign in again')
+    if (result.error) throw new Error(result.error.message || t('copy.unableToSignInAgain'))
   } catch (err: unknown) {
-    toast.add({ title: 'Reauthentication failed', description: getFailureMessage(err, 'Unable to sign in again'), color: 'error' })
+    toast.add({ title: t('copy.reauthenticationFailed'), description: getFailureMessage(err, t('copy.unableToSignInAgain')), color: 'error' })
     isConfirmingRecentAuth.value = false
   }
 }
@@ -410,7 +411,7 @@ async function confirmRecentAuth() {
     pendingRecentAuthAction.value?.()
     pendingRecentAuthAction.value = null
   } catch (err: unknown) {
-    toast.add({ title: 'Password confirmation failed', description: getFailureMessage(err, 'Unable to confirm your password'), color: 'error' })
+    toast.add({ title: t('copy.passwordConfirmationFailed'), description: getFailureMessage(err, t('copy.unableToConfirmYourPassword')), color: 'error' })
   } finally {
     isConfirmingRecentAuth.value = false
   }
@@ -446,11 +447,11 @@ async function enableTwoFactor() {
   isEnablingTwoFactor.value = true
   try {
     const result = await authClient.twoFactor.enable({ password: recentAuthPassword.value })
-    if (result.error || !result.data) throw new Error(result.error?.message || 'Unable to start two-factor setup')
+    if (result.error || !result.data) throw new Error(result.error?.message || t('copy.unableToStartTwoFactorSetup'))
     // Better Auth 1.7 returns the enrollment method. Libroo currently offers
     // TOTP setup only, so never assume an OTP response has TOTP fields.
     if (result.data.method !== 'totp') {
-      throw new Error('This deployment returned an unsupported two-factor enrollment method')
+      throw new Error(t('copy.thisDeploymentReturnedAnUnsupportedTwoFactorEnrollmentMethod'))
     }
     totpUri.value = result.data.totpURI
     backupCodes.value = result.data.backupCodes
@@ -460,7 +461,7 @@ async function enableTwoFactor() {
     backupCodesCopied.value = false
     twoFactorSetupStep.value = 'backup-codes'
   } catch (err: unknown) {
-    toast.add({ title: 'Two-factor setup failed', description: getFailureMessage(err, 'Unable to start two-factor setup'), color: 'error' })
+    toast.add({ title: t('copy.twoFactorSetupFailed'), description: getFailureMessage(err, t('copy.unableToStartTwoFactorSetup')), color: 'error' })
   } finally {
     isEnablingTwoFactor.value = false
   }
@@ -470,12 +471,12 @@ async function verifyTwoFactorSetup() {
   isVerifyingTotp.value = true
   try {
     const result = await authClient.twoFactor.verifyTotp({ code: twoFactorCode.value.trim() })
-    if (result.error) throw new Error(result.error.message || 'Invalid authenticator code')
+    if (result.error) throw new Error(result.error.message || t('copy.invalidAuthenticatorCode'))
     twoFactorSetupOpen.value = false
     await authStore.refresh()
-    toast.add({ title: 'Two-factor authentication enabled', description: 'Store your recovery codes somewhere safe.', color: 'success' })
+    toast.add({ title: t('copy.twoFactorAuthenticationEnabled'), description: t('copy.storeYourRecoveryCodesSomewhereSafe'), color: 'success' })
   } catch (err: unknown) {
-    toast.add({ title: 'Verification failed', description: getFailureMessage(err, 'Unable to verify the authenticator code'), color: 'error' })
+    toast.add({ title: t('copy.verificationFailed'), description: getFailureMessage(err, t('copy.unableToVerifyTheAuthenticatorCode')), color: 'error' })
   } finally {
     isVerifyingTotp.value = false
   }
@@ -498,18 +499,18 @@ async function copyBackupCodes() {
   const copied = await copyToClipboard(backupCodes.value.join('\n'))
   if (copied) {
     backupCodesCopied.value = true
-    toast.add({ title: 'Recovery codes copied', color: 'success' })
+    toast.add({ title: t('copy.recoveryCodesCopied'), color: 'success' })
     return
   }
 
-  toast.add({ title: 'Could not copy recovery codes', description: 'Select and copy the codes manually before continuing.', color: 'warning' })
+  toast.add({ title: t('copy.couldNotCopyRecoveryCodes'), description: t('copy.selectAndCopyTheCodesManuallyBeforeContinuing'), color: 'warning' })
 }
 
 async function copyTotpUri() {
   const copied = await copyToClipboard(totpUri.value)
   toast.add({
-    title: copied ? 'Authenticator URI copied' : 'Could not copy authenticator URI',
-    description: copied ? undefined : 'Select and copy the URI manually.',
+    title: copied ? t('copy.authenticatorUriCopied') : t('copy.couldNotCopyAuthenticatorUri'),
+    description: copied ? undefined : t('copy.selectAndCopyTheUriManually'),
     color: copied ? 'success' : 'warning'
   })
 }
@@ -528,12 +529,12 @@ async function disableTwoFactor() {
   isDisablingTwoFactor.value = true
   try {
     const result = await authClient.twoFactor.disable({ password: recentAuthPassword.value })
-    if (result.error) throw new Error(result.error.message || 'Unable to disable two-factor authentication')
+    if (result.error) throw new Error(result.error.message || t('copy.unableToDisableTwoFactorAuthentication'))
     twoFactorManagementOpen.value = false
     await authStore.refresh()
-    toast.add({ title: 'Two-factor authentication disabled', color: 'success' })
+    toast.add({ title: t('copy.twoFactorAuthenticationDisabled'), color: 'success' })
   } catch (err: unknown) {
-    toast.add({ title: 'Unable to disable two-factor authentication', description: getFailureMessage(err, 'Unable to disable two-factor authentication'), color: 'error' })
+    toast.add({ title: t('copy.unableToDisableTwoFactorAuthentication'), description: getFailureMessage(err, t('copy.unableToDisableTwoFactorAuthentication')), color: 'error' })
   } finally {
     isDisablingTwoFactor.value = false
   }
@@ -543,11 +544,11 @@ async function regenerateBackupCodes() {
   isRegeneratingBackupCodes.value = true
   try {
     const result = await authClient.twoFactor.generateBackupCodes({ password: recentAuthPassword.value })
-    if (result.error || !result.data) throw new Error(result.error?.message || 'Unable to regenerate recovery codes')
+    if (result.error || !result.data) throw new Error(result.error?.message || t('copy.unableToRegenerateRecoveryCodes'))
     backupCodes.value = result.data.backupCodes
-    toast.add({ title: 'Recovery codes regenerated', description: 'All previous recovery codes are now invalid.', color: 'success' })
+    toast.add({ title: t('copy.recoveryCodesRegenerated'), description: t('copy.allPreviousRecoveryCodesAreNowInvalid'), color: 'success' })
   } catch (err: unknown) {
-    toast.add({ title: 'Unable to regenerate recovery codes', description: getFailureMessage(err, 'Unable to regenerate recovery codes'), color: 'error' })
+    toast.add({ title: t('copy.unableToRegenerateRecoveryCodes'), description: getFailureMessage(err, t('copy.unableToRegenerateRecoveryCodes')), color: 'error' })
   } finally {
     isRegeneratingBackupCodes.value = false
   }
@@ -557,10 +558,10 @@ async function refreshPasskeys() {
   if (!import.meta.client || !showPasskeyManagement.value) return
   try {
     const result = await authClient.passkey.listUserPasskeys()
-    if (result.error) throw new Error(result.error.message || 'Unable to load passkeys')
+    if (result.error) throw new Error(result.error.message || t('copy.unableToLoadPasskeys'))
     passkeys.value = result.data ?? []
   } catch (err: unknown) {
-    toast.add({ title: 'Unable to load passkeys', description: getFailureMessage(err, 'Try again shortly.'), color: 'error' })
+    toast.add({ title: t('copy.unableToLoadPasskeys'), description: getFailureMessage(err, t('copy.tryAgainShortly')), color: 'error' })
   }
 }
 
@@ -574,12 +575,12 @@ async function addPasskey() {
   isAddingPasskey.value = true
   try {
     const result = await authClient.passkey.addPasskey({ name: passkeyState.name.trim() || undefined })
-    if (result.error) throw new Error(result.error.message || 'Unable to add passkey')
+    if (result.error) throw new Error(result.error.message || t('copy.unableToAddPasskey'))
     passkeyState.name = ''
     await refreshPasskeys()
-    toast.add({ title: 'Passkey added', color: 'success' })
+    toast.add({ title: t('copy.passkeyAdded'), color: 'success' })
   } catch (err: unknown) {
-    toast.add({ title: 'Unable to add passkey', description: getFailureMessage(err, 'Unable to add passkey'), color: 'error' })
+    toast.add({ title: t('copy.unableToAddPasskey'), description: getFailureMessage(err, t('copy.unableToAddPasskey')), color: 'error' })
   } finally {
     isAddingPasskey.value = false
   }
@@ -589,11 +590,11 @@ async function removePasskey(id: string) {
   isRemovingPasskey.value = id
   try {
     const result = await authClient.passkey.deletePasskey({ id })
-    if (result.error) throw new Error(result.error.message || 'Unable to remove passkey')
+    if (result.error) throw new Error(result.error.message || t('copy.unableToRemovePasskey'))
     await refreshPasskeys()
-    toast.add({ title: 'Passkey removed', color: 'success' })
+    toast.add({ title: t('copy.passkeyRemoved'), color: 'success' })
   } catch (err: unknown) {
-    toast.add({ title: 'Unable to remove passkey', description: getFailureMessage(err, 'Unable to remove passkey'), color: 'error' })
+    toast.add({ title: t('copy.unableToRemovePasskey'), description: getFailureMessage(err, t('copy.unableToRemovePasskey')), color: 'error' })
   } finally {
     isRemovingPasskey.value = null
   }
@@ -613,8 +614,8 @@ async function changeEmail(payload: FormSubmitEvent<AccountEmailChangeSchema>) {
         })
       } catch {
         toast.add({
-          title: 'Email change failed',
-          description: 'Current password is incorrect.',
+          title: t('copy.emailChangeFailed'),
+          description: t('copy.currentPasswordIsIncorrect'),
           color: 'error'
         })
         return
@@ -632,8 +633,8 @@ async function changeEmail(payload: FormSubmitEvent<AccountEmailChangeSchema>) {
       pendingEmailChange.value = result.pendingEmail
       emailState.email = verificationStatus.value.email || user.value?.email || emailState.email
       toast.add({
-        title: 'Verification email sent',
-        description: 'Your current email remains active until the new address is verified.',
+        title: t('copy.verificationEmailSent'),
+        description: t('copy.yourCurrentEmailRemainsActiveUntilTheNewAddressIs'),
         color: 'success'
       })
     } else {
@@ -643,18 +644,18 @@ async function changeEmail(payload: FormSubmitEvent<AccountEmailChangeSchema>) {
 
       if (result.error) {
         toast.add({
-          title: 'Email change failed',
-          description: result.error.message || 'Unable to update email',
+          title: t('copy.emailChangeFailed'),
+          description: result.error.message || t('copy.unableToUpdateEmail'),
           color: 'error'
         })
         return
       }
 
       toast.add({
-        title: 'Email updated',
+        title: t('copy.emailUpdated'),
         description: emailCapabilities.value.emailSendingEnabled
           ? undefined
-          : 'No verification email was sent because email sending is not configured.',
+          : t('copy.noVerificationEmailWasSentBecauseEmailSendingIsNot'),
         color: 'success'
       })
     }
@@ -665,8 +666,8 @@ async function changeEmail(payload: FormSubmitEvent<AccountEmailChangeSchema>) {
     emailManagementOpen.value = false
   } catch (err: unknown) {
     toast.add({
-      title: 'Email change failed',
-      description: getFailureMessage(err, 'Unable to update email'),
+      title: t('copy.emailChangeFailed'),
+      description: getFailureMessage(err, t('copy.unableToUpdateEmail')),
       color: 'error'
     })
   } finally {
@@ -683,14 +684,14 @@ async function resendVerificationEmail() {
     })
     await refreshVerificationStatus()
     toast.add({
-      title: 'Verification email sent',
+      title: t('copy.verificationEmailSent'),
       description: `Check ${verificationStatus.value.pendingEmail || verificationStatus.value.email || user.value?.email}.`,
       color: 'success'
     })
   } catch (err: unknown) {
     toast.add({
-      title: 'Verification failed',
-      description: getFailureMessage(err, 'Unable to send verification email'),
+      title: t('copy.verificationFailed'),
+      description: getFailureMessage(err, t('copy.unableToSendVerificationEmail')),
       color: 'error'
     })
   } finally {
@@ -710,8 +711,8 @@ async function changePassword(payload: FormSubmitEvent<AccountPasswordChangeSche
 
     if (result.error) {
       toast.add({
-        title: 'Password change failed',
-        description: result.error.message || 'Unable to update password',
+        title: t('copy.passwordChangeFailed'),
+        description: result.error.message || t('copy.unableToUpdatePassword'),
         color: 'error'
       })
       return
@@ -732,8 +733,8 @@ async function changePassword(payload: FormSubmitEvent<AccountPasswordChangeSche
     })
   } catch (err: unknown) {
     toast.add({
-      title: 'Password change failed',
-      description: getFailureMessage(err, 'Unable to update password'),
+      title: t('copy.passwordChangeFailed'),
+      description: getFailureMessage(err, t('copy.unableToUpdatePassword')),
       color: 'error'
     })
   } finally {
@@ -753,15 +754,15 @@ async function deleteAccount(payload: FormSubmitEvent<AccountDeletionSchema>) {
     accountDeletionOpen.value = false
     resetAccountDeletionForm()
     toast.add({
-      title: 'Account deleted',
-      description: 'Your Libroo account and personal library data were deleted.',
+      title: t('copy.accountDeleted'),
+      description: t('copy.yourLibrooAccountAndPersonalLibraryDataWereDeleted'),
       color: 'success'
     })
     await navigateTo('/login')
   } catch (err: unknown) {
     toast.add({
-      title: 'Account deletion failed',
-      description: getFailureMessage(err, 'Unable to delete your account'),
+      title: t('copy.accountDeletionFailed'),
+      description: getFailureMessage(err, t('copy.unableToDeleteYourAccount')),
       color: 'error'
     })
   } finally {
@@ -777,7 +778,7 @@ async function downloadLibrary(format: 'csv' | 'zip') {
     let blob: Blob
     if (format === 'zip') {
       const { createLibraryBackup } = await import('~/utils/library-backup')
-      const backup = await createLibraryBackup(await $fetch<LibraryBackupExport>('/api/library/backup'))
+      const backup = await createLibraryBackup(await $fetch<LibraryBackupExport>('/api/library/backup'), textFor)
       blob = backup.blob
       if (backup.missing) {
         toast.add({ title: t('settings.backup.coverExportWarning', { count: backup.missing }), color: 'warning' })
@@ -796,8 +797,8 @@ async function downloadLibrary(format: 'csv' | 'zip') {
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   } catch (err: unknown) {
     toast.add({
-      title: 'Export failed',
-      description: getFailureMessage(err, 'Unable to export your library'),
+      title: t('copy.exportFailed'),
+      description: getFailureMessage(err, t('copy.unableToExportYourLibrary')),
       color: 'error'
     })
   } finally {
@@ -833,7 +834,7 @@ async function handleImportFileChange(event: Event) {
   try {
     if (/\.zip$/i.test(file.name)) {
       const { openLibraryBackup } = await import('~/utils/library-backup')
-      const backup = await openLibraryBackup(file)
+      const backup = await openLibraryBackup(file, textFor)
       if (selection !== importSelection) {
         await backup.close()
         return
@@ -841,7 +842,7 @@ async function handleImportFileChange(event: Event) {
       importBackup.value = backup
       importCsv.value = backup.csv
     } else {
-      if (file.size > LIBRARY_CSV_MAX_BYTES) throw new Error('Choose a CSV file under 10 MB.')
+      if (file.size > LIBRARY_CSV_MAX_BYTES) throw new Error(t('copy.chooseACsvFileUnder10Mb'))
       const csv = await file.text()
       if (selection !== importSelection) return
       importCsv.value = csv
@@ -850,7 +851,7 @@ async function handleImportFileChange(event: Event) {
   } catch (error) {
     if (selection !== importSelection) return
     resetImport()
-    toast.add({ title: t('settings.backup.couldNotOpen'), description: getFailureMessage(error, 'Unable to open this file'), color: 'error' })
+    toast.add({ title: t('settings.backup.couldNotOpen'), description: getFailureMessage(error, t('copy.unableToOpenThisFile')), color: 'error' })
   } finally {
     if (selection === importSelection) isReadingImport.value = false
   }
@@ -923,8 +924,8 @@ async function importLibraryCsvFile() {
     for (const batchId of report.enrichmentBatchIds) dashboardStore.startEnrichmentBatch(batchId)
   } catch (err: unknown) {
     toast.add({
-      title: 'Import failed',
-      description: getFailureMessage(err, 'Unable to import your library'),
+      title: t('copy.importFailed'),
+      description: getFailureMessage(err, t('copy.unableToImportYourLibrary')),
       color: 'error'
     })
   } finally {
@@ -983,7 +984,7 @@ async function importLibraryCsvFile() {
                 </p>
                 <p class="truncate text-sm text-muted">
                   {{ pendingEmailChange
-                    ? `Changing to ${pendingEmailChange} — verification pending`
+                    ? $t('copy.pendingEmailChange', { email: pendingEmailChange })
                     : emailCapabilities.emailVerificationEnabled && verificationStatus.enabled
                       ? `${user?.email || $t('ui.email')} · ${verificationStatus.verified ? 'verified' : 'unverified'}`
                       : user?.email }}
@@ -1322,8 +1323,8 @@ async function importLibraryCsvFile() {
                 :color="verificationStatus.verified ? 'success' : 'warning'"
                 variant="subtle"
                 :icon="verificationStatus.verified ? 'i-lucide-shield-check' : 'i-lucide-mail-warning'"
-                :title="verificationStatus.verified ? 'Email verified' : 'Email verification required'"
-                :description="verificationStatus.verified ? 'Your current email address is verified.' : 'Verify your email address before using the rest of Libroo.'"
+                :title="verificationStatus.verified ? $t('copy.emailVerified') : $t('copy.emailVerificationRequired')"
+                :description="verificationStatus.verified ? $t('copy.yourCurrentEmailAddressIsVerified') : $t('copy.verifyYourEmailAddressBeforeUsingTheRestOfLibroo')"
               />
               <UAlert
                 v-if="pendingEmailChange"
@@ -1331,7 +1332,7 @@ async function importLibraryCsvFile() {
                 variant="subtle"
                 icon="i-lucide-mail-check"
                 :title="$t('ui.pendingEmailChange')"
-                :description="`Open the verification link sent to ${pendingEmailChange}. Your account email stays ${user?.email} until then.`"
+                :description="$t('copy.verifyChangedEmail', { email: pendingEmailChange, current: user?.email })"
               />
               <UButton
                 v-if="showVerificationResend"
@@ -1385,7 +1386,7 @@ async function importLibraryCsvFile() {
                       variant="ghost"
                       size="xs"
                       :icon="showEmailCurrentPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
-                      :aria-label="showEmailCurrentPassword ? 'Hide current password' : 'Show current password'"
+                      :aria-label="showEmailCurrentPassword ? $t('copy.hideCurrentPassword') : $t('copy.showCurrentPassword')"
                       @click="() => { showEmailCurrentPassword = !showEmailCurrentPassword }"
                     />
                   </template>
@@ -1448,7 +1449,7 @@ async function importLibraryCsvFile() {
                     variant="ghost"
                     size="xs"
                     :icon="showCurrentPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
-                    :aria-label="showCurrentPassword ? 'Hide current password' : 'Show current password'"
+                    :aria-label="showCurrentPassword ? $t('copy.hideCurrentPassword') : $t('copy.showCurrentPassword')"
                     @click="() => { showCurrentPassword = !showCurrentPassword }"
                   />
                 </template>
@@ -1472,7 +1473,7 @@ async function importLibraryCsvFile() {
                     variant="ghost"
                     size="xs"
                     :icon="showNewPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
-                    :aria-label="showNewPassword ? 'Hide new password' : 'Show new password'"
+                    :aria-label="showNewPassword ? $t('copy.hideNewPassword') : $t('copy.showNewPassword')"
                     @click="() => { showNewPassword = !showNewPassword }"
                   />
                 </template>
@@ -1496,7 +1497,7 @@ async function importLibraryCsvFile() {
                     variant="ghost"
                     size="xs"
                     :icon="showConfirmPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
-                    :aria-label="showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'"
+                    :aria-label="showConfirmPassword ? $t('copy.hideConfirmPassword') : $t('copy.showConfirmPassword')"
                     @click="() => { showConfirmPassword = !showConfirmPassword }"
                   />
                 </template>
@@ -1925,8 +1926,8 @@ async function importLibraryCsvFile() {
         v-model:open="twoFactorSetupOpen"
         :title="$t('ui.setUpTwoFactorAuthentication')"
         :description="twoFactorSetupStep === 'backup-codes'
-          ? 'Save your recovery codes before continuing. They are shown only now.'
-          : 'Scan the QR code or add the authenticator URI, then enter its first code.'"
+          ? $t('copy.saveYourRecoveryCodesBeforeContinuingTheyAreShownOnly')
+          : $t('copy.scanTheQrCodeOrAddTheAuthenticatorUriThen')"
         :ui="{ footer: 'justify-end gap-3' }"
       >
         <template #body>

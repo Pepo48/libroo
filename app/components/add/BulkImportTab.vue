@@ -3,6 +3,9 @@ import { storeToRefs } from 'pinia'
 import { DEFAULT_LIBRARY_PAGE_SIZE, buildLibraryRouteQuery } from '~~/shared/utils/library-query'
 import { MAX_BULK_ISBN_INPUT_BYTES } from '~~/shared/utils/schemas'
 
+const { t } = useI18n()
+const { libraryStateItems } = useLibraryStateOptions()
+
 const toast = useToast()
 
 const bulkIsbnText = ref('')
@@ -33,8 +36,8 @@ const {
 async function handleBulkImport() {
   if (!bulkIsbnText.value.trim()) {
     toast.add({
-      title: 'No ISBNs entered',
-      description: 'Please enter at least one ISBN',
+      title: t('copy.noIsbnsEntered'),
+      description: t('copy.pleaseEnterAtLeastOneIsbn'),
       color: 'warning'
     })
     return
@@ -100,7 +103,7 @@ defineExpose({ reset })
       </UFormField>
 
       <p class="text-sm text-muted">
-        {{ bulkIsbnBytes.toLocaleString() }} / {{ MAX_BULK_ISBN_INPUT_BYTES.toLocaleString() }} bytes · {{ bulkIsbnCount }} ISBN{{ bulkIsbnCount === 1 ? '' : 's' }} detected
+        {{ $t('copy.isbnInputSummary', { bytes: bulkIsbnBytes.toLocaleString(), limit: MAX_BULK_ISBN_INPUT_BYTES.toLocaleString(), count: bulkIsbnCount }) }}
       </p>
 
       <UFormField :label="$t('ui.addAs')">

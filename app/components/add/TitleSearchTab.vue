@@ -2,6 +2,8 @@
 import type { BookSearchEdition, BookSearchResult } from '~~/shared/types/book-search'
 import { getApiErrorMessage } from '~~/shared/utils/api-error'
 
+const { t } = useI18n()
+
 const state = reactive({ query: '' })
 const result = ref<BookSearchResult | null>(null)
 const attributions = computed(() => [...new Map((result.value?.books ?? []).flatMap(book => book.source?.attribution ? [[book.source.attribution.url, book.source.attribution] as const] : [])).values()])
@@ -24,7 +26,7 @@ async function search() {
     })
     if (requestVersion === version) result.value = response
   } catch (err) {
-    if (requestVersion === version) error.value = getApiErrorMessage(err, 'Could not search the catalog. Please try again.')
+    if (requestVersion === version) error.value = getApiErrorMessage(err, t('copy.couldNotSearchTheCatalogPleaseTryAgain'))
   } finally {
     if (requestVersion === version) loading.value = false
   }
@@ -110,7 +112,7 @@ defineExpose({ reset })
         v-else-if="result && !result.books.length"
         color="neutral"
         :title="$t('ui.noMatchingBooks')"
-        :description="result.hasMore ? 'This search is too broad. Add more words to narrow it down.' : 'Try fewer words, search by ISBN, or add the book manually.'"
+        :description="result.hasMore ? $t('copy.thisSearchIsTooBroadAddMoreWordsToNarrow') : $t('copy.tryFewerWordsSearchByIsbnOrAddTheBook')"
       />
       <UCard v-if="result?.books.length">
         <template #header>

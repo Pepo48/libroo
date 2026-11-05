@@ -27,23 +27,23 @@ const fields: AuthFormField[] = [
     name: 'newPassword',
     type: 'password',
     label: t('ui.newPassword'),
-    placeholder: 'Enter your new password',
+    placeholder: t('copy.enterYourNewPassword'),
     required: true
   },
   {
     name: 'confirmPassword',
     type: 'password',
     label: t('ui.confirmNewPassword'),
-    placeholder: 'Confirm your new password',
+    placeholder: t('copy.confirmYourNewPassword'),
     required: true
   }
 ]
 
 const schema = z.object({
   newPassword: newPasswordSchema(),
-  confirmPassword: z.string({ error: 'Confirm Password is required' }).min(1, { error: 'Please confirm your password' })
+  confirmPassword: z.string({ error: t('copy.confirmPasswordIsRequired') }).min(1, { error: t('copy.pleaseConfirmYourPassword') })
 }).refine(data => data.newPassword === data.confirmPassword, {
-  error: 'Passwords do not match',
+  error: t('copy.passwordsDoNotMatch'),
   path: ['confirmPassword']
 })
 
@@ -91,8 +91,8 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
     })
   } catch (err: unknown) {
     toast.add({
-      title: 'Password reset failed',
-      description: getFailureMessage(err, 'This reset link is invalid or expired.'),
+      title: t('copy.passwordResetFailed'),
+      description: getFailureMessage(err, t('copy.thisResetLinkIsInvalidOrExpired')),
       color: 'error'
     })
   } finally {
@@ -108,7 +108,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
       :title="$t('ui.setNewPassword')"
       :description="$t('ui.openThePasswordResetLinkFromYour')"
       icon="i-lucide-circle-alert"
-      action-label="Request a reset link"
+      :action-label="$t('copy.requestAResetLink')"
       action-to="/forgot-password"
       action-icon="i-lucide-send"
     />
@@ -118,7 +118,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
       :title="$t('ui.passwordUpdated')"
       :description="$t('ui.signInWithYourNewPassword')"
       icon="i-lucide-check"
-      action-label="Go to sign in"
+      :action-label="$t('copy.goToSignIn')"
       action-to="/login"
       action-icon="i-lucide-log-in"
     />
@@ -159,7 +159,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
                 variant="ghost"
                 size="xs"
                 :icon="showNewPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
-                :aria-label="showNewPassword ? 'Hide new password' : 'Show new password'"
+                :aria-label="showNewPassword ? $t('copy.hideNewPassword') : $t('copy.showNewPassword')"
                 @click="() => { showNewPassword = !showNewPassword }"
               />
             </template>
@@ -181,7 +181,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
                 variant="ghost"
                 size="xs"
                 :icon="showConfirmPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
-                :aria-label="showConfirmPassword ? 'Hide confirmed password' : 'Show confirmed password'"
+                :aria-label="showConfirmPassword ? $t('copy.hideConfirmedPassword') : $t('copy.showConfirmedPassword')"
                 @click="() => { showConfirmPassword = !showConfirmPassword }"
               />
             </template>

@@ -141,7 +141,7 @@ function formatBytes(totalBytes: number) {
               {{ formatBytes(storageUsage.totalBytes) }}
             </p>
             <p class="mt-2 text-sm text-muted">
-              {{ storageUsage.objectCount }} cover blobs
+              {{ $t('copy.coverFiles', { count: storageUsage.objectCount }) }}
             </p>
             <p class="mt-1 text-sm text-muted">
               {{ $t('ui.lastCalculated') }} {{ formatAdminDateTime(storageUsage.lastCalculatedAt, locale, $t('admin.never')) }}

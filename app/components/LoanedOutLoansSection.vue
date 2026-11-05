@@ -3,6 +3,8 @@ import type { OwnerLoan } from '~~/shared/types/book'
 import { LOAN_NOTE_MAX_LENGTH } from '~~/shared/utils/loan'
 import { formatDate, returnedLabel } from '~/utils/loan-date-helpers'
 
+const { t } = useI18n()
+
 const props = defineProps<{
   loans: OwnerLoan[]
   returningLoanId: string | null
@@ -60,8 +62,8 @@ function confirmDeleteLoan() {
 const deleteLoanDescription = computed(() => {
   if (!deleteLoanTarget.value) return ''
   return deleteLoanTarget.value.acceptedAt
-    ? 'This loan record will be permanently removed. It will also disappear from the borrower’s history.'
-    : 'This loan record will be permanently removed.'
+    ? t('copy.thisLoanRecordWillBePermanentlyRemovedItWillAlso')
+    : t('copy.thisLoanRecordWillBePermanentlyRemoved')
 })
 
 const activeLoans = computed(() => props.loans.filter(loan => loan.status === 'active'))
@@ -157,7 +159,7 @@ function openBook(loan: OwnerLoan) {
                 {{ loan.book.author }}
               </p>
               <p class="mt-2 text-sm text-muted">
-                {{ borrowerLabel(loan) }} · Lent {{ formatDate(loan.loanedAt) }}
+                {{ borrowerLabel(loan) }} {{ $t('copy.lentSince') }} {{ formatDate(loan.loanedAt) }}
               </p>
               <p
                 v-if="loan.dueAt"
@@ -223,7 +225,7 @@ function openBook(loan: OwnerLoan) {
                   icon="i-lucide-pencil"
                   @click="editNote(loan)"
                 >
-                  {{ loan.note ? 'Edit note' : 'Add note' }}
+                  {{ loan.note ? $t('copy.editNote') : $t('copy.addNote') }}
                 </UButton>
                 <UFieldGroup>
                   <UButton
@@ -240,7 +242,7 @@ function openBook(loan: OwnerLoan) {
                   <UDropdownMenu
                     v-if="!loan.acceptedAt"
                     :items="[{
-                      label: 'Cancel loan',
+                      label: $t('copy.cancelLoan'),
                       icon: 'i-lucide-ban',
                       color: 'error',
                       onSelect: () => emit('cancelLoan', loan)

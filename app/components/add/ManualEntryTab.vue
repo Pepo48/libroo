@@ -4,6 +4,7 @@ import type { LibraryBook, LibraryState, ReadingStatus } from '~~/shared/types/b
 import { MANUAL_COVER_MAX_BYTES, manualBookCreateSchema, type ManualBookCreateSchema } from '~~/shared/utils/schemas'
 
 const { t } = useI18n()
+const { libraryStateItems } = useLibraryStateOptions()
 
 const toast = useToast()
 const dashboardStore = useLibraryDashboardStore()
@@ -91,9 +92,9 @@ function readCoverFile(file: File) {
         resolve(reader.result)
         return
       }
-      reject(new Error('Cover image could not be read.'))
+      reject(new Error(t('copy.coverImageCouldNotBeRead')))
     }
-    reader.onerror = () => reject(new Error('Cover image could not be read.'))
+    reader.onerror = () => reject(new Error(t('copy.coverImageCouldNotBeRead')))
     reader.readAsDataURL(file)
   })
 }
@@ -109,8 +110,8 @@ async function prepareCover(file: File | null) {
   if (!file.type.startsWith('image/')) {
     coverFile.value = null
     toast.add({
-      title: 'Invalid cover',
-      description: 'Choose an image file for the cover.',
+      title: t('copy.invalidCover'),
+      description: t('copy.chooseAnImageFileForTheCover'),
       color: 'error'
     })
     return
@@ -119,8 +120,8 @@ async function prepareCover(file: File | null) {
   if (file.size > MANUAL_COVER_MAX_BYTES) {
     coverFile.value = null
     toast.add({
-      title: 'Cover is too large',
-      description: `Choose an image smaller than ${maxCoverSizeLabel.value}.`,
+      title: t('copy.coverIsTooLarge'),
+      description: t('copy.chooseSmallerCover', { size: maxCoverSizeLabel.value }),
       color: 'error'
     })
     return
@@ -140,8 +141,8 @@ watch(coverFile, (file) => {
   prepareCover(file).catch((err: unknown) => {
     coverFile.value = null
     toast.add({
-      title: 'Could not read cover',
-      description: err instanceof Error ? err.message : 'Choose a different image file.',
+      title: t('copy.couldNotReadCover'),
+      description: err instanceof Error ? err.message : t('copy.chooseADifferentImageFile'),
       color: 'error'
     })
   })
@@ -167,17 +168,17 @@ async function createBook(payload: FormSubmitEvent<ManualBookCreateSchema>) {
     markNeedsSync(loadedPagesBeforeAdd)
 
     toast.add({
-      title: 'Book added',
-      description: `${addedBook.title} has been added to your library.`,
+      title: t('copy.bookAdded208'),
+      description: t('copy.titleAddedToLibrary', { title: addedBook.title }),
       color: 'success'
     })
 
     navigateTo(`/library/${addedBook.id}`)
   } catch (err: unknown) {
     const message = (err as { data?: { message?: string } })?.data?.message
-      ?? (err instanceof Error ? err.message : 'Failed to add book')
+      ?? (err instanceof Error ? err.message : t('copy.failedToAddBook'))
     toast.add({
-      title: 'Failed to add book',
+      title: t('copy.failedToAddBook'),
       description: message,
       color: 'error'
     })
@@ -262,14 +263,14 @@ defineExpose({ reset })
               <UInput
                 v-model="formState.authors[index]"
                 class="min-w-0 flex-1"
-                :placeholder="index === 0 ? 'Author name' : 'Additional author'"
+                :placeholder="index === 0 ? $t('copy.authorName') : $t('copy.additionalAuthor')"
               />
               <UButton
                 type="button"
                 color="neutral"
                 variant="ghost"
                 icon="i-lucide-x"
-                :aria-label="`Remove author ${index + 1}`"
+                :aria-label="$t('copy.removeAuthorNumber', { number: index + 1 })"
                 @click="removeAuthor(index)"
               />
             </div>
@@ -348,7 +349,7 @@ defineExpose({ reset })
           class="w-full"
           icon="i-lucide-image-plus"
           :label="$t('ui.dropACoverImageHere')"
-          :description="`PNG, JPEG, GIF, or WebP up to ${maxCoverSizeLabel}`"
+          :description="$t('copy.coverImageFormats', { size: maxCoverSizeLabel })"
           :reset="true"
           :multiple="false"
           :preview="false"

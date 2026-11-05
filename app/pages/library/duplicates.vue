@@ -96,7 +96,7 @@ async function reload() {
         v-else
         class="text-sm text-muted"
       >
-        {{ visibleGroups.length }} {{ visibleGroups.length === 1 ? 'group' : 'groups' }} across your library, including wishlist and previously owned books. Choose a record to keep and select the groups to clean up.
+        {{ $t('copy.duplicateGroupSummary', { count: visibleGroups.length }) }}
       </p>
       <UCard
         v-for="group in visibleGroups"
@@ -110,7 +110,7 @@ async function reload() {
                 {{ group.books[0]!.title }}
               </h2>
               <p class="text-sm text-muted">
-                {{ group.books[0]!.authors.join(', ') }} · {{ group.books.length }} records
+                {{ group.books[0]!.authors.join(', ') }} · {{ $t('copy.recordCount', { count: group.books.length }) }}
               </p>
             </div>
             <UCheckbox
@@ -133,7 +133,7 @@ async function reload() {
                 <NuxtImg
                   v-if="book.coverPath"
                   :src="`/api/blob/${book.coverPath}`"
-                  :alt="`Cover of ${book.title}`"
+                  :alt="$t('library.coverOf', { title: book.title })"
                   width="64"
                   height="96"
                   class="h-24 w-16 object-contain"
@@ -146,30 +146,30 @@ async function reload() {
                     class="font-medium text-primary underline"
                   >{{ $t('ui.viewBookDetails') }}</NuxtLink>
                   <p class="text-sm">
-                    {{ book.libraryState.replaceAll('_', ' ') }} · {{ book.location || $t('ui.noLocation') }}
+                    {{ $t(book.libraryState === 'owned' ? 'ui.owned' : book.libraryState === 'wishlisted' ? 'ui.wishlist' : 'ui.previouslyOwned') }} · {{ book.location || $t('ui.noLocation') }}
                   </p>
                   <UButton
                     :variant="keep[group.key] === book.id ? 'solid' : 'outline'"
                     :aria-pressed="keep[group.key] === book.id"
                     @click="keep[group.key] = book.id"
                   >
-                    {{ keep[group.key] === book.id ? 'Keeping this record' : 'Keep this record' }}
+                    {{ keep[group.key] === book.id ? $t('copy.keepingThisRecord') : $t('copy.keepThisRecord') }}
                   </UButton>
                 </div>
               </div>
               <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
                 <dt class="text-muted">
                   ISBN
-                </dt><dd>{{ book.isbn || 'None' }}</dd>
+                </dt><dd>{{ book.isbn || $t('copy.none') }}</dd>
                 <dt class="text-muted">
                   {{ $t('ui.tags') }}
-                </dt><dd>{{ book.tags.join(', ') || 'None' }}</dd>
+                </dt><dd>{{ book.tags.join(', ') || $t('copy.none') }}</dd>
                 <dt class="text-muted">
                   {{ $t('ui.edition') }}
-                </dt><dd>{{ [book.publishDate, book.publishers, book.numberOfPages ? `${book.numberOfPages} pages` : null].filter(Boolean).join(' · ') || 'None' }}</dd>
+                </dt><dd>{{ [book.publishDate, book.publishers, book.numberOfPages ? $t('copy.pageCount', { count: book.numberOfPages }) : null].filter(Boolean).join(' · ') || $t('copy.none') }}</dd>
                 <dt class="text-muted">
                   {{ $t('ui.reading') }}
-                </dt><dd>{{ book.readingStatus }} · page {{ book.currentPage ?? '—' }} · {{ book.progressPercent ?? '—' }}%</dd>
+                </dt><dd>{{ $t('copy.duplicateReading', { status: $t('ui.' + book.readingStatus), page: book.currentPage ?? '—', percent: book.progressPercent ?? '—' }) }}</dd>
                 <dt class="text-muted">
                   {{ $t('ui.rating') }}
                 </dt><dd>{{ book.rating ? `${book.rating}/5` : $t('ui.notRated') }}</dd>
@@ -182,12 +182,12 @@ async function reload() {
                 <dt class="text-muted">
                   {{ $t('ui.note') }}
                 </dt><dd class="whitespace-pre-wrap break-words">
-                  {{ book.note || 'None' }}
+                  {{ book.note || $t('copy.none') }}
                 </dd>
                 <dt class="text-muted">
                   {{ $t('ui.description') }}
                 </dt><dd class="whitespace-pre-wrap break-words">
-                  {{ book.description || 'None' }}
+                  {{ book.description || $t('copy.none') }}
                 </dd>
               </dl>
             </div>

@@ -35,7 +35,7 @@ defineEmits<{
         <NuxtImg
           v-if="book.coverUrl && !coverFailed"
           :src="book.coverUrl"
-          :alt="book.title || 'Book cover'"
+          :alt="book.title || $t('copy.bookCover')"
           class="w-full h-full object-cover"
           loading="eager"
           @error="coverFailed = true"
@@ -81,7 +81,7 @@ defineEmits<{
               name="i-lucide-book-check"
               class="mr-1"
             />
-            {{ book.existingState === 'wishlisted' ? 'On wishlist' : 'Already in library' }}
+            {{ book.existingState === 'wishlisted' ? $t('copy.onWishlist') : $t('copy.alreadyInLibrary') }}
           </UBadge>
           <UBadge
             color="neutral"
@@ -108,7 +108,7 @@ defineEmits<{
           v-if="book.publishers && book.publishers.length > 0"
           class="text-sm text-muted"
         >
-          Publisher: {{ book.publishers.join(', ') }}
+          {{ $t('copy.publisherLabel') }} {{ book.publishers.join(', ') }}
         </p>
       </div>
     </div>
@@ -195,7 +195,7 @@ defineEmits<{
         class="flex-1"
         disabled
       >
-        {{ unavailableLabel || 'Already in Library' }}
+        {{ unavailableLabel || $t('copy.alreadyInLibrary193') }}
       </UButton>
     </div>
   </div>

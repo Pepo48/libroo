@@ -87,9 +87,9 @@ async function returnLoan(loan: OwnerLoan) {
   await runLoanAction(loan, returningLoanId, {
     endpoint: `/api/loans/${loan.id}/return`,
     requestOptions: { method: 'POST' },
-    successTitle: 'Book marked as returned',
-    failureTitle: 'Could not update loan',
-    fallbackErrorMessage: 'Unable to mark returned'
+    successTitle: t('copy.bookMarkedAsReturned'),
+    failureTitle: t('copy.couldNotUpdateLoan'),
+    fallbackErrorMessage: t('copy.unableToMarkReturned')
   })
 }
 
@@ -97,9 +97,9 @@ async function cancelLoan(loan: OwnerLoan) {
   await runLoanAction(loan, cancellingLoanId, {
     endpoint: `/api/loans/${loan.id}/cancel`,
     requestOptions: { method: 'POST' },
-    successTitle: 'Loan canceled',
-    failureTitle: 'Could not cancel loan',
-    fallbackErrorMessage: 'Unable to cancel loan'
+    successTitle: t('copy.loanCanceled'),
+    failureTitle: t('copy.couldNotCancelLoan'),
+    fallbackErrorMessage: t('copy.unableToCancelLoan')
   })
 }
 
@@ -107,9 +107,9 @@ async function deleteLoan(loan: OwnerLoan) {
   await runLoanAction(loan, deletingLoanId, {
     endpoint: `/api/loans/${loan.id}`,
     requestOptions: { method: 'DELETE' },
-    successTitle: 'Loan record deleted',
-    failureTitle: 'Could not delete loan record',
-    fallbackErrorMessage: 'Unable to delete loan record'
+    successTitle: t('copy.loanRecordDeleted'),
+    failureTitle: t('copy.couldNotDeleteLoanRecord'),
+    fallbackErrorMessage: t('copy.unableToDeleteLoanRecord')
   })
 }
 
@@ -121,12 +121,12 @@ async function saveLoanNote(loan: OwnerLoan, note: string | null) {
   try {
     await $fetch(`/api/loans/${loan.id}/note`, { method: 'PUT', body: { note } })
     if (currentRequestId === loanNoteRequestIds.get(loan.id)) {
-      toast.add({ title: note ? 'Loan note saved' : 'Loan note removed', color: 'success' })
+      toast.add({ title: note ? t('copy.loanNoteSaved') : t('copy.loanNoteRemoved'), color: 'success' })
     }
   } catch (err: unknown) {
     if (currentRequestId === loanNoteRequestIds.get(loan.id)) loan.note = previousNote
-    const message = (err as { data?: { message?: string } })?.data?.message ?? 'Unable to save loan note'
-    toast.add({ title: 'Could not save loan note', description: message, color: 'error' })
+    const message = (err as { data?: { message?: string } })?.data?.message ?? t('copy.unableToSaveLoanNote')
+    toast.add({ title: t('copy.couldNotSaveLoanNote'), description: message, color: 'error' })
   }
 }
 </script>

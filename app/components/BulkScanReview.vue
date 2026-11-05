@@ -3,6 +3,8 @@ import type { ScannedBook } from '~/stores/isbnScanner'
 import { getBulkScanReviewAction } from '~/utils/bulkScanReviewAction'
 import { isBookEnrichmentInProgress } from '~~/shared/utils/book-enrichment'
 
+const { t } = useI18n()
+
 const props = defineProps<{
   scannedBooks: ScannedBook[]
   isAddingBooks: boolean
@@ -74,12 +76,12 @@ function getStatusIcon(status: ScannedBook['status']) {
 
 function getStatusText(status: ScannedBook['status']) {
   switch (status) {
-    case 'loading': return 'Looking up...'
+    case 'loading': return t('copy.lookingUp225')
     case 'found': return 'Found'
-    case 'not_found': return 'Not found'
-    case 'already_owned': return 'Already in library'
-    case 'error': return 'Error'
-    default: return 'Pending'
+    case 'not_found': return t('copy.notFound')
+    case 'already_owned': return t('copy.alreadyInLibrary')
+    case 'error': return t('ui.error')
+    default: return t('admin.invites.pending')
   }
 }
 </script>
@@ -98,7 +100,7 @@ function getStatusText(status: ScannedBook['status']) {
           :class="lookupProgress.active ? 'animate-spin text-primary' : 'text-success'"
         />
         <span class="font-medium">
-          {{ lookupProgress.active ? 'Looking up' : 'Looked up' }} {{ activeLookupCount }} of {{ lookupProgress.total }} ISBNs
+          {{ $t('copy.scanProgress', { status: lookupProgress.active ? $t('copy.lookingUp') : $t('copy.lookedUp'), count: activeLookupCount, total: lookupProgress.total }) }}
         </span>
       </div>
       <UProgress
@@ -108,7 +110,7 @@ function getStatusText(status: ScannedBook['status']) {
       />
       <p class="text-sm text-muted">
         <template v-if="lookupProgress.active">
-          {{ lookupProgress.completed }} completed · {{ lookupProgress.inProgress }} in progress · {{ lookupProgress.queued }} queued
+          {{ $t('copy.scanQueue', { completed: lookupProgress.completed, inProgress: lookupProgress.inProgress, queued: lookupProgress.queued }) }}
         </template>
         <template v-else>
           {{ $t('ui.allIsbnsLookedUp') }}
@@ -120,7 +122,7 @@ function getStatusText(status: ScannedBook['status']) {
     <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
       <div class="flex items-center gap-2 flex-wrap">
         <span class="text-sm text-muted">
-          {{ counts.total }} scanned
+          {{ $t('copy.scanTotal', { count: counts.total }) }}
         </span>
         <UBadge
           v-if="counts.found > 0"
@@ -128,7 +130,7 @@ function getStatusText(status: ScannedBook['status']) {
           variant="subtle"
           size="md"
         >
-          {{ counts.found }} found
+          {{ $t('copy.scanFound', { count: counts.found }) }}
         </UBadge>
         <UBadge
           v-if="counts.alreadyOwned > 0"
@@ -136,7 +138,7 @@ function getStatusText(status: ScannedBook['status']) {
           variant="subtle"
           size="md"
         >
-          {{ counts.alreadyOwned }} owned
+          {{ $t('copy.scanAlreadyowned', { count: counts.alreadyOwned }) }}
         </UBadge>
         <UBadge
           v-if="counts.notFound > 0"
@@ -144,7 +146,7 @@ function getStatusText(status: ScannedBook['status']) {
           variant="subtle"
           size="md"
         >
-          {{ counts.notFound }} not found
+          {{ $t('copy.scanNotfound', { count: counts.notFound }) }}
         </UBadge>
       </div>
 
@@ -230,7 +232,7 @@ function getStatusText(status: ScannedBook['status']) {
                   <NuxtImg
                     v-if="book.result.coverUrl"
                     :src="book.result.coverUrl"
-                    :alt="book.result.title || 'Book cover'"
+                    :alt="book.result.title || $t('copy.bookCover')"
                     class="w-full h-full object-cover"
                     loading="lazy"
                   />
@@ -441,7 +443,7 @@ function getStatusText(status: ScannedBook['status']) {
           aria-live="polite"
           class="sr-only"
         >
-          {{ action.statusMessage }}
+          {{ action.hasPendingLookups ? $t('copy.bulkScanFinishingStatus', { count: counts.selected }) : $t('copy.bulkScanSelected', { count: counts.selected }) }}
         </span>
         <UButton
           block
@@ -451,7 +453,7 @@ function getStatusText(status: ScannedBook['status']) {
           :disabled="action.isDisabled"
           @click="$emit('addSelected')"
         >
-          {{ action.buttonLabel }}
+          {{ action.hasPendingLookups ? $t('copy.bulkScanFinishing') : $t(targetLibraryState === 'wishlisted' ? 'copy.bulkScanAddWishlist' : 'copy.bulkScanAddLibrary', counts.selected) }}
         </UButton>
       </div>
     </nav>

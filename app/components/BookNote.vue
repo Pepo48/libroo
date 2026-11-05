@@ -53,7 +53,7 @@ const characterCount = computed(() => editText.value.length)
         :icon="note ? 'i-lucide-pencil' : 'i-lucide-plus'"
         @click="startEditing"
       >
-        {{ note ? $t('ui.edit') : 'Add Note' }}
+        {{ note ? $t('ui.edit') : $t('copy.addNote228') }}
       </UButton>
     </div>
 

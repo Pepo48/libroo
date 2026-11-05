@@ -58,7 +58,7 @@ async function loadMore() {
   <UContainer>
     <UPageHeader
       :title="author?.name || $t('ui.author')"
-      :description="pagination ? `${pagination.totalItems} ${pagination.totalItems === 1 ? 'book' : 'books'} in your library` : undefined"
+      :description="pagination ? $t('library.bookCount', pagination.totalItems) : undefined"
     >
       <template #links>
         <UButton

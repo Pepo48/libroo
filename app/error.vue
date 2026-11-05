@@ -2,6 +2,8 @@
 import { clearError } from '#app'
 import type { NuxtError } from '#app'
 
+const { t } = useI18n()
+
 const props = defineProps<{
   error: NuxtError
 }>()
@@ -14,12 +16,12 @@ const icon = computed(() =>
   isNotFound.value ? 'i-lucide-file-question' : 'i-lucide-alert-circle'
 )
 const title = computed(() =>
-  isNotFound.value ? 'Page not found' : 'Something went wrong'
+  isNotFound.value ? t('copy.pageNotFound') : t('ui.genericError')
 )
 const description = computed(() =>
   isNotFound.value
-    ? 'The requested page or resource is unavailable.'
-    : 'Libroo could not finish loading this page. Please return home and try again.'
+    ? t('copy.theRequestedPageOrResourceIsUnavailable')
+    : t('copy.librooCouldNotFinishLoadingThisPagePleaseReturnHome')
 )
 const authSession = useNuxtApp().$authSession as { data?: { value?: { user?: unknown } | null } } | undefined
 const recoveryPath = computed(() => authSession?.data?.value?.user ? '/library' : '/login?redirect=/library')

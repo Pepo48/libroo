@@ -395,7 +395,7 @@ async function onTagsSaved() {
                 >
                   <p class="text-muted">
                     {{ $t('ui.lent') }} {{ formatDate(book.activeLoan.loanedAt) }}<template v-if="book.activeLoan.dueAt">
-                      · Due {{ formatDate(book.activeLoan.dueAt) }}
+                      {{ $t('copy.loanDue') }} {{ formatDate(book.activeLoan.dueAt) }}
                     </template>
                   </p>
                   <div

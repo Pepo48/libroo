@@ -20,7 +20,7 @@ const emit = defineEmits<{
 const isOwnedBook = computed(() => props.book.libraryState === 'owned')
 const menuItems = computed(() => [
   ...(isOwnedBook.value && !props.book.activeLoan ? [{ label: t('ui.moveToWishlistText'), icon: 'i-lucide-bookmark', onSelect: () => emit('moveToWishlist') }] : []),
-  ...(isOwnedBook.value ? [{ label: 'No longer own this book', icon: 'i-lucide-history', onSelect: () => emit('markPreviouslyOwned') }] : []),
+  ...(isOwnedBook.value ? [{ label: t('copy.noLongerOwnThisBook'), icon: 'i-lucide-history', onSelect: () => emit('markPreviouslyOwned') }] : []),
   ...(props.book.libraryState === 'wishlisted' ? [{ label: t('ui.removeFromWishlistText'), icon: 'i-lucide-x', color: 'error' as const, onSelect: () => emit('removeWishlist') }] : []),
   ...(props.book.libraryState === 'previously_owned' ? [{ label: t('ui.deleteThisBook'), icon: 'i-lucide-trash-2', color: 'error' as const, onSelect: () => emit('deleteRecord') }] : [])
 ])

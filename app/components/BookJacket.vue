@@ -41,7 +41,7 @@ const jacketClass = computed(() => {
       {{ title }}
     </p>
     <p class="text-xs leading-4 text-white/65 line-clamp-2">
-      {{ author || 'Unknown author' }}
+      {{ author || $t('library.unknownAuthor') }}
     </p>
   </div>
 </template>

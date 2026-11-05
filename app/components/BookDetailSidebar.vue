@@ -36,7 +36,7 @@ const readingSummary = computed(() => describeReadingProgress(
           v-else
           class="relative isolate aspect-2/3 overflow-hidden shadow-md"
           role="img"
-          :aria-label="`Generated cover for ${book.title}`"
+          :aria-label="$t('copy.generatedCover', { title: book.title })"
         >
           <BookJacket
             :title="book.title"

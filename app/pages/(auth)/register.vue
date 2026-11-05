@@ -75,18 +75,18 @@ const inviteUnavailable = computed(() =>
   && inviteStatus.value !== 'pending'
 )
 const inviteBlockTitle = computed(() => {
-  if (registrationRequiresInvite.value) return 'Invite required'
-  if (inviteStatus.value === 'expired') return 'Invite expired'
-  if (inviteStatus.value === 'revoked') return 'Invite revoked'
-  if (inviteStatus.value === 'accepted') return 'Invite already used'
-  return 'Invite unavailable'
+  if (registrationRequiresInvite.value) return t('copy.inviteRequired')
+  if (inviteStatus.value === 'expired') return t('copy.inviteExpired')
+  if (inviteStatus.value === 'revoked') return t('admin.invites.revokedToast')
+  if (inviteStatus.value === 'accepted') return t('copy.inviteAlreadyUsed')
+  return t('copy.inviteUnavailable')
 })
 const inviteBlockDescription = computed(() => {
-  if (registrationRequiresInvite.value) return 'Open the invite link from your administrator to create an account.'
-  if (inviteStatus.value === 'expired') return 'This invite link has expired. Ask your administrator for a new invite.'
-  if (inviteStatus.value === 'revoked') return 'This invite link has been revoked. Ask your administrator for a new invite.'
-  if (inviteStatus.value === 'accepted') return 'This invite link has already been used.'
-  return 'This invite link cannot be used. Ask your administrator for a new invite.'
+  if (registrationRequiresInvite.value) return t('copy.openTheInviteLinkFromYourAdministratorToCreateAn')
+  if (inviteStatus.value === 'expired') return t('copy.thisInviteLinkHasExpiredAskYourAdministratorForA')
+  if (inviteStatus.value === 'revoked') return t('copy.thisInviteLinkHasBeenRevokedAskYourAdministratorFor')
+  if (inviteStatus.value === 'accepted') return t('copy.thisInviteLinkHasAlreadyBeenUsed')
+  return t('copy.thisInviteLinkCannotBeUsedAskYourAdministratorFor')
 })
 
 const redirectPath = computed(() => {
@@ -115,9 +115,9 @@ const fields = computed<AuthInputField[]>(() => [
     id: 'register-name',
     name: 'name',
     type: 'text',
-    label: 'Name',
-    ariaLabel: 'Name',
-    placeholder: 'Enter your name',
+    label: t('admin.auditMetadata.name'),
+    ariaLabel: t('admin.auditMetadata.name'),
+    placeholder: t('copy.enterYourName'),
     required: true
   },
   {
@@ -125,8 +125,8 @@ const fields = computed<AuthInputField[]>(() => [
     name: 'email',
     type: 'email',
     label: t('ui.email'),
-    ariaLabel: 'Email',
-    placeholder: 'Enter your email',
+    ariaLabel: t('ui.email'),
+    placeholder: t('copy.enterYourEmail'),
     defaultValue: inviteEmail.value,
     disabled: Boolean(inviteEmail.value),
     required: true
@@ -137,17 +137,17 @@ const fields = computed<AuthInputField[]>(() => [
     type: 'password',
     label: t('ui.password'),
     ariaLabel: 'Password',
-    placeholder: 'Enter your password',
-    hint: 'At least 8 characters',
+    placeholder: t('copy.enterYourPassword'),
+    hint: t('copy.atLeast8Characters'),
     required: true
   },
   {
     id: 'register-confirm-password',
     name: 'confirmPassword',
     type: 'password',
-    label: 'Confirm Password',
-    ariaLabel: 'Confirm Password',
-    placeholder: 'Confirm your password',
+    label: t('copy.confirmPassword'),
+    ariaLabel: t('copy.confirmPassword'),
+    placeholder: t('copy.confirmYourPassword'),
     required: true
   },
   ...(termsConfigured.value
@@ -162,16 +162,16 @@ const fields = computed<AuthInputField[]>(() => [
 
 // Validation schema
 const schema = z.object({
-  name: z.string({ error: 'Name is required' }).min(1, { error: 'Name is required' }),
-  email: z.email({ error: 'Please enter a valid email address' }),
+  name: z.string({ error: t('copy.nameIsRequired') }).min(1, { error: t('copy.nameIsRequired') }),
+  email: z.email({ error: t('copy.pleaseEnterAValidEmailAddress') }),
   password: newPasswordSchema(),
-  confirmPassword: z.string({ error: 'Confirm Password is required' }).min(1, { error: 'Please confirm your password' }),
+  confirmPassword: z.string({ error: t('copy.confirmPasswordIsRequired') }).min(1, { error: t('copy.pleaseConfirmYourPassword') }),
   acceptTerms: z.boolean().optional().refine(value => !termsConfigured.value || value === true, {
-    error: 'You must agree to the Terms of Service to create an account'
+    error: t('copy.youMustAgreeToTheTermsOfServiceToCreate')
   })
 })
   .refine(data => data.password === data.confirmPassword, {
-    error: 'Passwords do not match',
+    error: t('copy.passwordsDoNotMatch'),
     path: ['confirmPassword']
   })
 
@@ -201,7 +201,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
   error.value = ''
 
   if (registrationRequiresInvite.value) {
-    error.value = 'An invite is required to create an account'
+    error.value = t('copy.anInviteIsRequiredToCreateAnAccount')
     return
   }
 
@@ -211,24 +211,24 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
   }
 
   if (inviteEmail.value && payload.data.email.toLowerCase() !== inviteEmail.value) {
-    error.value = 'Use the email address this invite was sent to'
+    error.value = t('copy.useTheEmailAddressThisInviteWasSentTo')
     return
   }
 
   if (termsStatusUnknown.value) {
-    error.value = 'Unable to verify Terms of Service availability. Please try again.'
+    error.value = t('copy.unableToVerifyTermsOfServiceAvailabilityPleaseTryAgain')
     return
   }
 
   if (termsConfigured.value && !payload.data.acceptTerms) {
-    error.value = 'You must agree to the Terms of Service to create an account'
+    error.value = t('copy.youMustAgreeToTheTermsOfServiceToCreate')
     return
   }
 
   if (turnstileEnabled.value && !turnstileToken.value) {
     error.value = turnstileMissingConfig.value
-      ? 'Bot protection is enabled but the Turnstile site key is not configured.'
-      : 'Complete the bot protection check before creating an account.'
+      ? t('copy.botProtectionIsEnabledButTheTurnstileSiteKeyIs')
+      : t('copy.completeTheBotProtectionCheckBeforeCreatingAnAccount')
     return
   }
 
@@ -245,16 +245,16 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
     )
 
     if (result.error) {
-      error.value = result.error.message || 'Failed to create account'
+      error.value = result.error.message || t('copy.failedToCreateAccount')
       toast.add({
-        title: 'Registration failed',
+        title: t('copy.registrationFailed'),
         description: error.value,
         color: 'error'
       })
     } else {
       verificationEmail.value = payload.data.email
       toast.add({
-        title: 'Account created!',
+        title: t('copy.accountCreated'),
         description: getRegistrationSuccessDescription(emailCapabilities.value),
         color: 'success'
       })
@@ -264,7 +264,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
       }
     }
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'An unexpected error occurred'
+    error.value = e instanceof Error ? e.message : t('copy.anUnexpectedErrorOccurred')
     toast.add({
       title: t('ui.error'),
       description: error.value,
@@ -286,8 +286,8 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
       v-if="isVerificationEmailSent"
       :title="$t('ui.verifyYourEmail')"
       icon="i-lucide-mail-check"
-      :description="`We sent a verification link to ${verificationEmail}. Open it to activate your account.`"
-      action-label="Go to sign in"
+      :description="$t('copy.sentVerificationLink', { email: verificationEmail })"
+      :action-label="$t('copy.goToSignIn')"
       action-to="/login"
       action-icon="i-lucide-log-in"
     />
@@ -297,18 +297,18 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
       :title="inviteBlockTitle"
       :description="inviteBlockDescription"
       icon="i-lucide-lock"
-      action-label="Sign in"
+      :action-label="$t('ui.signIn')"
       :action-to="{ path: '/login', query: route.query.redirect ? { redirect: route.query.redirect } : undefined }"
       action-icon="i-lucide-log-in"
     />
 
     <AuthStateCard
       v-else-if="!showPasswordForm"
-      :title="showOAuthSignIn ? 'Create an account with single sign-on' : $t('ui.signInUnavailable')"
+      :title="showOAuthSignIn ? $t('copy.createAnAccountWithSingleSignOn') : $t('ui.signInUnavailable')"
       :description="showOAuthSignIn
-        ? 'Local password registration is disabled. Continue through the configured sign-in provider.'
+        ? $t('copy.localPasswordRegistrationIsDisabledContinueThroughTheConfiguredSign')
         : $t('ui.thisLibrooDeploymentHasNoEnabledSign')"
-      :action-label="showOAuthSignIn ? 'Go to sign in' : undefined"
+      :action-label="showOAuthSignIn ? $t('copy.goToSignIn') : undefined"
       :action-to="showOAuthSignIn ? { path: '/login', query: route.query.redirect ? { redirect: route.query.redirect } : undefined } : undefined"
       icon="i-lucide-lock-keyhole"
       :action-icon="showOAuthSignIn ? 'i-lucide-log-in' : undefined"
@@ -350,7 +350,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
                 variant="link"
                 size="sm"
                 :icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
-                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                :aria-label="showPassword ? $t('copy.hidePassword') : $t('copy.showPassword')"
                 :aria-pressed="showPassword"
                 @click="() => { showPassword = !showPassword }"
               />
@@ -372,7 +372,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
                 variant="link"
                 size="sm"
                 :icon="showConfirmPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
-                :aria-label="showConfirmPassword ? 'Hide confirmed password' : 'Show confirmed password'"
+                :aria-label="showConfirmPassword ? $t('copy.hideConfirmedPassword') : $t('copy.showConfirmedPassword')"
                 :aria-pressed="showConfirmPassword"
                 @click="() => { showConfirmPassword = !showConfirmPassword }"
               />

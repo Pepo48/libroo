@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { defaultContinuousMode } from '~/utils/cameraScanDefaults'
 
 const { t } = useI18n()
+const { libraryStateItems } = useLibraryStateOptions()
 
 const toast = useToast()
 
@@ -54,13 +55,13 @@ async function onIsbnDetected(isbn: string) {
     if (book?.status === 'not_found') {
       toast.add({
         title: t('ui.bookNotFound'),
-        description: book.result?.message || 'Could not find this book on OpenLibrary',
+        description: book.result?.message || t('copy.couldNotFindThisBookOnOpenlibrary'),
         color: 'warning'
       })
     } else if (book?.status === 'error') {
       toast.add({
-        title: 'Lookup failed',
-        description: book.errorMessage || 'Failed to lookup book',
+        title: t('copy.lookupFailed'),
+        description: book.errorMessage || t('copy.failedToLookupBook'),
         color: 'error'
       })
     }

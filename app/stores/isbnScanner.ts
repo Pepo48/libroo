@@ -1,3 +1,4 @@
+import { getClientTranslator } from '../utils/client-message'
 import type { BulkBookLookupItem, LibraryState } from '~~/shared/types/book'
 import {
   extractIsbn,
@@ -20,6 +21,7 @@ export type AddLibraryState = Exclude<LibraryState, 'previously_owned'>
 
 export const useIsbnScannerStore = defineStore('isbn-scanner', () => {
   const toast = useToast()
+  const textFor = getClientTranslator()
   const isbnLookupStore = useIsbnLookupStore()
 
   const scannedBooks = ref<ScannedBook[]>([])
@@ -30,8 +32,8 @@ export const useIsbnScannerStore = defineStore('isbn-scanner', () => {
   const targetLibraryState = ref<AddLibraryState>('owned')
   let resetVersion = 0
 
-  const lookupUnavailableMessage = 'We could not look up this ISBN right now. Try again in a moment.'
-  const addUnavailableMessage = 'Could not add this book to your library. Try again in a moment.'
+  const lookupUnavailableMessage = textFor('copy.scannerLookupUnavailable', 'We could not look up this ISBN right now. Try again in a moment.')
+  const addUnavailableMessage = textFor('copy.couldNotAddThisBookToYourLibraryTryAgain', 'Could not add this book to your library. Try again in a moment.')
 
   const isLookingUp = computed(() => isBulkLookingUp.value || isbnLookupStore.isLookingUp)
   const isAddingBooks = computed(() => isbnLookupStore.isAdding)
@@ -75,8 +77,8 @@ export const useIsbnScannerStore = defineStore('isbn-scanner', () => {
 
     if (scannedBooks.value.some(book => book.isbn === normalizedIsbn)) {
       toast.add({
-        title: 'Already scanned',
-        description: `ISBN ${normalizedIsbn} is already in the list`,
+        title: textFor('copy.scannerAlreadyScanned', 'Already scanned'),
+        description: textFor('copy.scannerDuplicate', `ISBN ${normalizedIsbn} is already in the list`, { isbn: normalizedIsbn }),
         color: 'warning'
       })
       return
@@ -132,8 +134,8 @@ export const useIsbnScannerStore = defineStore('isbn-scanner', () => {
   async function addMultipleIsbns(text: string): Promise<boolean> {
     if (new TextEncoder().encode(text).byteLength > MAX_BULK_ISBN_INPUT_BYTES) {
       toast.add({
-        title: 'Bulk import is too large',
-        description: `Paste up to ${MAX_BULK_ISBN_INPUT_BYTES.toLocaleString()} bytes of ISBNs at a time.`,
+        title: textFor('copy.scannerInputTooLarge', 'Bulk import is too large'),
+        description: textFor('copy.scannerPasteLimit', `Paste up to ${MAX_BULK_ISBN_INPUT_BYTES.toLocaleString()} bytes of ISBNs at a time.`, { limit: MAX_BULK_ISBN_INPUT_BYTES.toLocaleString() }),
         color: 'warning'
       })
       return false
@@ -146,8 +148,8 @@ export const useIsbnScannerStore = defineStore('isbn-scanner', () => {
 
     if (rawInputs.length === 0) {
       toast.add({
-        title: 'No input',
-        description: 'Please enter at least one ISBN',
+        title: textFor('copy.scannerNoInput', 'No input'),
+        description: textFor('copy.pleaseEnterAtLeastOneIsbn', 'Please enter at least one ISBN'),
         color: 'warning'
       })
       return false
@@ -164,8 +166,8 @@ export const useIsbnScannerStore = defineStore('isbn-scanner', () => {
     const skipped = rawInputs.length - inputs.length
     if (skipped > 0) {
       toast.add({
-        title: 'Some ISBNs were skipped',
-        description: `Looking up ${inputs.length} ISBN${inputs.length === 1 ? '' : 's'}; skipped ${skipped} invalid, duplicate, or already scanned ISBN${skipped === 1 ? '' : 's'}.`,
+        title: textFor('copy.scannerSkipped', 'Some ISBNs were skipped'),
+        description: textFor('copy.scannerLookupSummary', `Looking up ${inputs.length} ISBN${inputs.length === 1 ? '' : 's'}; skipped ${skipped} invalid, duplicate, or already scanned ISBN${skipped === 1 ? '' : 's'}.`, { count: inputs.length, skipped }),
         color: 'warning'
       })
     }
@@ -237,8 +239,8 @@ export const useIsbnScannerStore = defineStore('isbn-scanner', () => {
 
     if (selectedBooks.length === 0) {
       toast.add({
-        title: 'No books selected',
-        description: 'Please select at least one book to add',
+        title: textFor('copy.scannerNoSelection', 'No books selected'),
+        description: textFor('copy.scannerChooseBook', 'Please select at least one book to add'),
         color: 'warning'
       })
       return { success: [], failed: [] }
@@ -257,7 +259,7 @@ export const useIsbnScannerStore = defineStore('isbn-scanner', () => {
         if (f.error === 'BookAlreadyOwnedError') {
           book.status = 'already_owned'
           book.selected = false
-          book.errorMessage = 'This book is already in your library.'
+          book.errorMessage = textFor('copy.scannerAlreadyOwned', 'This book is already in your library.')
         } else {
           book.status = 'found'
           book.selected = true
@@ -268,25 +270,25 @@ export const useIsbnScannerStore = defineStore('isbn-scanner', () => {
 
     if (success.length > 0 && failed.length === 0) {
       toast.add({
-        title: success.length === 1 ? 'Book added!' : 'Books added!',
+        title: success.length === 1 ? textFor('copy.bookAdded', 'Book added!') : textFor('copy.scannerBooksAdded', 'Books added!'),
         description: targetLibraryState.value === 'wishlisted'
-          ? `Successfully added ${success.length} book${success.length > 1 ? 's' : ''} to your wishlist`
-          : `Successfully added ${success.length} book${success.length > 1 ? 's' : ''} to your library`,
+          ? textFor('copy.scannerAddedWishlist', `Successfully added ${success.length} book${success.length > 1 ? 's' : ''} to your wishlist`, { count: success.length })
+          : textFor('copy.scannerAddedLibrary', `Successfully added ${success.length} book${success.length > 1 ? 's' : ''} to your library`, { count: success.length }),
         color: 'success'
       })
     } else if (success.length > 0 && failed.length > 0) {
       toast.add({
-        title: 'Partial success',
-        description: `Added ${success.length}, failed ${failed.length}`,
+        title: textFor('copy.scannerPartial', 'Partial success'),
+        description: textFor('copy.scannerPartialCount', `Added ${success.length}, failed ${failed.length}`, { added: success.length, failed: failed.length }),
         color: 'warning'
       })
     } else if (failed.length > 0) {
       const requestFailed = isbnLookupStore.addError !== null && success.length === 0
       toast.add({
-        title: requestFailed ? 'Error' : 'Failed to add books',
+        title: requestFailed ? textFor('ui.error', 'Error') : textFor('copy.scannerAddFailed', 'Failed to add books'),
         description: requestFailed
-          ? isbnLookupStore.addError || 'Failed to add books'
-          : `Could not add ${failed.length} book${failed.length > 1 ? 's' : ''}`,
+          ? isbnLookupStore.addError || textFor('copy.scannerAddFailed', 'Failed to add books')
+          : textFor('copy.scannerFailedCount', `Could not add ${failed.length} book${failed.length > 1 ? 's' : ''}`, { count: failed.length }),
         color: 'error'
       })
     }

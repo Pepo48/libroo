@@ -12,6 +12,7 @@ import {
 } from '~~/shared/utils/library-query'
 
 const { t, locale } = useI18n()
+const { libraryStateFilterItems } = useLibraryStateOptions()
 
 interface PaginatedResponse {
   items: LibraryBook[]
@@ -928,7 +929,7 @@ async function syncLoadedPages(targetPages: number) {
           v-if="hasActiveAdvancedFilters && !areFiltersExpanded"
           class="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted"
         >
-          <span>Active:</span>
+          <span>{{ $t('copy.activeFilters') }}</span>
           <UBadge
             v-for="summary in collapsedFilterSummary"
             :key="summary"

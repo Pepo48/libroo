@@ -11,6 +11,7 @@ const emit = defineEmits<{
 }>()
 
 const isLoading = ref(true)
+const textFor = getClientTranslator()
 const errorMessage = ref<string | null>(null)
 const lastScanned = ref<string | null>(null)
 const scanCooldown = ref(false)
@@ -38,7 +39,7 @@ function onCameraReady(capabilities: Partial<MediaTrackCapabilities>) {
 
 function onError(error: Error) {
   isLoading.value = false
-  errorMessage.value = getScannerErrorMessage(error)
+  errorMessage.value = getScannerErrorMessage(error, textFor)
   console.error('IsbnScanner camera error', error)
 
   emit('error', errorMessage.value)

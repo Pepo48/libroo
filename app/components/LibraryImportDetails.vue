@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import type { LibraryImportResult, LibraryImportRowDetail } from '~~/shared/types/library-transfer'
 
+const { t } = useI18n()
+
 const props = defineProps<{ result: LibraryImportResult }>()
 const open = ref(false)
 const filter = ref('all')
 const items = [
-  { label: 'All rows', value: 'all' },
-  { label: 'Already in library before import', value: 'matched' },
-  { label: 'Repeated in this CSV', value: 'repeated' },
-  { label: 'Errors and unfinished rows', value: 'errors' }
+  { label: t('copy.allRows'), value: 'all' },
+  { label: t('copy.alreadyInLibraryBeforeImport'), value: 'matched' },
+  { label: t('copy.repeatedInThisCsv'), value: 'repeated' },
+  { label: t('copy.errorsAndUnfinishedRows'), value: 'errors' }
 ]
 const details = computed<LibraryImportRowDetail[]>(() => props.result.details ?? props.result.failed.map(failure => ({ ...failure, status: 'failed' as const })))
 const isLibraryMatch = (row: LibraryImportRowDetail) => (row.status === 'updated' || row.status === 'skipped') && row.repeatedInFile === false
@@ -20,7 +22,7 @@ const matchedCount = computed(() => props.result.updated + props.result.skipped)
 const libraryMatches = computed(() => details.value.filter(isLibraryMatch).length)
 const repeats = computed(() => details.value.filter(row => row.repeatedInFile === true && (row.status === 'updated' || row.status === 'skipped')).length)
 const unknownMatches = computed(() => Math.max(0, matchedCount.value - libraryMatches.value - repeats.value))
-const matchLabels = { libroo_id: 'Libroo record ID', isbn: 'ISBN', title_authors: 'title and author' }
+const matchLabels = { libroo_id: t('copy.librooRecordId'), isbn: 'ISBN', title_authors: t('copy.titleAndAuthor') }
 watch(() => props.result, () => {
   open.value = false
   filter.value = 'all'
@@ -32,20 +34,20 @@ watch(() => props.result, () => {
     <template v-if="matchedCount">
       <template v-if="!unknownMatches">
         <p class="text-sm text-muted">
-          Already in your library before import: {{ libraryMatches }} {{ libraryMatches === 1 ? 'book' : 'books' }} matched.
+          {{ $t('copy.importLibraryMatches', libraryMatches) }}
         </p>
         <p class="text-sm text-muted">
-          Repeated within this CSV: {{ repeats }} {{ repeats === 1 ? 'row' : 'rows' }} matched records handled at an earlier CSV row.
+          {{ $t('copy.importRepeatedMatches', repeats) }}
         </p>
       </template>
       <p
         v-else
         class="text-sm text-muted"
       >
-        {{ matchedCount }} updated or skipped rows matched library records. Match origins are unavailable for {{ unknownMatches }} {{ unknownMatches === 1 ? 'row' : 'rows' }} in this report; these cannot be classified as pre-existing books or CSV repeats.
+        {{ $t('copy.importUnknownMatches', { count: matchedCount, unknown: unknownMatches }) }}
       </p>
       <p class="text-sm text-muted">
-        {{ repeats ? 'Repeated rows are included in the updated/skipped totals above; they do not create additional books. ' : '' }}{{ $t('ui.matchesCanOccurAcrossLocations') }}
+        {{ repeats ? $t('copy.repeatedRowsAreIncludedInTheUpdatedSkippedTotalsAbove') + ' ' : '' }}{{ $t('ui.matchesCanOccurAcrossLocations') }}
       </p>
     </template>
     <UCollapsible
@@ -58,7 +60,7 @@ watch(() => props.result, () => {
         :trailing-icon="open ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
         :aria-expanded="open"
       >
-        {{ open ? 'Hide row details' : 'Show row details' }} ({{ details.length }})
+        {{ open ? $t('copy.hideRowDetails') : $t('copy.showRowDetails') }} ({{ details.length }})
       </UButton>
       <template #content>
         <div class="space-y-3">
@@ -72,7 +74,7 @@ watch(() => props.result, () => {
             v-if="!visible.length"
             class="text-sm text-muted"
           >
-            {{ details.length ? 'No rows match this filter.' : 'Row details are unavailable for this report.' }}
+            {{ details.length ? $t('copy.noRowsMatchThisFilter') : $t('copy.rowDetailsAreUnavailableForThisReport') }}
           </p>
           <ul
             v-else
@@ -89,7 +91,7 @@ watch(() => props.result, () => {
                   :color="row.status === 'failed' ? 'error' : ['unconfirmed', 'not_processed'].includes(row.status) ? 'warning' : 'neutral'"
                   variant="soft"
                 >
-                  {{ row.status.replaceAll('_', ' ') }}
+                  {{ $t(`copy.importStatus_${row.status}`) }}
                 </UBadge>
                 <span class="font-medium">{{ $t('ui.row') }} {{ row.row }}: {{ row.title }}</span>
               </div>
@@ -97,7 +99,7 @@ watch(() => props.result, () => {
                 v-if="'matchedBy' in row && row.matchedBy"
                 class="text-muted"
               >
-                {{ $t('ui.matched') }} {{ row.matchedTitle ? `“${row.matchedTitle}”` : 'an existing book' }} by {{ matchLabels[row.matchedBy] }}.
+                {{ $t('copy.importMatchedBy', { title: row.matchedTitle || $t('copy.anExistingBook'), method: matchLabels[row.matchedBy] }) }}
               </p>
               <p
                 v-if="isLibraryMatch(row)"
@@ -109,7 +111,7 @@ watch(() => props.result, () => {
                 v-if="'repeatedInFile' in row && row.repeatedInFile"
                 class="text-muted"
               >
-                Repeated in this CSV; the same library record was handled at row {{ row.firstRow }}.
+                {{ $t('copy.importRepeatedRow', { row: row.firstRow }) }}
               </p>
               <p
                 v-if="row.reason"
@@ -128,7 +130,7 @@ watch(() => props.result, () => {
                 :to="`/library/${row.userBookId}`"
                 target="_blank"
                 class="text-primary underline"
-              >{{ row.status === 'created' ? 'View imported book' : 'View matched book' }}</NuxtLink>
+              >{{ row.status === 'created' ? $t('copy.viewImportedBook') : $t('copy.viewMatchedBook') }}</NuxtLink>
             </li>
           </ul>
         </div>

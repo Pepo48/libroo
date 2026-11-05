@@ -17,7 +17,7 @@ async function handleSignOut() {
   try {
     await signOut()
   } catch (error) {
-    console.error('Failed to sign out', error)
+    console.error(t('copy.failedToSignOut'), error)
   } finally {
     // Pass signout param so login page skips auto-redirect (race condition with stale user state)
     navigateTo('/login?signout=true')

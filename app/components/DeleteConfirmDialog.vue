@@ -6,10 +6,7 @@ interface Props {
   cancelLabel?: string
 }
 
-withDefaults(defineProps<Props>(), {
-  confirmLabel: 'Delete',
-  cancelLabel: 'Cancel'
-})
+defineProps<Props>()
 
 const emit = defineEmits<{
   confirm: []
@@ -54,7 +51,7 @@ function confirmDialog() {
         variant="soft"
         @click="closeDialog"
       >
-        {{ cancelLabel }}
+        {{ cancelLabel ?? $t('ui.cancel') }}
       </UButton>
       <UButton
         color="error"
@@ -62,7 +59,7 @@ function confirmDialog() {
         icon="i-lucide-trash-2"
         @click="confirmDialog"
       >
-        {{ confirmLabel }}
+        {{ confirmLabel ?? $t('ui.delete') }}
       </UButton>
     </template>
   </UModal>

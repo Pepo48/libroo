@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { BorrowedBook, InvitePreview } from '~~/shared/types/book'
 
+const { t } = useI18n()
+
 definePageMeta({
   auth: false
 })
@@ -17,7 +19,7 @@ const { data: invite, status } = await useFetch<InvitePreview | null>(`/api/invi
   default: () => null
 })
 
-usePageTitle(computed(() => invite.value?.title ? `Invitation: ${invite.value.title}` : 'Book Invitation'))
+usePageTitle(computed(() => invite.value?.title ? `Invitation: ${invite.value.title}` : t('copy.bookInvitation')))
 
 const coverUrl = computed(() => invite.value?.coverPath ? `/api/invite/${token}/cover` : null)
 const redirectPath = computed(() => `/i/${token}`)
@@ -44,15 +46,15 @@ async function acceptBook() {
       credentials: 'same-origin'
     })
     toast.add({
-      title: 'Added to borrowed books',
+      title: t('copy.addedToBorrowedBooks'),
       color: 'success'
     })
     await navigateTo({ path: '/library/loans', query: { view: 'borrowed' } })
   } catch (err: unknown) {
     const message = (err as { data?: { message?: string } })?.data?.message
-      ?? (err instanceof Error ? err.message : 'This invitation is no longer available')
+      ?? (err instanceof Error ? err.message : t('copy.thisInvitationIsNoLongerAvailable'))
     toast.add({
-      title: 'Could not add book',
+      title: t('copy.couldNotAddBook'),
       description: message,
       color: 'error'
     })
@@ -130,7 +132,7 @@ async function acceptBook() {
             {{ invite.author }}
           </p>
           <p class="mt-4 text-muted">
-            {{ invite.ownerName }} shared this book with you.
+            {{ $t('copy.sharedBy', { name: invite.ownerName }) }}
           </p>
           <p
             v-if="invite.dueAt"

@@ -144,7 +144,7 @@ function onParagraphTransitionEnd(event: TransitionEvent) {
       :trailing-icon="expanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
       :aria-expanded="expanded"
       :aria-controls="descriptionId"
-      :aria-label="expanded ? 'Show less of the book description' : 'Show more of the book description'"
+      :aria-label="expanded ? $t('copy.showLessOfTheBookDescription') : $t('copy.showMoreOfTheBookDescription')"
       @click="toggleExpanded"
     >
       {{ expanded ? $t('ui.showLess') : $t('ui.showMore') }}

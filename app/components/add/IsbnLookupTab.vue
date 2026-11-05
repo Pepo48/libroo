@@ -68,20 +68,20 @@ async function lookupISBN(payload: Pick<FormSubmitEvent<BookIsbnSchema>, 'data'>
 
     if (result.found && result.existsLocally && result.existingState !== 'wishlisted') {
       toast.add({
-        title: 'Already in library',
-        description: `${result.title || 'This book'} is already in your library`,
+        title: t('copy.alreadyInLibrary'),
+        description: t('copy.titleAlreadyInLibrary', { title: result.title || t('copy.thisBook') }),
         color: 'info'
       })
     } else if (!result.found) {
       toast.add({
         title: t('ui.bookNotFound'),
-        description: result.message || 'Could not find this book in the available catalogs',
+        description: result.message || t('copy.couldNotFindThisBookInTheAvailableCatalogs'),
         color: 'warning'
       })
     }
   } else {
     toast.add({
-      title: 'Lookup failed',
+      title: t('copy.lookupFailed'),
       description: lookup.message,
       color: 'error'
     })
@@ -95,10 +95,10 @@ async function addBookToLibrary(libraryState: LibraryState = 'owned') {
 
   if (result.success.length === 1) {
     toast.add({
-      title: libraryState === 'wishlisted' ? 'Book wishlisted!' : 'Book added!',
+      title: libraryState === 'wishlisted' ? t('copy.bookWishlisted') : t('copy.bookAdded'),
       description: libraryState === 'wishlisted'
-        ? `${lookupResult.value.title} has been added to your wishlist`
-        : `${lookupResult.value.title} has been added to your library`,
+        ? t('copy.titleAddedToWishlist', { title: lookupResult.value.title })
+        : t('copy.titleAddedToLibrary', { title: lookupResult.value.title }),
       color: 'success'
     })
 
@@ -113,10 +113,10 @@ async function addBookToLibrary(libraryState: LibraryState = 'owned') {
   }
 
   toast.add({
-    title: alreadyOwned ? 'Already in library' : 'Failed to add book',
+    title: alreadyOwned ? t('copy.alreadyInLibrary') : t('copy.failedToAddBook'),
     description: alreadyOwned
-      ? `${lookupResult.value.title || 'This book'} is already in your library`
-      : 'Could not add this book to your library. Try again in a moment.',
+      ? t('copy.titleAlreadyInLibrary', { title: lookupResult.value.title || t('copy.thisBook') })
+      : t('copy.couldNotAddThisBookToYourLibraryTryAgain'),
     color: alreadyOwned ? 'info' : 'error'
   })
 }
@@ -127,22 +127,22 @@ async function moveToLibrary() {
   isMoving.value = true
   try {
     const userBookId = (lookupResult.value as BookLookupResult & { existingUserBookId?: string }).existingUserBookId
-    if (!userBookId) throw new Error('Wishlist book could not be resolved')
+    if (!userBookId) throw new Error(t('copy.wishlistBookCouldNotBeResolved'))
     await $fetch(`/api/books/${userBookId}/state`, {
       method: 'PUT',
       body: { state: 'owned' }
     })
     toast.add({
-      title: 'Moved to library',
-      description: `${lookupResult.value.title || 'This book'} is now in your library`,
+      title: t('copy.movedToLibrary'),
+      description: t('copy.titleNowInLibrary', { title: lookupResult.value.title || t('copy.thisBook') }),
       color: 'success'
     })
     navigateTo(`/library/${userBookId}`)
   } catch (err: unknown) {
     const message = (err as { data?: { message?: string } })?.data?.message
-      ?? (err instanceof Error ? err.message : 'Unable to move book')
+      ?? (err instanceof Error ? err.message : t('copy.unableToMoveBook'))
     toast.add({
-      title: 'Could not move book',
+      title: t('copy.couldNotMoveBook'),
       description: message,
       color: 'error'
     })
@@ -166,7 +166,7 @@ onBeforeUnmount(() => {
   speculativeIsbn = undefined
 })
 
-const previewTitle = computed(() => lookupResult.value?.existsLocally ? 'Already in Library' : 'Book Found')
+const previewTitle = computed(() => lookupResult.value?.existsLocally ? t('copy.alreadyInLibrary193') : t('copy.bookFound'))
 const previewIconClass = computed(() => lookupResult.value?.existsLocally ? 'text-lg text-info' : 'text-lg text-success')
 
 onMounted(() => {

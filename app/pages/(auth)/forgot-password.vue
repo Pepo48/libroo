@@ -28,13 +28,13 @@ const fields: AuthFormField[] = [
     name: 'email',
     type: 'email',
     label: t('ui.email'),
-    placeholder: 'Enter your email',
+    placeholder: t('copy.enterYourEmail'),
     required: true
   }
 ]
 
 const schema = z.object({
-  email: z.email({ error: 'Please enter a valid email address' })
+  email: z.email({ error: t('copy.pleaseEnterAValidEmailAddress') })
 })
 
 type Schema = z.output<typeof schema>
@@ -50,10 +50,10 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
 
   if (turnstileEnabled.value && !turnstileToken.value) {
     toast.add({
-      title: 'Reset unavailable',
+      title: t('copy.resetUnavailable'),
       description: turnstileMissingConfig.value
-        ? 'Bot protection is enabled but the Turnstile site key is not configured.'
-        : 'Complete the bot protection check before requesting a reset email.',
+        ? t('copy.botProtectionIsEnabledButTheTurnstileSiteKeyIs')
+        : t('copy.completeTheBotProtectionCheckBeforeRequestingAResetEmail'),
       color: 'error'
     })
     return
@@ -81,8 +81,8 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
     })
   } catch (err: unknown) {
     toast.add({
-      title: 'Reset unavailable',
-      description: getFailureMessage(err, 'Unable to send a password reset email.'),
+      title: t('copy.resetUnavailable'),
+      description: getFailureMessage(err, t('copy.unableToSendAPasswordResetEmail')),
       color: 'error'
     })
   } finally {
@@ -102,7 +102,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
       :title="$t('ui.resetPassword')"
       :description="$t('ui.passwordResetEmailIsUnavailableContactYour')"
       icon="i-lucide-mail-x"
-      action-label="Back to sign in"
+      :action-label="$t('copy.backToSignIn')"
       action-to="/login"
       action-icon="i-lucide-log-in"
     />
@@ -112,7 +112,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
       :title="$t('ui.resetEmailSent')"
       :description="$t('ui.ifThisEmailExistsInLibrooA')"
       icon="i-lucide-send"
-      action-label="Back to sign in"
+      :action-label="$t('copy.backToSignIn')"
       action-to="/login"
       action-icon="i-lucide-log-in"
     />

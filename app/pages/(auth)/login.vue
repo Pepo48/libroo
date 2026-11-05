@@ -82,8 +82,8 @@ const fields: AuthInputField[] = [
     name: 'email',
     type: 'email',
     label: t('ui.email'),
-    ariaLabel: 'Email',
-    placeholder: 'Enter your email',
+    ariaLabel: t('ui.email'),
+    placeholder: t('copy.enterYourEmail'),
     required: true
   },
   {
@@ -92,15 +92,15 @@ const fields: AuthInputField[] = [
     type: 'password',
     label: t('ui.password'),
     ariaLabel: 'Password',
-    placeholder: 'Enter your password',
+    placeholder: t('copy.enterYourPassword'),
     required: true
   }
 ]
 
 // Validation schema
 const schema = z.object({
-  email: z.email({ error: 'Please enter a valid email address' }),
-  password: z.string({ error: 'Password is required' }).min(1, { error: 'Password is required' })
+  email: z.email({ error: t('copy.pleaseEnterAValidEmailAddress') }),
+  password: z.string({ error: t('copy.passwordIsRequired') }).min(1, { error: t('copy.passwordIsRequired') })
 })
 
 type Schema = z.output<typeof schema>
@@ -127,11 +127,11 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
     if (result.error) {
       error.value = result.error.code === 'EMAIL_NOT_VERIFIED'
         ? emailCapabilities.value.emailVerificationEnabled
-          ? 'Verify your email address before signing in. A new verification email has been sent.'
-          : 'Verify your email address before signing in.'
-        : result.error.message || 'Failed to sign in'
+          ? t('copy.verifyYourEmailAddressBeforeSigningInANewVerification')
+          : t('copy.verifyYourEmailAddressBeforeSigningIn')
+        : result.error.message || t('copy.failedToSignIn')
       toast.add({
-        title: 'Sign in failed',
+        title: t('copy.signInFailed'),
         description: error.value,
         color: 'error'
       })
@@ -140,12 +140,12 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
       await authStore.refresh()
       toast.add({
         title: t('ui.welcomeBack'),
-        description: 'You have been signed in successfully.',
+        description: t('copy.youHaveBeenSignedInSuccessfully'),
         color: 'success'
       })
     }
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'An unexpected error occurred'
+    error.value = e instanceof Error ? e.message : t('copy.anUnexpectedErrorOccurred')
     toast.add({
       title: t('ui.error'),
       description: error.value,
@@ -166,16 +166,16 @@ async function verifySecondFactor() {
       ? await authClient.twoFactor.verifyBackupCode({ code })
       : await authClient.twoFactor.verifyTotp({ code })
     if (result.error) {
-      error.value = result.error.message || 'Unable to verify the code'
+      error.value = result.error.message || t('copy.unableToVerifyTheCode')
       return
     }
     authStore.clearPendingMfa()
     mfaCode.value = ''
     isFromSignout.value = false
     await authStore.refresh()
-    toast.add({ title: t('ui.welcomeBack'), description: 'Second factor verified.', color: 'success' })
+    toast.add({ title: t('ui.welcomeBack'), description: t('copy.secondFactorVerified'), color: 'success' })
   } catch (cause: unknown) {
-    error.value = cause instanceof Error ? cause.message : 'Unable to verify the code'
+    error.value = cause instanceof Error ? cause.message : t('copy.unableToVerifyTheCode')
   } finally {
     isVerifyingMfa.value = false
   }
@@ -187,7 +187,7 @@ async function signInWithPasskey() {
   try {
     const result = await authClient.signIn.passkey()
     if (result.error) {
-      error.value = result.error.message || 'Passkey sign-in failed'
+      error.value = result.error.message || t('copy.passkeySignInFailed')
       return
     }
     const requiresSecondFactor = Boolean((result.data as { twoFactorRedirect?: boolean } | null)?.twoFactorRedirect)
@@ -199,7 +199,7 @@ async function signInWithPasskey() {
     isFromSignout.value = false
     await authStore.refresh()
   } catch (cause: unknown) {
-    error.value = cause instanceof Error ? cause.message : 'Passkey sign-in failed'
+    error.value = cause instanceof Error ? cause.message : t('copy.passkeySignInFailed')
   } finally {
     isPasskeyLoading.value = false
   }
@@ -217,7 +217,7 @@ async function signInWithOAuth() {
       callbackURL: redirectPath.value
     })
     if (result.error) {
-      error.value = result.error.message || 'Single sign-on failed'
+      error.value = result.error.message || t('copy.singleSignOnFailed')
       return
     }
     const requiresSecondFactor = Boolean((result.data as { twoFactorRedirect?: boolean } | null)?.twoFactorRedirect)
@@ -229,7 +229,7 @@ async function signInWithOAuth() {
     isFromSignout.value = false
     await authStore.refresh()
   } catch (cause: unknown) {
-    error.value = cause instanceof Error ? cause.message : 'Single sign-on failed'
+    error.value = cause instanceof Error ? cause.message : t('copy.singleSignOnFailed')
   } finally {
     isOAuthLoading.value = false
   }
@@ -293,7 +293,7 @@ async function signInWithOAuth() {
           block
           @click="() => { useBackupCode = !useBackupCode; mfaCode = '' }"
         >
-          {{ useBackupCode ? 'Use an authenticator code' : 'Use a recovery code instead' }}
+          {{ useBackupCode ? $t('copy.useAnAuthenticatorCode') : $t('copy.useARecoveryCodeInstead') }}
         </UButton>
         <UAlert
           v-if="error"
@@ -359,7 +359,7 @@ async function signInWithOAuth() {
                 variant="link"
                 size="sm"
                 :icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
-                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                :aria-label="showPassword ? $t('copy.hidePassword') : $t('copy.showPassword')"
                 :aria-pressed="showPassword"
                 @click="() => { showPassword = !showPassword }"
               />

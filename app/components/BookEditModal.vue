@@ -36,7 +36,7 @@ const validIsbn = computed(() => isValidIsbn(state.isbn))
 const preview = computed(() => state.coverImage
   ? `data:${state.coverImage.contentType};base64,${state.coverImage.data.replace(/^data:[^,]*,/, '')}`
   : !state.removeCover && props.book.coverPath ? `/api/blob/${props.book.coverPath}` : null)
-const errorMessage = (error: unknown) => (error as { data?: { message?: string } })?.data?.message || (error instanceof Error ? error.message : 'Please try again.')
+const errorMessage = (error: unknown) => (error as { data?: { message?: string } })?.data?.message || (error instanceof Error ? error.message : t('ui.pleaseTryAgain'))
 watch(open, (value) => {
   version++
   preparingCover.value = false
@@ -63,7 +63,7 @@ async function upload(file: File | null | undefined) {
   const current = ++version
   if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) || file.size > MANUAL_COVER_MAX_BYTES) {
     coverFile.value = null
-    notify({ title: 'Choose a JPEG, PNG, WebP or GIF up to 2 MB', color: 'error' })
+    notify({ title: t('copy.chooseAJpegPngWebpOrGifUpTo2'), color: 'error' })
     return
   }
   preparingCover.value = true
@@ -71,14 +71,14 @@ async function upload(file: File | null | undefined) {
     const data = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader()
       reader.onload = () => resolve(String(reader.result).split(',')[1]!)
-      reader.onerror = () => reject(new Error('Could not read this image'))
+      reader.onerror = () => reject(new Error(t('copy.couldNotReadThisImage')))
       reader.readAsDataURL(file)
     })
     if (current !== version || !open.value) return
     state.coverImage = { data, contentType: file.type, size: file.size }
     state.removeCover = false
   } catch (error) {
-    notify({ title: 'Could not load image', description: errorMessage(error), color: 'error' })
+    notify({ title: t('copy.couldNotLoadImage'), description: errorMessage(error), color: 'error' })
   } finally {
     if (current === version) preparingCover.value = false
   }
@@ -167,7 +167,7 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
                   icon="i-lucide-x"
                   variant="ghost"
                   color="neutral"
-                  :aria-label="`Remove author ${index + 1}`"
+                  :aria-label="$t('copy.removeAuthorNumber', { number: index + 1 })"
                   :disabled="state.authors.length === 1"
                   @click="state.authors.splice(index, 1)"
                 />

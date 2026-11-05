@@ -1,3 +1,4 @@
+import { getClientTranslator } from '../utils/client-message'
 import type { Ref } from 'vue'
 
 export function useBookDetailActions(
@@ -6,6 +7,7 @@ export function useBookDetailActions(
   refresh: () => Promise<unknown>
 ) {
   const toast = useToast()
+  const textFor = getClientTranslator()
   const dashboardStore = useLibraryDashboardStore()
   const isDeleting = ref(false)
   const isReturningLoan = ref(false)
@@ -23,7 +25,7 @@ export function useBookDetailActions(
         query: confirmActiveLoan ? { confirmActiveLoan: 'true' } : undefined
       })
       dashboardStore.removeBooks([userBookId])
-      toast.add({ title: 'Book removed', color: 'success' })
+      toast.add({ title: textFor('copy.bookRemoved', 'Book removed'), color: 'success' })
       await navigateTo('/library')
       return 'removed'
     } catch (error: unknown) {
@@ -32,7 +34,7 @@ export function useBookDetailActions(
       if (statusCode === 409 && book.value?.activeLoan && !confirmActiveLoan) {
         return 'active-loan'
       }
-      toast.add({ title: 'Could not remove book', color: 'error' })
+      toast.add({ title: textFor('copy.couldNotRemoveBook', 'Could not remove book'), color: 'error' })
       return 'failed'
     } finally {
       isDeleting.value = false
@@ -49,11 +51,11 @@ export function useBookDetailActions(
       })
       await refresh()
       toast.add({
-        title: state === 'owned' ? 'Moved to library' : state === 'wishlisted' ? 'Moved to wishlist' : 'Marked previously owned',
+        title: state === 'owned' ? textFor('copy.movedToLibrary', 'Moved to library') : state === 'wishlisted' ? textFor('copy.movedToWishlist', 'Moved to wishlist') : textFor('copy.markedPreviouslyOwned', 'Marked previously owned'),
         color: 'success'
       })
     } catch {
-      toast.add({ title: 'Could not update book state', color: 'error' })
+      toast.add({ title: textFor('copy.couldNotUpdateBookState', 'Could not update book state'), color: 'error' })
     } finally {
       isUpdatingLibraryState.value = false
     }
@@ -68,10 +70,10 @@ export function useBookDetailActions(
         body: { note: note.trim() || null }
       })
       await refresh()
-      toast.add({ title: note.trim() ? 'Note saved' : 'Note removed', color: 'success' })
+      toast.add({ title: note.trim() ? textFor('copy.noteSaved', 'Note saved') : textFor('copy.noteRemoved', 'Note removed'), color: 'success' })
       return true
     } catch {
-      toast.add({ title: 'Could not save note', color: 'error' })
+      toast.add({ title: textFor('copy.couldNotSaveNote', 'Could not save note'), color: 'error' })
       return false
     } finally {
       isSavingBookNote.value = false
@@ -88,10 +90,10 @@ export function useBookDetailActions(
         body: { note: note.trim() || null }
       })
       await refresh()
-      toast.add({ title: note.trim() ? 'Loan note saved' : 'Loan note removed', color: 'success' })
+      toast.add({ title: note.trim() ? textFor('copy.loanNoteSaved', 'Loan note saved') : textFor('copy.loanNoteRemoved', 'Loan note removed'), color: 'success' })
       return true
     } catch {
-      toast.add({ title: 'Could not save loan note', color: 'error' })
+      toast.add({ title: textFor('copy.couldNotSaveLoanNote', 'Could not save loan note'), color: 'error' })
       return false
     } finally {
       isSavingLoanNote.value = false
@@ -105,9 +107,9 @@ export function useBookDetailActions(
     try {
       await $fetch(`/api/loans/${loan.id}/return`, { method: 'POST' })
       await refresh()
-      toast.add({ title: 'Book marked as returned', color: 'success' })
+      toast.add({ title: textFor('copy.bookMarkedAsReturned', 'Book marked as returned'), color: 'success' })
     } catch {
-      toast.add({ title: 'Could not update lending status', color: 'error' })
+      toast.add({ title: textFor('copy.couldNotUpdateLendingStatus', 'Could not update lending status'), color: 'error' })
     } finally {
       isReturningLoan.value = false
     }
@@ -118,10 +120,10 @@ export function useBookDetailActions(
     try {
       await $fetch(`/api/books/${userBookId}/reading`, { method: 'PUT', body: progress })
       await refresh()
-      toast.add({ title: 'Progress saved', color: 'success' })
+      toast.add({ title: textFor('copy.progressSaved', 'Progress saved'), color: 'success' })
       return true
     } catch {
-      toast.add({ title: 'Could not save reading progress', color: 'error' })
+      toast.add({ title: textFor('copy.couldNotSaveReadingProgress', 'Could not save reading progress'), color: 'error' })
       return false
     } finally {
       isSavingReadingProgress.value = false
@@ -137,7 +139,7 @@ export function useBookDetailActions(
       await $fetch(`/api/books/${userBookId}/rating`, { method: 'PUT', body: { rating } })
     } catch {
       book.value = { ...book.value, rating: previousRating }
-      toast.add({ title: 'Could not save rating', color: 'error' })
+      toast.add({ title: textFor('copy.couldNotSaveRating', 'Could not save rating'), color: 'error' })
     } finally {
       isSavingRating.value = false
     }

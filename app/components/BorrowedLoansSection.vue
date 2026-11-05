@@ -134,10 +134,10 @@ function coverUrl(book: BorrowedBook) {
                   {{ book.title }}
                 </h3>
                 <p class="text-sm text-muted truncate">
-                  {{ book.author }} · Lent by {{ book.ownerName }}
+                  {{ book.author }} {{ $t('copy.lentBy') }} {{ book.ownerName }}
                 </p>
                 <p class="text-sm text-muted">
-                  {{ book.status === 'returned' ? returnedLabel(book.returnedAt) : 'No longer active' }}
+                  {{ book.status === 'returned' ? returnedLabel(book.returnedAt) : $t('copy.noLongerActive') }}
                 </p>
               </div>
             </div>

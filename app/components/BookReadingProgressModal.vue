@@ -238,10 +238,10 @@ function saveProgress() {
           <div class="space-y-2">
             <div class="flex items-center justify-between gap-3 text-sm font-medium">
               <span>
-                {{ progressMode === $t('ui.pagesText') && totalPages ? `Current page of ${totalPages}` : 'Percent complete' }}
+                {{ progressMode === 'pages' && totalPages ? $t('copy.progressCurrentPage', { total: totalPages }) : $t('copy.percentComplete') }}
               </span>
               <span class="font-normal text-muted">
-                {{ displayedPercent }}% done
+                {{ $t('copy.progressDone', { percent: displayedPercent }) }}
               </span>
             </div>
 
