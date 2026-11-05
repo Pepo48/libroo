@@ -153,6 +153,12 @@ The deployment workflow must already be on `main` with manual dispatch support.
 An automatic deployment before settings exist may fail; setup starts a fresh run
 after saving them.
 
+## Optional private metadata modules
+
+For production builds that include a private module, see
+[public deployment with private modules](book-metadata-providers.md#deploy-from-a-public-repository-with-private-modules).
+The default Open Library build needs no private repository or checkout key.
+
 ## Dashboard locations and troubleshooting
 
 | What you need | Where to find it |
