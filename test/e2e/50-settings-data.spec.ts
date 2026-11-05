@@ -239,3 +239,29 @@ test('keeps confirmed import counts and the error when a later request fails', a
   await expect(report).toContainText('reading_status must be unread, reading, or read')
   await expect(page).toHaveURL(/\/settings$/)
 })
+
+test('copies an error notification title and description, and reports clipboard failures', async ({ page, context }, testInfo) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await registerSettingsUser(page, testInfo.title, 'settings-notification-copy')
+  await page.goto('/settings')
+  await page.route('**/api/library/export', route => route.fulfill({ status: 500, json: { message: 'Export unavailable for this test' } }))
+  await page.getByRole('button', { name: 'Export CSV', exact: true }).click()
+  const title = page.locator('[data-slot="title"]').filter({ hasText: /^Export failed$/ })
+  await expect(title).toBeVisible()
+  await page.getByRole('button', { name: 'Copy notification', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Notification copied', exact: true })).toBeVisible()
+  const copied = await page.evaluate(() => navigator.clipboard.readText())
+  expect(copied).toMatch(/^Export failed\n\n/)
+  expect(copied).toContain('/api/library/export')
+  await expect(title).toBeVisible()
+
+  await page.evaluate(() => {
+    Object.defineProperty(navigator.clipboard, 'writeText', {
+      configurable: true,
+      value: () => Promise.reject(new Error('Clipboard unavailable'))
+    })
+  })
+  await page.getByRole('button', { name: 'Notification copied', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Copy failed — select text to copy', exact: true })).toBeVisible()
+  await expect(title).toHaveCSS('user-select', 'text')
+})
