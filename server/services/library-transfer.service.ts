@@ -1,3 +1,4 @@
+import { LIBRARY_IMPORT_BATCH_SIZE, LIBRARY_IMPORT_FIELD_BUDGET, libraryImportWork } from '../../shared/utils/library-import-batches'
 import { Context, Data, Effect, Layer } from 'effect'
 import {
   formatCsvList,
@@ -186,6 +187,9 @@ export const LibraryTransferServiceLive = Layer.effect(
               for (const row of parseLibraryCsvRows(csv)) {
                 records.push(toImportRecord(row))
               }
+              if (records.length > LIBRARY_IMPORT_BATCH_SIZE || records.reduce((sum, record) => sum + libraryImportWork(record), 0) > LIBRARY_IMPORT_FIELD_BUDGET) {
+                throw new Error('Import request is too large. Use the batched CSV importer or send smaller batches.')
+              }
               return records
             },
             catch: error => new InvalidLibraryCsvError({
@@ -199,52 +203,32 @@ export const LibraryTransferServiceLive = Layer.effect(
             maxAttempts: getBooksEnrichmentConfig().maxAttempts
           })
           const enrichmentRepo = yield* BookEnrichmentRepository
+          const cleanupPaths: { isbn: string, pathname: string }[] = []
           for (const pathname of new Set(imported.orphanedSharedCoverPaths)) {
             const isbn = isbnFromSharedCoverPath(pathname)
-            if (!isbn) {
-              yield* Effect.logWarning(`Skipped replaced import cover with an unsupported path: ${pathname}`)
-              continue
-            }
-
+            if (isbn) cleanupPaths.push({ isbn, pathname })
+            else yield* Effect.logWarning(`Skipped replaced import cover with an unsupported path: ${pathname}`)
+          }
+          if (cleanupPaths.length) {
             const claimToken = `library-import:${crypto.randomUUID()}`
             const now = new Date()
             const acquired = yield* enrichmentRepo.acquireIsbnLocks(
-              [isbn],
-              claimToken,
-              new Date(now.getTime() + SHARED_COVER_CLEANUP_LEASE_MS),
-              now
-            ).pipe(
-              Effect.catch(error =>
-                Effect.logWarning(`Failed to lock replaced import cover ${pathname}: ${String(error)}`).pipe(
-                  Effect.as(new Set<string>())
-                )
-              )
-            )
-            if (!acquired.has(isbn)) continue
-
-            yield* Effect.gen(function* () {
-              const referenced = yield* enrichmentRepo.isCoverReferenced(pathname).pipe(
-                Effect.catch(error =>
-                  Effect.logWarning(`Failed to check replaced import cover ${pathname}: ${String(error)}`).pipe(
-                    Effect.as(true)
+              cleanupPaths.map(item => item.isbn), claimToken,
+              new Date(now.getTime() + SHARED_COVER_CLEANUP_LEASE_MS), now
+            ).pipe(Effect.catch(error => Effect.logWarning(`Failed to lock replaced import covers: ${String(error)}`).pipe(Effect.as(new Set<string>()))))
+            if (acquired.size) {
+              yield* Effect.gen(function* () {
+                for (const { isbn, pathname } of cleanupPaths) {
+                  if (!acquired.has(isbn)) continue
+                  const referenced = yield* enrichmentRepo.isCoverReferenced(pathname).pipe(
+                    Effect.catch(error => Effect.logWarning(`Failed to check replaced import cover ${pathname}: ${String(error)}`).pipe(Effect.as(true)))
                   )
-                )
-              )
-              if (referenced) return
-              yield* deleteBlob(pathname).pipe(
-                Effect.catch(error =>
-                  Effect.logWarning(`Failed to delete replaced import cover ${pathname}: ${String(error)}`)
-                )
-              )
-            }).pipe(
-              Effect.ensuring(
-                enrichmentRepo.releaseIsbnLocks([isbn], claimToken).pipe(
-                  Effect.catch(error =>
-                    Effect.logWarning(`Failed to unlock replaced import cover ${pathname}: ${String(error)}`)
-                  )
-                )
-              )
-            )
+                  if (!referenced) yield* deleteBlob(pathname).pipe(Effect.catch(error => Effect.logWarning(`Failed to delete replaced import cover ${pathname}: ${String(error)}`)))
+                }
+              }).pipe(Effect.ensuring(enrichmentRepo.releaseIsbnLocks([...acquired], claimToken).pipe(
+                Effect.catch(error => Effect.logWarning(`Failed to unlock replaced import covers: ${String(error)}`))
+              )))
+            }
           }
 
           const { orphanedSharedCoverPaths: _, ...result } = imported

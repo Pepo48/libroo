@@ -1,3 +1,4 @@
+import { LIBRARY_IMPORT_BATCH_SIZE } from '../../../../shared/utils/library-import-batches'
 import { Effect, Layer } from 'effect'
 import { describe, expect, it, vi } from 'vitest'
 import {
@@ -115,17 +116,24 @@ describe('LibraryTransferService.importLibraryCsv', () => {
     expect(importRecords).not.toHaveBeenCalled()
   })
 
-  it('imports a maximal valid CSV and returns the repository result', async () => {
-    const csv = `${header}\n${Array.from({ length: LIBRARY_CSV_MAX_DATA_ROWS }, (_, index) => `Dune ${index}`).join('\n')}`
+  it('imports a maximal valid request batch and returns the repository result', async () => {
+    const csv = `${header}\n${Array.from({ length: LIBRARY_IMPORT_BATCH_SIZE }, (_, index) => `Dune ${index}`).join('\n')}`
     const { effect, importRecords } = runImport(csv)
 
     await expect(effect).resolves.toMatchObject({ _tag: 'Success', success: publicResult })
     expect(importRecords).toHaveBeenCalledWith(
       'user-1',
-      expect.objectContaining({ length: LIBRARY_CSV_MAX_DATA_ROWS }),
+      expect.objectContaining({ length: LIBRARY_IMPORT_BATCH_SIZE }),
       'existing',
       expect.objectContaining({ enqueueEnrichment: true, batchId: expect.any(String) })
     )
+  })
+
+  it('rejects oversized API batches before invoking the repository', async () => {
+    const csv = `${header}\n${Array.from({ length: LIBRARY_IMPORT_BATCH_SIZE + 1 }, (_, index) => `Book ${index}`).join('\n')}`
+    const { effect, importRecords } = runImport(csv)
+    await expect(effect).resolves.toMatchObject({ _tag: 'Failure' })
+    expect(importRecords).not.toHaveBeenCalled()
   })
 
   it('canonicalizes ISBN-10 and preserves export provenance for matching', async () => {
@@ -166,6 +174,17 @@ describe('LibraryTransferService.importLibraryCsv', () => {
       'existing',
       expect.objectContaining({ enqueueEnrichment: true })
     )
+  })
+
+  it('acquires cover locks once per import and only deletes covers whose locks were acquired', async () => {
+    const importRecords = vi.fn(() => Effect.succeed({ ...result, orphanedSharedCoverPaths: ['covers/9780441172719.webp', 'covers/9780385533225.webp'] }))
+    const acquireIsbnLocksEffect = vi.fn(() => Effect.succeed(new Set(['9780441172719'])))
+    const { effect, isCoverReferenced, releaseIsbnLocks, deleteBlob } = runImport(`${header}\nDune`, { importRecords, acquireIsbnLocksEffect })
+    await expect(effect).resolves.toMatchObject({ _tag: 'Success' })
+    expect(acquireIsbnLocksEffect).toHaveBeenCalledExactlyOnceWith(['9780441172719', '9780385533225'], expect.any(String), expect.any(Date), expect.any(Date))
+    expect(isCoverReferenced).toHaveBeenCalledExactlyOnceWith('covers/9780441172719.webp')
+    expect(deleteBlob).toHaveBeenCalledExactlyOnceWith('covers/9780441172719.webp')
+    expect(releaseIsbnLocks).toHaveBeenCalledWith(['9780441172719'], expect.any(String))
   })
 
   it('deletes a replaced shared cover only when no record or loan still references it', async () => {
