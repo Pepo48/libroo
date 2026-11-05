@@ -8,7 +8,7 @@ export default effectHandler((event, user) =>
       catch: e => createError({ statusCode: 400, message: 'Validation Error', data: e })
     })
 
-    // Lookup book via BookService (handles local DB check and OpenLibrary fallback)
+    // Lookup book via BookService (checks local books, then registered metadata providers)
     return yield* lookupBook(user.id, body.isbn)
   })
 )

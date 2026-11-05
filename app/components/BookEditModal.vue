@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
-import type { BookDetails, BookLookupResult } from '~~/shared/types/book'
-import { bookEditSchema, MANUAL_COVER_MAX_BYTES, type BookEditSchema } from '~~/shared/utils/schemas'
+import type { BookDetails } from '~~/shared/types/book'
+import { BATCH_TAG_UPDATE_MAX_ENTRIES, bookEditSchema, MANUAL_COVER_MAX_BYTES, type BookEditSchema } from '~~/shared/utils/schemas'
+import type { BookRefreshSelection } from '~~/shared/types/book-refresh'
 import { isValidIsbn } from '~~/shared/utils/isbn'
 
 const open = defineModel<boolean>('open', { default: false })
@@ -15,19 +16,20 @@ const notify = (value: NonNullable<typeof feedback.value>) => {
 let savedToastId: string | number | undefined
 const saving = ref(false)
 const preparingCover = ref(false)
-const findingCover = ref(false)
-const findingDetails = ref(false)
+const refreshing = ref(false)
+const refreshPreviewPending = ref(false)
 const coverFile = ref<File | null>(null)
 let version = 0
 const state = reactive({
   expectedBookId: '', title: '', authors: [''], isbn: '', publisher: '', publishDate: '',
-  numberOfPages: null as number | null, description: '',
+  numberOfPages: null as number | null, addTags: [] as string[], description: '',
   coverImage: null as BookEditSchema['coverImage'], removeCover: false
 })
 const pagesInput = computed<string | number>({
   get: () => state.numberOfPages ?? '',
   set: (value) => { state.numberOfPages = value === '' ? null : Number(value) }
 })
+const currentTags = computed(() => [...props.book.userTags.map(tag => tag.name), ...state.addTags])
 const validIsbn = computed(() => isValidIsbn(state.isbn))
 const preview = computed(() => state.coverImage
   ? `data:${state.coverImage.contentType};base64,${state.coverImage.data.replace(/^data:[^,]*,/, '')}`
@@ -36,6 +38,8 @@ const errorMessage = (error: unknown) => (error as { data?: { message?: string }
 watch(open, (value) => {
   version++
   preparingCover.value = false
+  refreshing.value = false
+  refreshPreviewPending.value = false
   if (!value) return
   feedback.value = null
   if (savedToastId !== undefined) {
@@ -46,7 +50,7 @@ watch(open, (value) => {
     expectedBookId: props.book.bookId, title: props.book.title,
     authors: props.book.authors.length ? props.book.authors.map(author => author.name) : [props.book.author || ''],
     isbn: props.book.isbn || '', publisher: props.book.publishers || '', publishDate: props.book.publishDate || '',
-    numberOfPages: props.book.numberOfPages, description: props.book.description || '', coverImage: null, removeCover: false
+    numberOfPages: props.book.numberOfPages, addTags: [], description: props.book.description || '', coverImage: null, removeCover: false
   })
   coverFile.value = null
 }, { immediate: true })
@@ -84,46 +88,17 @@ function removeCover() {
   state.removeCover = true
   coverFile.value = null
 }
-async function findCover() {
-  if (!validIsbn.value || findingCover.value) return
-  const current = ++version
-  const isbn = state.isbn
-  findingCover.value = true
-  try {
-    const image = await $fetch<NonNullable<BookEditSchema['coverImage']>>(`/api/books/${props.book.id}/cover-preview`, { method: 'POST', body: { isbn } })
-    if (current !== version || !open.value || isbn !== state.isbn) return
-    state.coverImage = image
+function applyRefresh({ addTags, ...fields }: BookRefreshSelection) {
+  Object.assign(state, fields)
+  if (addTags) state.addTags = [...state.addTags, ...addTags]
+  if (fields.coverImage) {
     state.removeCover = false
     coverFile.value = null
-    notify({ title: 'Cover found', description: 'Review it, then save your changes.', color: 'success' })
-  } catch (error) {
-    notify({ title: 'Cover not available', description: errorMessage(error), color: 'warning' })
-  } finally { findingCover.value = false }
-}
-async function findDetails() {
-  if (!validIsbn.value || findingDetails.value) return
-  const isbn = state.isbn
-  const current = version
-  findingDetails.value = true
-  try {
-    const result = await $fetch<BookLookupResult>('/api/books/lookup', { method: 'POST', body: { isbn } })
-    if (current !== version || !open.value || isbn !== state.isbn) return
-    if (!result.found) {
-      notify({ title: 'No matching details found', color: 'warning' })
-      return
-    }
-    if (!state.title.trim()) state.title = result.title || ''
-    if (!state.authors.some(author => author.trim())) state.authors = result.authors?.length ? result.authors : [result.author || '']
-    if (!state.publisher.trim()) state.publisher = result.publishers?.join(', ') || ''
-    if (!state.publishDate.trim()) state.publishDate = result.publishDate || ''
-    if (!state.numberOfPages) state.numberOfPages = result.numberOfPages || null
-    if (!state.description.trim()) state.description = result.description || ''
-    notify({ title: 'Lookup complete', description: 'Available details filled empty fields. Existing values were kept.', color: 'success' })
-  } catch (error) {
-    notify({ title: 'Could not find details', description: errorMessage(error), color: 'error' })
-  } finally { findingDetails.value = false }
+  }
+  notify({ title: 'Selected fields applied', description: 'Review your edits, then save your changes.', color: 'success' })
 }
 async function save(event: FormSubmitEvent<BookEditSchema>) {
+  if (saving.value || refreshing.value || refreshPreviewPending.value || preparingCover.value) return
   saving.value = true
   try {
     const book = await $fetch<BookDetails>(`/api/books/${props.book.id}`, { method: 'PUT', body: event.data })
@@ -248,13 +223,18 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
               />
             </UFormField>
           </div>
-          <UButton
-            label="Find missing details by ISBN"
-            icon="i-lucide-search"
-            variant="soft"
-            :disabled="!validIsbn || findingDetails"
-            :loading="findingDetails"
-            @click="findDetails"
+          <BookRefreshPanel
+            :user-book-id="book.id"
+            :isbn="state.isbn"
+            :current="state"
+            :current-cover="preview"
+            :current-tags="currentTags"
+            :active="open"
+            :disabled="saving || preparingCover"
+            :valid-isbn="validIsbn"
+            @apply="applyRefresh"
+            @busy="refreshing = $event"
+            @pending="refreshPreviewPending = $event"
           />
           <UFormField
             label="Description"
@@ -267,9 +247,32 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
             />
           </UFormField>
           <UFormField
+            label="Add tags"
+            name="addTags"
+            description="Press Enter to add a tag. Existing tags are kept."
+          >
+            <div
+              v-if="book.userTags.length"
+              class="mb-2 flex flex-wrap gap-1.5"
+            >
+              <UBadge
+                v-for="tag in book.userTags"
+                :key="tag.id"
+                color="neutral"
+                variant="soft"
+                :label="tag.name"
+              />
+            </div>
+            <UInputTags
+              v-model="state.addTags"
+              :max="BATCH_TAG_UPDATE_MAX_ENTRIES"
+              class="w-full"
+            />
+          </UFormField>
+          <UFormField
             label="Cover"
             name="coverImage"
-            description="Upload an image up to 2 MB, or find a cover through Open Library. Preview changes before saving."
+            description="Upload your own image up to 2 MB or remove the current cover."
           >
             <div class="mt-2 flex flex-col gap-4 sm:flex-row">
               <div class="flex aspect-2/3 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-default bg-muted">
@@ -296,14 +299,6 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
                 />
                 <div class="flex flex-wrap gap-2">
                   <UButton
-                    label="Find cover by ISBN"
-                    icon="i-lucide-search"
-                    variant="soft"
-                    :disabled="!validIsbn || findingCover || preparingCover"
-                    :loading="findingCover"
-                    @click="findCover"
-                  />
-                  <UButton
                     label="Remove cover"
                     icon="i-lucide-image-off"
                     variant="ghost"
@@ -327,6 +322,12 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
           :color="feedback.color"
           variant="soft"
         />
+        <p
+          v-if="refreshPreviewPending"
+          class="text-sm text-muted"
+        >
+          Apply selected fields or dismiss the preview before saving.
+        </p>
         <div class="flex justify-end gap-2">
           <UButton
             label="Cancel"
@@ -340,7 +341,7 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
             form="book-edit-form"
             type="submit"
             :loading="saving"
-            :disabled="findingCover || findingDetails || preparingCover"
+            :disabled="refreshing || refreshPreviewPending || preparingCover"
           />
         </div>
       </div>

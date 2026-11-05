@@ -1,8 +1,9 @@
 import { Context, Effect, Layer } from 'effect'
 import { and, eq, exists, isNull, not, sql } from 'drizzle-orm'
-import { authors, bookAuthors, books, bookSystemTags, userBooks } from '../db/schema'
+import { authors, bookAuthors, books, bookSystemTags, tags, userBookTags, userBooks } from '../db/schema'
 import { DbService, type AtomicDbStatement, type AtomicDbStatements } from '../services/db.service'
 import { DatabaseError } from './book.repository'
+import { normalizeTagInput } from '../../shared/utils/tag-ingestion'
 import type { BookEditSchema } from '../../shared/utils/schemas'
 
 export class BookEditRepository extends Context.Service<BookEditRepository, {
@@ -48,6 +49,28 @@ export const BookEditRepositoryLive = Layer.effect(BookEditRepository, Effect.ge
             bookId: sql<string>`${bookId}`.as('book_id'), tagId: bookSystemTags.tagId,
             createdAt: bookSystemTags.createdAt, updatedAt: bookSystemTags.updatedAt
           }).from(bookSystemTags).innerJoin(books, eq(books.id, bookId)).where(eq(bookSystemTags.bookId, input.expectedBookId))))
+          const tagInputs = new Map((input.addTags ?? []).flatMap((name) => {
+            const tag = normalizeTagInput(name)
+            return tag ? [[tag.key, tag.displayName] as const] : []
+          }))
+          for (const [key, name] of tagInputs) {
+            statements.push(
+              db.insert(tags).select(db.select({
+                id: sql<string>`${crypto.randomUUID()}`.as('id'),
+                name: sql<string>`${name}`.as('name'),
+                normalizedName: sql<string>`${key}`.as('normalized_name'),
+                createdAt: sql<number>`${Math.floor(now.getTime() / 1000)}`.as('created_at'),
+                updatedAt: sql<number>`${Math.floor(now.getTime() / 1000)}`.as('updated_at')
+              }).from(userBooks).where(predicate)).onConflictDoNothing(),
+              db.insert(userBookTags).select(db.select({
+                id: sql<string>`${crypto.randomUUID()}`.as('id'),
+                userBookId: userBooks.id,
+                tagId: tags.id,
+                createdAt: sql<number>`${Math.floor(now.getTime() / 1000)}`.as('created_at'),
+                updatedAt: sql<number>`${Math.floor(now.getTime() / 1000)}`.as('updated_at')
+              }).from(userBooks).innerJoin(tags, eq(tags.normalizedName, key)).where(predicate)).onConflictDoNothing()
+            )
+          }
           statements.push(db.update(userBooks).set({ bookId }).where(predicate).returning({ id: userBooks.id }))
           statements.push(db.delete(books).where(and(
             eq(books.id, input.expectedBookId), eq(books.source, 'manual'), eq(books.createdByUserId, userId),

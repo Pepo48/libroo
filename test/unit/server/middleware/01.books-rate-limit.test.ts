@@ -47,9 +47,13 @@ describe('server/middleware/01.books-rate-limit', () => {
     mocks.config = { enabled: true, maxRequests: 2, windowSeconds: 60 }
   })
 
-  it('only applies to ISBN lookup, mutation, and enrichment routes', async () => {
+  it('only applies to book search, ISBN lookup, mutation, and enrichment routes', async () => {
     const middleware = await import('../../../../server/middleware/01.books-rate-limit')
 
+    expect(middleware.shouldEnforceRateLimit(makeEvent('/api/books/search'))).toBe(true)
+    expect(middleware.shouldEnforceRateLimit(makeEvent('/api/books/entry/metadata-preview'))).toBe(true)
+    expect(middleware.shouldEnforceRateLimit(makeEvent('/api/books/entry/cover-preview'))).toBe(true)
+    expect(middleware.shouldEnforceRateLimit(makeEvent('/api/books/entry/metadata-preview', 'GET'))).toBe(false)
     expect(middleware.shouldEnforceRateLimit(makeEvent('/api/books/lookup'))).toBe(true)
     expect(middleware.shouldEnforceRateLimit(makeEvent('/api/books'))).toBe(true)
     expect(middleware.shouldEnforceRateLimit(makeEvent('/api/books/bulk-lookup'))).toBe(true)

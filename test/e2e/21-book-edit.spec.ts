@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { storageState } from './support/auth'
-import { fixtureIsbn } from './support/books'
+import { fixtureIsbn, fixtureIsbnTitle } from './support/books'
 import { librarySearchInput } from './support/selectors'
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEklEQVQImWNwtjjlbHGKAUIBACF+BRVveqO2AAAAAElFTkSuQmCC', 'base64')
@@ -28,12 +28,18 @@ test('edits metadata and stages a fetched cover until saving; refresh and librar
   await dialog.getByLabel('ISBN', { exact: true }).fill(fixtureIsbn)
   await dialog.getByLabel('Publisher', { exact: true }).fill('My Publisher')
   await dialog.getByLabel('Description', { exact: true }).fill('My description')
-  await dialog.getByRole('button', { name: 'Find missing details by ISBN' }).click()
   await expect(dialog.getByLabel('Publisher', { exact: true })).toHaveValue('My Publisher')
   await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue(corrected)
   await dialog.getByRole('spinbutton', { name: 'Pages', exact: true }).fill('318')
-  await page.route('**/cover-preview', route => route.fulfill({ json: { data: png.toString('base64'), size: png.length, contentType: 'image/png' } }))
-  await dialog.getByRole('button', { name: 'Find cover by ISBN', exact: true }).click()
+  await page.route('**/metadata-preview', route => route.fulfill({ json: {
+    isbn: fixtureIsbn, source: { id: 'openlibrary', label: 'Open Library' },
+    metadata: {}, coverSource: { id: 'openlibrary', label: 'Open Library' },
+    coverImage: { data: png.toString('base64'), size: png.length, contentType: 'image/png' }, warnings: []
+  } }))
+  await dialog.getByRole('button', { name: 'Refresh from sources', exact: true }).click()
+  await expect(dialog.getByAltText('Fetched cover')).toBeVisible()
+  await expect(dialog.getByRole('checkbox', { name: 'Use fetched cover' })).toBeChecked()
+  await dialog.getByRole('button', { name: 'Apply selected fields', exact: true }).click()
   await expect(dialog.getByAltText('Cover preview')).toBeVisible()
   const beforeSave = await (await context.request.get(`/api/books/${original.id}`)).json()
   expect(beforeSave.coverPath).toBeNull()
@@ -46,6 +52,12 @@ test('edits metadata and stages a fetched cover until saving; refresh and librar
   expect(saved).toMatchObject({ title: corrected, note: 'Private note', rating: 4, numberOfPages: 318, description: 'My description', publishers: 'My Publisher', readingProgress: { currentPage: 12 } })
   expect(saved.coverPath).toMatch(/^covers\/manual\//)
   expect(saved.authors.map((author: { name: string }) => author.name)).toEqual(['Corrected Author', 'Second Author'])
+  await page.getByRole('button', { name: 'Edit book', exact: true }).click()
+  await dialog.getByRole('button', { name: 'Refresh from sources', exact: true }).click()
+  await expect(dialog.getByAltText('Current cover', { exact: true })).toBeVisible()
+  await expect(dialog.getByAltText('Fetched cover', { exact: true })).toBeVisible()
+  await expect(dialog.getByRole('checkbox', { name: 'Use fetched cover' })).not.toBeChecked()
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
   await page.reload()
   await expect(page.getByRole('heading', { name: corrected, exact: true })).toBeVisible()
 
@@ -104,4 +116,87 @@ test('mobile editor supports cover upload and removal without horizontal overflo
   await expect(page.getByTestId('book-jacket')).toBeVisible()
   await expect(page.getByTestId('book-jacket')).toHaveAttribute('data-jacket-palette', palette!)
   await context.close()
+})
+
+for (const mobile of [false, true]) {
+  test(`previews fresh metadata, applies selected fields and only persists after saving${mobile ? ' @mobile' : ''}`, async ({ browser }) => {
+    const context = await browser.newContext({ storageState: await storageState(browser, 'user'), viewport: mobile ? { width: 393, height: 851 } : { width: 1440, height: 1100 }, isMobile: mobile, hasTouch: mobile })
+    const page = await context.newPage()
+    const title = `Refresh QA ${Date.now()}`
+    const response = await context.request.post('/api/books/manual', { data: { title, authors: ['Original Author'], isbn: fixtureIsbn, note: 'Keep my note', rating: 4 } })
+    expect(response.ok()).toBe(true)
+    const book = await response.json()
+    let lookups = 0
+    await page.route('**/api/books/metadata-sources', route => route.fulfill({ json: [{ id: 'example', label: 'Example plugin' }] }))
+    await page.route('**/metadata-preview', (route) => {
+      lookups++
+      expect(route.request().postDataJSON()).toMatchObject({ source: 'example', includeCover: true })
+      return route.fulfill({ json: { isbn: fixtureIsbn, source: { id: 'example', label: 'Example plugin' },
+        metadata: { title: 'Fetched title', authors: ['Fetched Author'], description: 'Fresh description', numberOfPages: 320 },
+        coverImage: null, suggestedTags: ['Space Opera', 'Adventure'],
+        catalogUrl: 'https://example.com/record/1', warnings: [] } })
+    })
+    await page.goto(`/library/${book.id}`)
+    await page.getByRole('button', { name: 'Edit book', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: 'Edit book', exact: true })
+    await dialog.getByRole('combobox', { name: 'Metadata source' }).click()
+    await page.getByRole('option', { name: 'Example plugin', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Refresh from sources', exact: true }).click()
+    await expect(dialog.getByText('Details from Example plugin', { exact: true })).toBeVisible()
+    await expect(dialog.getByRole('checkbox', { name: 'Also look for a cover on Open Library' })).toHaveCount(0)
+    await expect(dialog.getByRole('button', { name: 'Save changes', exact: true })).toBeDisabled()
+    await expect(dialog.getByRole('checkbox', { name: 'Use title', exact: true })).not.toBeChecked()
+    await expect(dialog.getByRole('checkbox', { name: 'Use authors', exact: true })).not.toBeChecked()
+    await expect(dialog.getByRole('checkbox', { name: 'Use description', exact: true })).toBeChecked()
+    expect((await (await context.request.get(`/api/books/${book.id}`)).json()).description).toBeNull()
+    // Applying changes only updates the draft; cancelling discards them.
+    await dialog.getByRole('button', { name: 'Apply selected fields', exact: true }).click()
+    await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue(title)
+    await expect(dialog.getByLabel('Description', { exact: true })).toHaveValue('Fresh description')
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+    expect((await (await context.request.get(`/api/books/${book.id}`)).json()).description).toBeNull()
+    await page.getByRole('button', { name: 'Edit book', exact: true }).click()
+    await dialog.getByRole('combobox', { name: 'Metadata source' }).click()
+    await page.getByRole('option', { name: 'Example plugin', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Refresh from sources', exact: true }).click()
+    await expect(dialog.getByText('Details from Example plugin', { exact: true })).toBeVisible()
+    await dialog.getByRole('checkbox', { name: 'Use title', exact: true }).check()
+    await expect(dialog.getByRole('link', { name: 'View catalog record' })).toHaveAttribute('href', 'https://example.com/record/1')
+    await dialog.getByRole('checkbox', { name: 'Space Opera', exact: true }).check()
+    await expect(dialog.getByRole('checkbox', { name: 'Adventure', exact: true })).not.toBeChecked()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    await page.screenshot({ path: `/tmp/libroo-refresh-preview-${mobile ? 'mobile' : 'desktop'}.png` })
+    await dialog.getByRole('button', { name: 'Apply selected fields', exact: true }).click()
+    expect((await (await context.request.get(`/api/books/${book.id}`)).json()).title).toBe(title)
+    await dialog.getByRole('button', { name: 'Save changes', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    const saved = await (await context.request.get(`/api/books/${book.id}`)).json()
+    expect(saved).toMatchObject({ title: 'Fetched title', description: 'Fresh description', numberOfPages: 320, note: 'Keep my note', rating: 4 })
+    expect(saved.authors.map((author: { name: string }) => author.name)).toEqual(['Original Author'])
+    expect(saved.coverPath).toBeNull()
+    expect(saved.userTags.map((tag: { name: string }) => tag.name)).toEqual(['Space Opera'])
+    expect(lookups).toBe(2)
+    await page.reload()
+    await expect(page.getByRole('heading', { name: 'Fetched title', exact: true })).toBeVisible()
+    await context.close()
+  })
+}
+
+test('Open Library refresh previews are read-only and limited to the book owner', async ({ browser }) => {
+  const owner = await browser.newContext({ storageState: await storageState(browser, 'user') })
+  const other = await browser.newContext({ storageState: await storageState(browser, 'admin') })
+  const response = await owner.request.post('/api/books/manual', { data: { title: 'Private original', authors: ['Private Author'], isbn: fixtureIsbn } })
+  expect(response.ok()).toBe(true)
+  const book = await response.json()
+  const before = await (await owner.request.get(`/api/books/${book.id}`)).json()
+  const request = { data: { isbn: fixtureIsbn, source: 'openlibrary', includeCover: false } }
+  const forbidden = await other.request.post(`/api/books/${book.id}/metadata-preview`, request)
+  expect(forbidden.status()).toBe(404)
+  const preview = await owner.request.post(`/api/books/${book.id}/metadata-preview`, request)
+  expect(preview.ok()).toBe(true)
+  expect(await preview.json()).toMatchObject({ source: { id: 'openlibrary', label: 'Open Library' }, metadata: { title: fixtureIsbnTitle }, coverImage: null })
+  const after = await (await owner.request.get(`/api/books/${book.id}`)).json()
+  expect(after).toEqual(before)
+  await owner.close()
+  await other.close()
 })

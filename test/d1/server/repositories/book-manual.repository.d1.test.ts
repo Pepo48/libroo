@@ -60,7 +60,7 @@ describe('BookRepository.createManualBook on D1', () => {
       status: 'active', loanedAt: now, snapshotBookTitle: 'Original', snapshotBookAuthor: 'Original Author',
       snapshotOwnerName: 'Reader', createdAt: now, updatedAt: now
     })
-    const input = bookEditSchema.parse({ expectedBookId: original.bookId, title: 'Corrected title', authors: ['New Author', 'Second Author'], isbn: '9780441172719', publisher: 'New Publisher', numberOfPages: 300 })
+    const input = bookEditSchema.parse({ expectedBookId: original.bookId, title: 'Corrected title', authors: ['New Author', 'Second Author'], isbn: '9780441172719', publisher: 'New Publisher', numberOfPages: 300, addTags: ['Space Opera', 'favourite', 'space opera'] })
     expect(await runEdit(db, 'user-1', original.id, input)).toBe(true)
     const [edited] = await db.select().from(userBooks).where(eq(userBooks.id, original.id))
     expect(edited).toMatchObject({ id: original.id, rating: 4, note: 'Keep note', currentPage: 12 })
@@ -71,7 +71,7 @@ describe('BookRepository.createManualBook on D1', () => {
     expect(oldBook!.title).toBe('Original')
     const details = await runRepository(db, Effect.flatMap(BookRepository, repo => repo.getUserBookWithDetails(original.id, 'user-1')))
     expect(details).toMatchObject({ title: 'Corrected title', authors: [{ name: 'New Author' }, { name: 'Second Author' }], publishers: 'New Publisher', numberOfPages: 300, coverPath: null })
-    expect(details.userTags.map(tag => tag.name)).toContain('Favourite')
+    expect(details.userTags.map(tag => tag.name).sort()).toEqual(['Favourite', 'Space Opera'])
     expect(details.activeLoan?.id).toBe('edit-loan')
     const [replacement] = await db.select().from(books).where(eq(books.id, edited!.bookId))
     expect(replacement).toMatchObject({ source: 'manual', entrySource: 'manual_entry', createdByUserId: 'user-1', openLibraryMetadata: null })

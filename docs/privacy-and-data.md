@@ -119,7 +119,11 @@ The admin metrics dashboard shows aggregate, instance-level operational metadata
 
 The library CSV export is a versioned transfer format for the current user's library. It includes current book/library fields, source identifiers used for conservative deduplication, and at most one active loan snapshot. It does not include borrower email or historical loan rows. See [Account Deletion And Retention](./account-deletion.md) for deletion mechanics and operator support guidance.
 
+Interactive ISBN lookup uses registered metadata providers. Open Library is included by default. Offline provider snapshots are checked locally; remote providers receive the ISBN and the server's network address, but no user account email, session cookies, loans, locations, notes or ratings.
+
 Editing a saved book creates private metadata for that library entry. Other users’ shared catalog metadata is not changed. The stable library entry keeps its personal data and loans; background enrichment on the old metadata cannot overwrite the edit. Unreferenced older private metadata is removed, and replaced private cover files are cleaned up only when no book references them.
+
+The `catalog_request_state` table holds one operational row per supplemental provider: request timing and lease, daily count, failure/cooldown state, and cached public robots policy. It contains no ISBNs, account identifiers or reading history. It coordinates outbound requests across application instances and keeps block decisions after restarts.
 
 CSV imports remain user-created manual records unless a trusted Libroo export points to the same Open Library edition. Metadata enrichment is disabled by default. When a user explicitly enables it, Libroo sends valid imported ISBNs to Open Library in a background job. Provider metadata is added without replacing the imported title, authors, or manual cover. The job state stores the user, imported book, ISBN, attempts, timing, and bounded diagnostic messages; it does not make the imported manual record available to other users.
 
@@ -134,6 +138,14 @@ Key retention nuances:
 - Admin audit rows survive user deletion with actor/target foreign keys nulled.
 - Shared Open Library metadata can remain after account deletion because it is shared catalog data.
 - Backups can retain deleted data until the operator's retention window expires.
+
+
+Saved-book refresh previews contact only registered metadata providers using the
+ISBN supplied in the editor. Existing titles, descriptions, notes, locations,
+ratings and lending records are not sent. Results stay in the editor until the
+user selects fields and explicitly saves. Preview requests do not persist books,
+images or enrichment jobs; provider caches and operational request counters may
+be updated. Optional cover lookup contacts Open Library separately.
 
 ### Library layout
 

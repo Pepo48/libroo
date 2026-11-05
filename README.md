@@ -31,8 +31,8 @@ Database migrations live under `server/db/migrations/sqlite`.
 - First-user admin promotion for empty installs.
 - Admin user management, role changes, bans, invites, and audit log.
 - Optional public registration or invite-only registration.
-- Manual book creation and ISBN lookup with Open Library metadata.
-- Edit saved book details, upload or remove covers, and preview cover lookup by ISBN.
+- Manual book creation, ISBN lookup and title search through pluggable metadata providers. Open Library is included by default.
+- Edit saved book details and covers, or refresh metadata from sources with a field-by-field preview before saving.
 - Library list/detail views, authors, locations, tags, ratings, notes, and reading progress.
 - Borrowing and lending workflows, including public borrower invite links.
 - Versioned CSV import/export with optional background metadata and cover enrichment.
@@ -367,6 +367,7 @@ Future work toward v1:
 
 ## More Documentation
 
+- [Metadata providers and refresh](docs/book-metadata-providers.md)
 - [Cloudflare deployment](docs/cloudflare.md)
 - [Deployment reference](docs/deployment.md)
 - [Backup And Restore](docs/backup-restore.md)

@@ -635,6 +635,13 @@ export const bookEditSchema = z.object({
   coverImage: manualBookCreateSchema.shape.coverImage,
   expectedBookId: z.string().min(1),
   description: trimmedNullableString(20000, 'Description').default(null),
+  addTags: z.array(bookTagAddSchema.shape.name).max(BATCH_TAG_UPDATE_MAX_ENTRIES).optional(),
   removeCover: z.boolean().default(false)
 }).refine(value => !(value.removeCover && value.coverImage), { message: 'Choose a cover or remove it, not both', path: ['coverImage'] })
 export type BookEditSchema = z.infer<typeof bookEditSchema>
+
+export const bookRefreshRequestSchema = bookIsbnSchema.extend({
+  source: z.string().regex(/^[a-z][a-z0-9-]{0,63}$/).default('auto'),
+  includeCover: z.boolean().default(true)
+})
+export type BookRefreshRequest = z.infer<typeof bookRefreshRequestSchema>

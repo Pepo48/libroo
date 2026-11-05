@@ -1,5 +1,6 @@
 import { BookSearchServiceLive, type BookSearchService } from '../services/book-search.service'
 import { BookMetadataSourcesLive } from '#libroo-metadata-sources'
+import { BookRefreshServiceLive, type BookRefreshService } from '../services/book-refresh.service'
 import { BookEditRepositoryLive, type BookEditRepository } from '../repositories/book-edit.repository'
 import { BookEditServiceLive, type BookEditService } from '../services/book-edit.service'
 import { CatalogRequestRepositoryLive, type CatalogRequestRepository } from '../repositories/catalog-request.repository'
@@ -59,7 +60,7 @@ const MetadataSourcesLive = BookMetadataSourcesLive.pipe(Layer.provideMerge(Repo
 
 // Service layer (depends on repositories)
 const CoreServicesLive = Layer.provideMerge(
-  Layer.mergeAll(BookSearchServiceLive, BookServiceLive, BookEditServiceLive, BookEnrichmentServiceLive, LendingServiceLive, AdminServiceLive, AuditServiceLive, LocationServiceLive, LibraryTransferServiceLive, PreferencesServiceLive, AccountDeletionServiceLive, SignupInviteServiceLive, EmailCapabilityServiceLive, AuthCapabilityServiceLive, HealthServiceLive, LegalServiceLive, RateLimitServiceLive, MetricsServiceLive),
+  Layer.mergeAll(BookSearchServiceLive, BookRefreshServiceLive, BookServiceLive, BookEditServiceLive, BookEnrichmentServiceLive, LendingServiceLive, AdminServiceLive, AuditServiceLive, LocationServiceLive, LibraryTransferServiceLive, PreferencesServiceLive, AccountDeletionServiceLive, SignupInviteServiceLive, EmailCapabilityServiceLive, AuthCapabilityServiceLive, HealthServiceLive, LegalServiceLive, RateLimitServiceLive, MetricsServiceLive),
   MetadataSourcesLive
 )
 
@@ -77,6 +78,7 @@ export const MainLive = Layer.provideMerge(
 // Type for all available services
 export type MainServices
   = BookSearchService
+    | BookRefreshService
     | BookEditService
     | BookEditRepository
     | CatalogRequestService
