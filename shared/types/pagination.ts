@@ -14,5 +14,6 @@ export interface PaginatedResult<T> {
     hasMore: boolean
     perShelf?: boolean
     shelfCounts?: Record<string, number>
+    shelfLabels?: Record<string, string>
   }
 }

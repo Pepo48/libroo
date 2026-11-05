@@ -12,7 +12,7 @@ async function advanceToNextBatch(shelf: Locator) {
 
 test('browses cover shelves, filters with tags and remembers the grid layout @mobile', async ({ browser }, testInfo) => {
   await storageState(browser, 'admin')
-  const context = await browser.newContext()
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } })
   const page = await context.newPage()
   try {
     await registerUser(page)
@@ -41,8 +41,16 @@ test('browses cover shelves, filters with tags and remembers the grid layout @mo
     await expect(shelf).toBeVisible()
     const next = page.getByRole('region', { name: 'Living room', exact: true }).getByRole('button', { name: 'Next books', exact: true })
     await expect(next).toBeEnabled()
+    const viewportWidth = (await shelf.locator('[data-slot="viewport"]').boundingBox())!.width
+    const slideWidth = (await shelf.locator('[data-slot="item"]').first().boundingBox())!.width
+    const rowWidth = Math.round(viewportWidth / slideWidth) * slideWidth
+    const start = (await first.boundingBox())!.x
     await next.click()
-    await expect(page.getByRole('region', { name: 'Living room', exact: true }).getByRole('button', { name: 'Previous books', exact: true })).toBeEnabled()
+    await expect.poll(async () => Math.abs((await first.boundingBox())!.x - start + rowWidth)).toBeLessThan(3)
+    const previous = page.getByRole('region', { name: 'Living room', exact: true }).getByRole('button', { name: 'Previous books', exact: true })
+    await expect(previous).toBeEnabled()
+    await previous.click()
+    await expect.poll(async () => Math.abs((await first.boundingBox())!.x - start)).toBeLessThan(3)
     await page.screenshot({ path: testInfo.outputPath('shelves-light.png'), fullPage: true })
     await page.emulateMedia({ colorScheme: 'dark' })
     await page.reload()
@@ -77,9 +85,9 @@ test('browses cover shelves, filters with tags and remembers the grid layout @mo
   }
 })
 
-test('shows every non-empty shelf on the first page and keeps grid pagination separate', async ({ browser }) => {
+test('shows all shelf headings and loads cards only near the viewport', async ({ browser }) => {
   await storageState(browser, 'admin')
-  const context = await browser.newContext()
+  const context = await browser.newContext({ viewport: { width: 800, height: 640 } })
   const page = await context.newPage()
   try {
     await registerUser(page)
@@ -99,11 +107,24 @@ test('shows every non-empty shelf on the first page and keeps grid pagination se
         if (name) expect((await context.request.put(`/api/books/${book.id}/location`, { data: { locationId: locations[name] } })).ok()).toBe(true)
       }
     }
+    const index = await context.request.get('/api/books', { params: { layout: 'shelf-index', libraryState: 'owned' } })
+    expect(await index.json()).toMatchObject({ items: [], pagination: { totalItems: 30 } })
     await page.goto('/library')
-    await expect(page.getByRole('region', { name: 'Alpha shelves books', exact: true })).toBeVisible()
-    await expect(page.getByRole('region', { name: 'Later shelf books', exact: true })).toBeVisible()
-    await expect(page.getByRole('region', { name: 'No location books', exact: true })).toBeVisible()
+    const shelfNames = ['Alpha shelves', 'Later shelf', 'No location']
+    for (const name of shelfNames) {
+      await expect(page.getByRole('heading', { name, exact: true })).toBeAttached()
+    }
     await expect(page.getByRole('heading', { name: 'Empty shelf', exact: true })).toHaveCount(0)
+    const unlocated = page.getByRole('region', { name: 'No location', exact: true })
+    await expect(unlocated.getByTestId('shelf-placeholder')).toBeAttached()
+    await expect(unlocated.getByTestId('book-card')).toHaveCount(0)
+    await unlocated.scrollIntoViewIfNeeded()
+    await expect(unlocated.getByTestId('book-card')).toHaveCount(2)
+    for (const name of shelfNames.slice(0, 2)) {
+      const shelf = page.getByRole('region', { name, exact: true })
+      await shelf.scrollIntoViewIfNeeded()
+      await expect(shelf.getByTestId('book-card')).toHaveCount(12)
+    }
     await expect(page.getByTestId('book-card')).toHaveCount(26)
     await expect(page.getByText('Showing 26 of 30 books', { exact: true })).toBeVisible()
     for (const [name, totalLoaded] of [['Alpha shelves', 28], ['Later shelf', 30]] as const) {
@@ -120,8 +141,11 @@ test('shows every non-empty shelf on the first page and keeps grid pagination se
     await expect(page.getByTestId('book-card')).toHaveCount(24)
 
     await page.getByRole('button', { name: 'Shelves', exact: true }).click()
-    await expect(page.getByTestId('book-card')).toHaveCount(26)
-    await expect(page.getByRole('region', { name: 'Later shelf books', exact: true })).toBeVisible()
+    for (const name of shelfNames) {
+      const shelf = page.getByRole('region', { name, exact: true })
+      await shelf.scrollIntoViewIfNeeded()
+      await expect(shelf.getByTestId('book-card')).toHaveCount(name === 'No location' ? 2 : 12)
+    }
     await page.getByRole('button', { name: 'Select books', exact: true }).click()
     await expect(page.getByTestId('book-card')).toHaveCount(26)
     await expect(page.getByRole('button', { name: 'Select loaded books (26)', exact: true })).toBeVisible()

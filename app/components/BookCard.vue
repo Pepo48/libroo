@@ -45,6 +45,7 @@ const coverUrl = computed(() => {
   >
     <NuxtLink
       :to="`/library/${id}`"
+      prefetch-on="interaction"
       class="block rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
     >
       <div class="relative isolate aspect-2/3 overflow-hidden rounded-xl bg-elevated shadow-md ring-1 ring-black/10 transition duration-300 motion-safe:group-hover:-translate-y-1 motion-safe:group-hover:shadow-xl dark:ring-white/10">
