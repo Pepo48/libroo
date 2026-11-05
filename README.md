@@ -2,6 +2,18 @@
 
 Libroo is a private, physical-first library management system for home and small-library inventories. It tracks books, shelf locations, reading state, lending logistics, borrower links, and admin-managed access.
 
+## Library preview
+
+Browse books on horizontal shelves, filter by tags, or switch to the grid for search and selection.
+
+**Desktop**
+
+![Desktop library with book covers, location labels, and tags](docs/screenshots/libroo-shelves-desktop.png)
+
+**Mobile**
+
+<img src="docs/screenshots/libroo-shelves-dark.png" alt="Mobile library with swipeable book shelves and visible tags" width="320" />
+
 ## Current Stack
 
 - Nuxt 4, Nuxt UI v4, Pinia, and Nuxt Image.

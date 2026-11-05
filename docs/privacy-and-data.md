@@ -135,6 +135,12 @@ Key retention nuances:
 - Shared Open Library metadata can remain after account deletion because it is shared catalog data.
 - Backups can retain deleted data until the operator's retention window expires.
 
+### Library layout
+
+The library offers cover shelves grouped by location and a grid view. The first shelf request returns a bounded preview from every non-empty shelf, including books without a location; shelves are not discovered through global book pagination. Filters apply before grouping. Swipe a shelf or use its arrows to browse loaded books. Grid and shelf pages are cached separately. Counts refer to loaded results; **Load More** fetches the next batch from each shelf and moves the relevant shelf to the first newly loaded book. Searching and selecting books use the grid. Tags are clickable filters.
+
+The `libroo-library-layout` first-party preference cookie remembers the chosen layout in the current browser; it contains only `shelves` or `grid`, not book or account data. Coverless books use local title-and-author jackets and do not trigger additional external requests.
+
 ### Bulk-operation performance
 
 Import lookup queries use existing owner/name indexes and bounded parameter lists. Normal 658-row files need 27 HTTP requests rather than 220. Reads are cached within the request, including records staged earlier in the same CSV batch. A repeated import using **Keep existing data** can finish with only the lookup batch. Complex rows use smaller batches, and direct API requests must obey the same bounds.

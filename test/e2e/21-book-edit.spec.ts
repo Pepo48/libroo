@@ -49,9 +49,31 @@ test('edits metadata and stages a fetched cover until saving; refresh and librar
   await page.reload()
   await expect(page.getByRole('heading', { name: corrected, exact: true })).toBeVisible()
 
+  const locationResponse = await context.request.post('/api/locations', { data: { name: 'Miša-doma' } })
+  expect(locationResponse.ok()).toBe(true)
+  const location = await locationResponse.json()
+  for (let index = 0; index < 5; index++) {
+    const result = await context.request.post('/api/books/manual', { data: {
+      title: `${prefix} ${['Čo bolo potom', 'Škandalózna Gabby', 'Šarlátové noci', 'Únos', 'Čierne diery 2'][index]}`,
+      authors: [index % 2 ? 'An author with a longer name that occupies two lines' : 'Jojo Moyes'], isbn: null,
+      tags: index % 2 ? [] : ['Predtým ako som ťa poznala', 'Household', 'Extra tag']
+    } })
+    expect(result.ok()).toBe(true)
+    if (index % 2 === 0) {
+      const entry = await result.json()
+      const moved = await context.request.put(`/api/books/${entry.id}/location`, { data: { locationId: location.id } })
+      expect(moved.ok()).toBe(true)
+    }
+  }
   await page.goto('/library')
-  await librarySearchInput(page).fill(corrected)
+  await librarySearchInput(page).fill(prefix)
   await expect(page.getByRole('heading', { name: corrected, exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: `${prefix} Original`, exact: true })).toHaveCount(0)
+  await expect(page.getByTestId('book-card')).toHaveCount(6)
+  const footers = await page.getByTestId('book-card-location').all()
+  const positions = await Promise.all(footers.map(async footer => (await footer.boundingBox())!.y))
+  expect(Math.max(...positions) - Math.min(...positions)).toBeLessThan(1)
+  await page.screenshot({ path: '/tmp/libroo-edit-cards-desktop.png', fullPage: true })
   await context.close()
 })
 
@@ -62,6 +84,8 @@ test('mobile editor supports cover upload and removal without horizontal overflo
   expect(added.ok()).toBe(true)
   const book = await added.json()
   await page.goto(`/library/${book.id}`)
+  await expect(page.getByTestId('book-jacket')).toBeVisible()
+  const palette = await page.getByTestId('book-jacket').getAttribute('data-jacket-palette')
   await page.getByRole('button', { name: 'Edit book', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Edit book', exact: true })
   await dialog.locator('input[type="file"]').setInputFiles({ name: 'cover.png', mimeType: 'image/png', buffer: png })
@@ -77,5 +101,7 @@ test('mobile editor supports cover upload and removal without horizontal overflo
   await dialog.getByRole('button', { name: 'Save changes', exact: true }).click()
   await expect(dialog).toHaveCount(0)
   expect((await (await context.request.get(`/api/books/${book.id}`)).json()).coverPath).toBeNull()
+  await expect(page.getByTestId('book-jacket')).toBeVisible()
+  await expect(page.getByTestId('book-jacket')).toHaveAttribute('data-jacket-palette', palette!)
   await context.close()
 })

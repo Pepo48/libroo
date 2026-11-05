@@ -14,6 +14,7 @@ import {
 interface PaginatedResponse {
   items: LibraryBook[]
   pagination: {
+    perShelf?: boolean
     page: number
     pageSize: number
     totalItems: number
@@ -57,6 +58,10 @@ const {
   syncTargetPages
 } = storeToRefs(dashboardStore)
 
+const layout = useCookie<'shelves' | 'grid'>('libroo-library-layout', { default: () => 'shelves', sameSite: 'lax' })
+const useShelfPagination = computed(() => layout.value !== 'grid' && !search.value.trim())
+const useShelfLayout = computed(() => useShelfPagination.value)
+
 const {
   clearNeedsSync: clearNeedsSyncAction,
   cacheResults: cacheResultsAction,
@@ -68,17 +73,21 @@ const {
   clearPendingAddedBooks
 } = dashboardStore
 
-const { data: preferences } = await useFetch<PreferencesResponse>('/api/preferences', {
+const needsSavedLibraryState = !hasExplicitLibraryStateQuery && dashboardStore.getPendingAddedBooks().length === 0
+const { data: preferences, status: preferencesStatus } = await useFetch<PreferencesResponse>('/api/preferences', {
+  key: `library-preferences:${authStore.user?.id}`,
   headers: useRequestHeaders(['cookie']),
-  lazy: hasExplicitLibraryStateQuery || dashboardStore.getPendingAddedBooks().length > 0
+  lazy: true
 })
+const isResolvingLibraryPreferences = computed(() => needsSavedLibraryState
+  && (preferencesStatus.value === 'idle' || preferencesStatus.value === 'pending'))
 
 const initialLibraryState: LibraryState[] = hasExplicitLibraryStateQuery
   ? routeState.libraryState ?? DEFAULT_LIBRARY_STATE_FILTER
   : (preferences.value?.defaultLibraryStateFilter
     ?? (dashboardStore.getPendingAddedBooks()[0]?.libraryState
       ? [dashboardStore.getPendingAddedBooks()[0]!.libraryState]
-      : DEFAULT_LIBRARY_STATE_FILTER))
+      : [...libraryState.value]))
 const hasRouteStateMismatch = pageSize.value !== routeState.pageSize
   || search.value !== (routeState.search ?? '')
   || loanStatus.value !== (routeState.loanStatus ?? 'all')
@@ -89,7 +98,8 @@ const hasRouteStateMismatch = pageSize.value !== routeState.pageSize
   || locationId.value !== (routeState.locationId ?? '')
   || includeLocationDescendants.value !== Boolean(routeState.includeLocationDescendants)
   || sortBy.value !== (routeState.sortBy ?? 'dateAdded')
-const hasCachedResults = allBooks.value.length > 0 && paginationState.value
+  || (!!paginationState.value && !!paginationState.value.perShelf !== useShelfPagination.value)
+const hasCachedResults = paginationState.value !== null
 
 if (hasRouteStateMismatch) {
   resetResultsAction()
@@ -144,6 +154,7 @@ function getLibraryResultCacheKey() {
 
   return JSON.stringify({
     pageSize: pageSize.value,
+    perShelf: useShelfPagination.value,
     search: search.value.trim(),
     libraryState: [...libraryState.value],
     loanStatus: hasPhysicalFilters ? loanStatus.value : 'all',
@@ -157,7 +168,9 @@ function getLibraryResultCacheKey() {
 }
 
 const activeResultCacheKey = ref(getLibraryResultCacheKey())
-const shouldFetchInitial = allBooks.value.length === 0 || !paginationState.value
+// A successful empty response is a cached result too.
+const shouldFetchInitial = !paginationState.value
+const deferInitialBooks = isResolvingLibraryPreferences.value
 
 function pendingBookMatchesFilters(book: LibraryBook) {
   return dashboardStore.canOptimisticallyDisplayBook(book)
@@ -177,11 +190,13 @@ const { data: availableTags } = useFetch<TagWithCount[]>('/api/tags', {
 // Fetch books with pagination
 const { data, refresh, status } = await useFetch<PaginatedResponse>('/api/books', {
   headers: useRequestHeaders(['cookie']),
-  immediate: shouldFetchInitial,
+  immediate: shouldFetchInitial && !deferInitialBooks,
+  lazy: true,
   watch: false,
   query: computed(() => ({
     page: page.value,
     pageSize: pageSize.value,
+    layout: useShelfPagination.value ? 'shelves' : undefined,
     search: search.value || undefined,
     libraryState: hasLibraryStateFilter(libraryState.value) ? libraryState.value.join(',') : undefined,
     loanStatus: showPhysicalFilters.value && loanStatus.value !== 'all' ? loanStatus.value : undefined,
@@ -206,8 +221,8 @@ watch(data, (response) => {
     ? {
         ...response.pagination,
         totalItems: response.pagination.totalItems + pending.length,
-        totalPages: Math.ceil((response.pagination.totalItems + pending.length) / response.pagination.pageSize),
-        hasMore: response.pagination.page < Math.ceil((response.pagination.totalItems + pending.length) / response.pagination.pageSize)
+        totalPages: response.pagination.perShelf ? response.pagination.totalPages : Math.ceil((response.pagination.totalItems + pending.length) / response.pagination.pageSize),
+        hasMore: response.pagination.perShelf ? response.pagination.hasMore : response.pagination.page < Math.ceil((response.pagination.totalItems + pending.length) / response.pagination.pageSize)
       }
     : response.pagination
 
@@ -295,9 +310,23 @@ onMounted(() => {
 
   const syncAndRestore = async () => {
     try {
-      if (shouldSync.value) {
-        await syncLoadedPages(syncTargetPages.value)
-
+      let preferenceChanged = false
+      const savedState = preferences.value?.defaultLibraryStateFilter
+      // Resolve the saved view before issuing its book query, without holding
+      // the route transition open. Do not override a choice made while loading.
+      if (needsSavedLibraryState && savedState
+        && libraryState.value.join(',') === initialLibraryState.join(',')
+        && libraryState.value.join(',') !== savedState.join(',')) {
+        suppressFilterWatcher.value = true
+        libraryState.value = [...savedState]
+        resetResultsAction()
+        activeResultCacheKey.value = getLibraryResultCacheKey()
+        await nextTick()
+        suppressFilterWatcher.value = false
+        preferenceChanged = true
+      }
+      if (shouldSync.value || (shouldFetchInitial && deferInitialBooks) || preferenceChanged) {
+        await syncLoadedPages(shouldSync.value ? syncTargetPages.value : 1)
         clearNeedsSyncAction()
       }
     } catch (err: unknown) {
@@ -323,7 +352,12 @@ onMounted(() => {
     }
   }
 
-  void syncAndRestore()
+  let syncStarted = false
+  watch(isResolvingLibraryPreferences, (waiting) => {
+    if (waiting || syncStarted) return
+    syncStarted = true
+    void syncAndRestore()
+  }, { immediate: true })
 })
 
 onBeforeUnmount(() => {
@@ -461,7 +495,7 @@ const groupedBooks = computed(() => {
   })
 })
 
-watch([search, loanStatus, libraryState, readingStatus, tags, location, locationId, includeLocationDescendants, sortBy], () => {
+watch([search, loanStatus, libraryState, readingStatus, tags, location, locationId, includeLocationDescendants, sortBy, useShelfPagination], () => {
   if (suppressFilterWatcher.value || !authStore.isAuthenticated) return
   isApplyingFilters.value = true
   if (filterRefreshTimer.value) clearTimeout(filterRefreshTimer.value)
@@ -596,13 +630,21 @@ async function clearFilters() {
   }
 }
 
+const revealBookId = ref<string | null>(null)
+watch(layout, () => {
+  revealBookId.value = null
+})
+
 // Load more
 async function loadMore() {
   if (pagination.value?.hasMore && !isLoadingMore.value) {
     isLoadingMore.value = true
+    const previousIds = new Set(books.value.map(book => book.id))
     try {
       page.value++
       await refresh()
+      await nextTick()
+      if (useShelfLayout.value) revealBookId.value = books.value.find(book => !previousIds.has(book.id))?.id ?? null
     } finally {
       isLoadingMore.value = false
     }
@@ -645,8 +687,10 @@ async function syncLoadedPages(targetPages: number) {
           color="neutral"
           variant="outline"
           to="/library/locations"
+          aria-label="Locations"
+          title="Locations"
         >
-          Locations
+          <span class="hidden sm:inline">Locations</span>
         </UButton>
         <UButton
           icon="i-lucide-plus"
@@ -660,16 +704,19 @@ async function syncLoadedPages(targetPages: number) {
 
     <!-- Page Body -->
     <UPageBody>
-      <section class="mb-6">
-        <div class="flex flex-col gap-3 md:flex-row md:items-center">
-          <div class="grid w-full gap-2 md:flex md:flex-1 md:items-center">
+      <section
+        class="rounded-2xl border border-default bg-elevated/40 p-4 sm:p-5"
+        aria-label="Find books"
+      >
+        <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-3 md:flex md:items-center">
+          <div class="contents md:flex md:flex-1 md:items-center md:gap-2">
             <UInput
               v-model="search"
               icon="i-lucide-search"
               size="lg"
               aria-label="Search library"
               placeholder="Search title, author, ISBN, tag, or location"
-              class="w-full md:flex-1"
+              class="col-span-2 w-full md:flex-1"
             />
             <USelectMenu
               v-model="libraryState"
@@ -688,7 +735,7 @@ async function syncLoadedPages(targetPages: number) {
             </USelectMenu>
           </div>
 
-          <div class="flex w-full flex-wrap items-center gap-2 md:w-auto">
+          <div class="flex flex-wrap items-center gap-2">
             <UButton
               size="lg"
               color="neutral"
@@ -697,7 +744,7 @@ async function syncLoadedPages(targetPages: number) {
               :trailing-icon="areFiltersExpanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
               :aria-expanded="areFiltersExpanded"
               :aria-controls="areFiltersExpanded ? 'library-advanced-filters' : undefined"
-              class="w-full justify-center md:w-auto"
+              class="justify-center"
               @click="() => { areFiltersExpanded = !areFiltersExpanded }"
             >
               Filters
@@ -823,6 +870,7 @@ async function syncLoadedPages(targetPages: number) {
                   label="Include sub-locations"
                 />
                 <USwitch
+                  v-if="!useShelfLayout"
                   v-model="groupByLocation"
                   aria-label="Group by location"
                   label="Group by location"
@@ -835,7 +883,7 @@ async function syncLoadedPages(targetPages: number) {
 
       <!-- Loading State -->
       <div
-        v-if="(status === 'pending' || isApplyingFilters) && !hasBooks"
+        v-if="(status === 'pending' || isResolvingLibraryPreferences || isApplyingFilters) && !hasBooks"
         class="flex justify-center py-12"
       >
         <UIcon
@@ -895,69 +943,105 @@ async function syncLoadedPages(targetPages: number) {
         </UButton>
       </UCard>
 
-      <!-- Book Grid -->
+      <!-- Cover-led shelves, with a grid for search and selection. -->
       <template v-else>
+        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-default pb-4">
+          <div>
+            <p class="hidden text-[10px] font-semibold uppercase tracking-[0.2em] text-primary sm:block">
+              Your collection
+            </p>
+            <h2 class="text-lg font-semibold tracking-tight text-highlighted sm:mt-1 sm:text-xl">
+              {{ useShelfLayout ? 'Your shelves' : search.trim() ? 'Search results' : 'All books' }}
+            </h2>
+            <p class="mt-1 hidden text-xs text-muted sm:block">
+              {{ useShelfLayout ? 'Swipe a shelf or use the arrows to explore.' : 'Find a book, explore its tags, or select records to manage.' }}
+            </p>
+          </div>
+          <div
+            class="flex gap-1 rounded-xl border border-default bg-muted/50 p-1"
+            role="group"
+            aria-label="Library layout"
+          >
+            <UButton
+              icon="i-lucide-panels-top-left"
+              size="sm"
+              :color="useShelfLayout ? 'primary' : 'neutral'"
+              :variant="useShelfLayout ? 'solid' : 'ghost'"
+              class="rounded-lg"
+              :aria-pressed="useShelfLayout"
+              :disabled="!!search.trim()"
+              @click="layout = 'shelves'"
+            >
+              Shelves
+            </UButton>
+            <UButton
+              icon="i-lucide-layout-grid"
+              size="sm"
+              :color="!useShelfLayout ? 'primary' : 'neutral'"
+              :variant="!useShelfLayout ? 'solid' : 'ghost'"
+              class="rounded-lg"
+              :aria-pressed="!useShelfLayout"
+              @click="layout = 'grid'"
+            >
+              Grid
+            </UButton>
+          </div>
+        </div>
         <div
-          v-if="groupByLocation"
+          v-if="useShelfLayout"
+          class="space-y-10 pt-2"
+        >
+          <BookShelf
+            v-for="group in groupedBooks"
+            :key="group.key"
+            :title="group.label"
+            :books="group.books"
+            :more-loaded="!!pagination?.hasMore"
+            :reveal-book-id="revealBookId"
+            @tag="toggleTagFilter"
+          />
+        </div>
+        <div
+          v-else-if="groupByLocation"
           class="space-y-8"
         >
           <section
             v-for="group in groupedBooks"
             :key="group.key"
-            class="space-y-3"
+            class="space-y-4"
+            :aria-label="group.label"
           >
-            <div class="flex items-center justify-between gap-3 border-b border-default pb-2">
-              <h2 class="text-base font-semibold text-highlighted">
+            <div class="flex items-center gap-3">
+              <span
+                class="h-5 w-1 rounded-full bg-primary"
+                aria-hidden="true"
+              />
+              <h2 class="text-lg font-semibold text-highlighted">
                 {{ group.label }}
               </h2>
-              <span class="text-sm text-muted">
-                {{ group.books.length }} {{ group.books.length === 1 ? 'book' : 'books' }}
-              </span>
+              <span class="text-xs text-muted">{{ group.books.length }} books</span>
             </div>
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              <BookCard
+            <div class="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+              <LibraryBookTile
                 v-for="book in group.books"
-                :id="book.id"
                 :key="book.id"
-                :book-id="book.bookId"
-                :title="book.title"
-                :author="book.author"
-                :isbn="book.isbn"
-                :cover-path="book.coverPath"
-                :location="book.location"
-                :last-known-location="book.lastKnownLocation"
-                :added-at="book.addedAt"
-                :active-loan="book.activeLoan"
-                :library-state="book.libraryState"
-                :tags="book.tags"
-                :enrichment-status="book.enrichmentStatus"
-                @tag-selected="toggleTagFilter"
+                :book="book"
+
+                @tag="toggleTagFilter"
               />
             </div>
           </section>
         </div>
-
         <div
           v-else
-          class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"
+          class="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6"
         >
-          <BookCard
+          <LibraryBookTile
             v-for="book in books"
-            :id="book.id"
             :key="book.id"
-            :book-id="book.bookId"
-            :title="book.title"
-            :author="book.author"
-            :isbn="book.isbn"
-            :cover-path="book.coverPath"
-            :location="book.location"
-            :last-known-location="book.lastKnownLocation"
-            :added-at="book.addedAt"
-            :active-loan="book.activeLoan"
-            :library-state="book.libraryState"
-            :tags="book.tags"
-            :enrichment-status="book.enrichmentStatus"
-            @tag-selected="toggleTagFilter"
+            :book="book"
+
+            @tag="toggleTagFilter"
           />
         </div>
 
