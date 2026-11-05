@@ -63,6 +63,8 @@ vi.mock('../../../../server/services/book-edit.service', () => ({ BookEditServic
 
 vi.mock('../../../../server/services/book-metadata-sources', () => ({ BookMetadataSourcesLive: Layer.empty }))
 
+vi.mock('../../../../server/services/book-search.service', () => ({ BookSearchServiceLive: Layer.empty }))
+
 describe('handleError', () => {
   beforeAll(() => {
     for (const name of liveLayerNames) {

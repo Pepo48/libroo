@@ -1,3 +1,4 @@
+import { BookSearchServiceLive, type BookSearchService } from '../services/book-search.service'
 import { BookMetadataSourcesLive } from '#libroo-metadata-sources'
 import { BookEditRepositoryLive, type BookEditRepository } from '../repositories/book-edit.repository'
 import { BookEditServiceLive, type BookEditService } from '../services/book-edit.service'
@@ -58,7 +59,7 @@ const MetadataSourcesLive = BookMetadataSourcesLive.pipe(Layer.provideMerge(Repo
 
 // Service layer (depends on repositories)
 const CoreServicesLive = Layer.provideMerge(
-  Layer.mergeAll(BookServiceLive, BookEditServiceLive, BookEnrichmentServiceLive, LendingServiceLive, AdminServiceLive, AuditServiceLive, LocationServiceLive, LibraryTransferServiceLive, PreferencesServiceLive, AccountDeletionServiceLive, SignupInviteServiceLive, EmailCapabilityServiceLive, AuthCapabilityServiceLive, HealthServiceLive, LegalServiceLive, RateLimitServiceLive, MetricsServiceLive),
+  Layer.mergeAll(BookSearchServiceLive, BookServiceLive, BookEditServiceLive, BookEnrichmentServiceLive, LendingServiceLive, AdminServiceLive, AuditServiceLive, LocationServiceLive, LibraryTransferServiceLive, PreferencesServiceLive, AccountDeletionServiceLive, SignupInviteServiceLive, EmailCapabilityServiceLive, AuthCapabilityServiceLive, HealthServiceLive, LegalServiceLive, RateLimitServiceLive, MetricsServiceLive),
   MetadataSourcesLive
 )
 
@@ -75,7 +76,8 @@ export const MainLive = Layer.provideMerge(
 
 // Type for all available services
 export type MainServices
-  = BookEditService
+  = BookSearchService
+    | BookEditService
     | BookEditRepository
     | CatalogRequestService
     | CatalogRequestRepository
@@ -131,6 +133,7 @@ function getProp<T>(obj: unknown, key: string): T | undefined {
 // Error mappings for converting tagged errors to HTTP status codes
 const errorStatusCodes: Record<string, number> = {
   InvalidMetadataSourceError: 400,
+  InvalidCatalogQueryError: 400,
   UnauthorizedError: 401,
   EmailDeliveryError: 503,
   VerificationEmailDeliveryError: 503,
