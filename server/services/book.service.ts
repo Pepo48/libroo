@@ -126,7 +126,7 @@ export interface BookServiceInterface {
   listTags: (userId: string) => Effect.Effect<TagWithCount[], DatabaseError, DbService>
   getUserLibrary: (
     userId: string,
-    pagination: PaginationParams & LibraryQueryFilters & { perShelf?: boolean, shelf?: string }
+    pagination: PaginationParams & LibraryQueryFilters & { perShelf?: boolean, shelf?: string, shelfIndex?: boolean }
   ) => Effect.Effect<PaginatedResult<LibraryBook>, LocationNotFoundError | DatabaseError, DbService>
 
   getAuthorLibrary: (
@@ -960,7 +960,7 @@ export const BookServiceLive = Layer.effect(
 
 // ===== Helper Effects =====
 
-export const getUserLibrary = (userId: string, pagination: PaginationParams & LibraryQueryFilters & { perShelf?: boolean, shelf?: string }) =>
+export const getUserLibrary = (userId: string, pagination: PaginationParams & LibraryQueryFilters & { perShelf?: boolean, shelf?: string, shelfIndex?: boolean }) =>
   Effect.flatMap(BookService, service => service.getUserLibrary(userId, pagination))
 
 export const listTags = (userId: string) =>

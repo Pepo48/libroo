@@ -7,6 +7,7 @@ import { normalizeTagInput, normalizeSuggestedTags } from '../../shared/utils/ta
 import type { LibraryQueryFilters } from '../../shared/utils/library-query'
 import { escapeLocationLikePattern } from '../../shared/utils/location-hierarchy'
 import { DbService } from '../services/db.service'
+import { runtimeProfile } from '../runtime/profile.active'
 import type { AtomicDbStatement, AtomicDbStatements } from '../services/db.service'
 import { getBlob, type StorageService } from '../services/storage.service'
 import { downloadCover, lookupByISBN } from './openLibrary.repository'
@@ -125,6 +126,7 @@ export interface ManualBookRepositoryInput {
 
 export interface BookLibraryFilters extends LibraryQueryFilters {
   perShelf?: boolean
+  shelfIndex?: boolean
   shelf?: string
   locationPath?: string
 }
@@ -238,8 +240,9 @@ export interface BookRepositoryInterface {
 
   getUserBookWithDetails: (
     userBookId: string,
-    userId: string
-  ) => Effect.Effect<BookDetails, BookNotFoundError | DatabaseError, DbService>
+    userId: string,
+    includeEnrichment?: boolean
+  ) => Effect.Effect<BookDetails & { jobStatus?: BookEnrichmentStatus }, BookNotFoundError | DatabaseError, DbService>
 
   promoteSuggestedTag: (
     userBookId: string,
@@ -1602,7 +1605,7 @@ export const BookRepositoryLive = Layer.effect(
           const countResult = yield* Effect.tryPromise({
             try: () => {
               const query = dbService.db
-                .select({ count: count(), shelf: sql<string | null>`min(${userBooks.locationId})` })
+                .select({ count: count(), shelf: sql<string | null>`min(${userBooks.locationId})`, label: sql<string | null>`min(${locations.path})` })
                 .from(userBooks)
                 .innerJoin(books, eq(userBooks.bookId, books.id))
                 .leftJoin(locations, eq(userBooks.locationId, locations.id))
@@ -1618,6 +1621,23 @@ export const BookRepositoryLive = Layer.effect(
           const totalItems = countResult.reduce((total, row) => total + row.count, 0)
           const largestPageGroup = pagination.perShelf ? Math.max(0, ...countResult.map(row => row.count)) : totalItems
           const totalPages = Math.ceil(largestPageGroup / pageSize)
+          const paginationResult = {
+            page,
+            pageSize,
+            totalItems,
+            totalPages,
+            hasMore: page < totalPages,
+            ...(pagination.perShelf ? { perShelf: true, shelfCounts: Object.fromEntries(countResult.map(row => [row.shelf ?? 'none', row.count])) } : {})
+          }
+          if (pagination.shelfIndex) {
+            return {
+              items: [],
+              pagination: {
+                ...paginationResult,
+                shelfLabels: Object.fromEntries(countResult.filter(row => row.shelf && row.label).map(row => [row.shelf!, row.label!]))
+              }
+            }
+          }
           const ranked = dbService.db.select({
             id: userBooks.id,
             shelfRow: sql<number>`row_number() over (partition by ${userBooks.locationId} order by ${sql.join(orderBy, sql`, `)}, ${userBooks.id})`.as('shelf_row')
@@ -1649,9 +1669,12 @@ export const BookRepositoryLive = Layer.effect(
 
           const userBookIds = result.map(row => row.user_books.id)
           const bookIds = result.map(row => row.books.id)
-          const userTagsByUserBook = yield* hydrateUserTagsByUserBookIds(userBookIds)
-          const authorsByBook = yield* hydrateAuthorsForBookIds(bookIds)
-          const activeLoansByUserBook = yield* hydrateActiveLoansByUserBookIds(userBookIds)
+          // Self-hosted libSQL uses transactions for large ID batches.
+          const [userTagsByUserBook, authorsByBook, activeLoansByUserBook] = yield* Effect.all([
+            hydrateUserTagsByUserBookIds(userBookIds),
+            hydrateAuthorsForBookIds(bookIds),
+            hydrateActiveLoansByUserBookIds(userBookIds)
+          ], { concurrency: runtimeProfile === 'cloudflare' ? 3 : 1 })
 
           const items = result.map(row => ({
             id: row.user_books.id,
@@ -1665,17 +1688,7 @@ export const BookRepositoryLive = Layer.effect(
             activeLoan: activeLoansByUserBook.get(row.user_books.id) ?? null
           }))
 
-          return {
-            items,
-            pagination: {
-              page,
-              pageSize,
-              totalItems,
-              totalPages,
-              hasMore: page < totalPages,
-              ...(pagination.perShelf ? { perShelf: true, shelfCounts: Object.fromEntries(countResult.map(row => [row.shelf ?? 'none', row.count])) } : {})
-            }
-          }
+          return { items, pagination: paginationResult }
         }),
 
       listTags: userId =>
