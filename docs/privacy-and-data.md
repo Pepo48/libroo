@@ -137,4 +137,6 @@ Key retention nuances:
 
 Import lookup queries use existing owner/name indexes and bounded parameter lists. Normal 658-row files need 27 HTTP requests rather than 220. Reads are cached within the request, including records staged earlier in the same CSV batch. A repeated import using **Keep existing data** can finish with only the lookup batch. Complex rows use smaller batches, and direct API requests must obey the same bounds.
 
+Bulk deletion sends up to 100 selected IDs per request. SQL chunks contain at most 90 IDs, with a guarded update and acknowledgement SELECT in one database transaction. This stays below D1’s 100-parameter statement limit, protects active loans, and safely acknowledges already removed records after a lost response.
+
 This follows Cloudflare’s guidance to [reduce D1 round trips using batches](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch) and [respect per-statement limits](https://developers.cloudflare.com/d1/platform/limits/). Database round-trip counts are verified against the D1 emulator; production wall-clock speed depends on network latency and data complexity.

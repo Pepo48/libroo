@@ -1,3 +1,4 @@
+import { removeLibraryRecords } from '../repositories/library-removal-batch'
 import { Context, Effect, Layer, Result, Data } from 'effect'
 import type * as HttpClient from 'effect/http/HttpClient'
 import { normalizeReadingProgress } from '../../shared/utils/reading-progress'
@@ -670,31 +671,13 @@ export const BookServiceLive = Layer.effect(
 
       batchRemoveFromLibrary: (ids, userId) =>
         Effect.gen(function* () {
-          // Wrap each operation in Result to capture success/failure individually
-          const results = yield* Effect.forEach(
-            ids,
-            id => Effect.result(bookRepo.removeFromLibrary(id, userId)),
-            { concurrency: 10 }
-          )
-
-          const removedIds: string[] = []
-          const failedIds: string[] = []
-
-          const errors: unknown[] = []
-          results.forEach((result, index) => {
-            const id = ids[index]!
-            if (Result.isSuccess(result)) {
-              removedIds.push(id)
-            } else {
-              failedIds.push(id)
-              errors.push(result.failure)
-            }
-          })
-          // Log all errors
-          for (const error of errors) {
-            yield* Effect.logError(error)
-          }
-          return { removedIds, failedIds }
+          const database = yield* DbService
+          const removedIds = yield* Effect.tryPromise({
+            try: () => removeLibraryRecords(database, userId, ids),
+            catch: error => error
+          }).pipe(Effect.catch(error => Effect.logError(error).pipe(Effect.as([] as string[]))))
+          const removed = new Set(removedIds)
+          return { removedIds, failedIds: [...new Set(ids)].filter(id => !removed.has(id)) }
         }),
 
       getBookDetails: (userBookId, userId) =>
