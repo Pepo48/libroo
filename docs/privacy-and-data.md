@@ -151,9 +151,11 @@ To start over, export a CSV backup, then open **Settings → Library data → Cl
 
 Use **My Library → Select books** to select individual records or all currently loaded results, then choose **Delete selected**. Loading more does not silently select additional books. Changing filters clears the selection. Deletion asks for confirmation, runs in bounded SQL batches, and reports failures; the database guards against removing active loans. Repeating a request safely acknowledges already removed records. After a bulk operation, the library reloads from page 1 because deletions shift pagination offsets. A request failure shows its HTTP status when available and allows retrying the remaining selection. Export a CSV backup in Settings first.
 
-Library cleanup uses the existing removal behavior: records leave the active library without deleting shared book metadata, covers or loan history. There is no restore button in the app. CSV import adds or updates records; neither conflict option removes existing duplicates or records missing from the CSV.
+**Settings → Library data → Review existing duplicates** compares active records from your own library, including wishlist and previously owned books. Candidates have the same normalized title and complete author set; unknown authors are excluded. Matching records may still represent different editions or physical copies. Nothing is selected automatically: choose a record to keep, select the group, and compare covers, edition details, tags, notes, ratings and reading progress before confirming deletion. Fields are not merged, and the duplicate-review screen keeps records with loan history.
 
-The default **Owned** view can be empty while wishlist or previously owned records remain. **Show all books** reveals every library state. Use **Settings → Library data → Clear library** to remove records across states, rather than selecting only the books visible in one view.
+Both tools use the existing removal behavior: records leave the active library without deleting shared book metadata, covers or loan history. There is no restore button in the app. CSV import adds or updates records; neither conflict option removes existing duplicates or records missing from the CSV.
+
+The default **Owned** view can be empty while wishlist or previously owned records remain. **Show all books** reveals every library state; duplicate review always includes all states. Use **Settings → Library data → Clear library** to remove records across states, rather than selecting only the books visible in one view.
 
 ### Library layout
 

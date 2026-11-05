@@ -1110,7 +1110,29 @@ async function importLibraryCsvFile() {
             </UButton>
           </div>
           <div class="flex flex-col gap-4 py-5 sm:flex-row sm:items-center sm:justify-between">
-            <div class="flex flex-col gap-4 py-5 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex items-start gap-3">
+              <UIcon
+                name="i-lucide-copy"
+                class="mt-0.5 size-5 shrink-0 text-muted"
+              />
+              <div>
+                <p class="font-medium">
+                  Review existing duplicates
+                </p>
+                <p class="text-sm text-muted">
+                  Compare matching books and choose which records to keep. Importing does not remove existing duplicates.
+                </p>
+              </div>
+            </div>
+            <UButton
+              to="/library/duplicates"
+              color="neutral"
+              variant="outline"
+            >
+              Review existing duplicates
+            </UButton>
+          </div>
+          <div class="flex flex-col gap-4 py-5 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex items-start gap-3">
               <UIcon
                 name="i-lucide-trash-2"

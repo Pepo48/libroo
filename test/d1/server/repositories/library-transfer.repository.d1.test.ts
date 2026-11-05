@@ -136,6 +136,31 @@ describe('LibraryTransferRepository.importRecords on D1', () => {
     expect(exported.some(book => book.title === 'Other user private title')).toBe(false)
   })
 
+  it('limits duplicate review to active records owned by the signed-in user, with private tags and metadata', async () => {
+    await importRecords([importRecord({ title: 'Private Review', authors: ['Review Author'], tags: ['Private Tag'], note: 'Private note', locationPath: 'Shelf' })], 'csv')
+    const now = new Date()
+    await db.insert(user).values({ id: 'other-user', name: 'Other', email: 'other@example.com', createdAt: now, updatedAt: now })
+    const [original] = await db.select().from(books).where(eq(books.title, 'Private Review'))
+    await db.insert(userBooks).values([
+      { id: 'other-review-copy', userId: 'other-user', bookId: original!.id, addedAt: now },
+      { id: 'removed-review-copy', userId: 'user-1', bookId: original!.id, addedAt: now, removedAt: now }
+    ])
+    const [owned] = await db.select().from(userBooks).where(eq(userBooks.userId, 'user-1'))
+    await db.insert(loans).values({
+      id: 'review-history', ownerUserId: 'user-1', userBookId: owned!.id,
+      borrowerDisplayName: 'Borrower', status: 'returned', loanedAt: now, returnedAt: now,
+      snapshotBookTitle: 'Private Review', snapshotBookAuthor: 'Review Author',
+      snapshotOwnerName: 'Reader', createdAt: now, updatedAt: now
+    })
+    const rows = await Effect.runPromise(Effect.flatMap(LibraryCleanupRepository, repository => repository.list('user-1')).pipe(
+      Effect.provide(LibraryCleanupRepositoryLive),
+      Effect.provide(Layer.succeed(DbService, { db, executeAtomic: (buildStatements: Parameters<DbServiceInterface['executeAtomic']>[0]) => (db as unknown as DbServiceInterface['db']).batch(buildStatements(db as unknown as DbServiceInterface['db'])) } as DbServiceInterface))
+    ))
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ title: 'Private Review', authors: ['Review Author'], tags: ['Private Tag'], note: 'Private note', location: 'Shelf', loanCount: 1 })
+    expect(typeof rows[0]!.addedAt).toBe('string')
+  })
+
   it('removes only the user’s records without active loans and safely acknowledges retries', async () => {
     await seedExistingBook(db)
     const now = new Date()
