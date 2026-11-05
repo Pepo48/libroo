@@ -1,3 +1,4 @@
+import { BookMetadataSourcesLive } from '../../../../server/services/book-metadata-sources'
 import { Effect, Result, Layer } from 'effect'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -95,6 +96,7 @@ describe('manual cover validation', () => {
   function provide<A, E>(effect: Effect.Effect<A, E, BookRepository | StorageService>) {
     return effect.pipe(
       Effect.provide(BookServiceLive),
+    Effect.provide(BookMetadataSourcesLive),
       Effect.provide(Layer.succeed(BookRepository, bookRepository as BookRepositoryInterface)),
       Effect.provide(Layer.succeed(BookEnrichmentRepository, {} as BookEnrichmentRepositoryInterface)),
       Effect.provide(Layer.succeed(CanonicalBookEnrichmentRepository, canonicalEnrichmentRepository)),
@@ -174,6 +176,7 @@ describe('optional enrichment status decoration', () => {
     const provideService = <A, E>(effect: Effect.Effect<A, E, BookService>) =>
       effect.pipe(
         Effect.provide(BookServiceLive),
+    Effect.provide(BookMetadataSourcesLive),
         Effect.provide(Layer.succeed(BookRepository, bookRepository)),
         Effect.provide(Layer.succeed(BookEnrichmentRepository, enrichmentRepository)),
         Effect.provide(Layer.succeed(CanonicalBookEnrichmentRepository, { ...canonicalEnrichmentRepository, getStatuses })),
@@ -242,6 +245,7 @@ describe('canonical ISBN enrichment', () => {
 
     const patch = await Effect.runPromise(enrichOpenLibraryBook('book-1').pipe(
       Effect.provide(BookServiceLive),
+    Effect.provide(BookMetadataSourcesLive),
       Effect.provide(Layer.succeed(BookRepository, bookRepository)),
       Effect.provide(Layer.succeed(BookEnrichmentRepository, enrichmentRepository)),
       Effect.provide(Layer.succeed(CanonicalBookEnrichmentRepository, canonicalRepository)),
@@ -292,6 +296,7 @@ describe('canonical ISBN enrichment', () => {
 
     const patch = await Effect.runPromise(enrichOpenLibraryBook('book-1').pipe(
       Effect.provide(BookServiceLive),
+    Effect.provide(BookMetadataSourcesLive),
       Effect.provide(Layer.succeed(BookRepository, bookRepository)),
       Effect.provide(Layer.succeed(BookEnrichmentRepository, enrichmentRepository)),
       Effect.provide(Layer.succeed(CanonicalBookEnrichmentRepository, canonicalRepository)),
@@ -338,6 +343,7 @@ describe('canonical ISBN enrichment', () => {
 
     const patch = await Effect.runPromise(enrichOpenLibraryBook('book-1').pipe(
       Effect.provide(BookServiceLive),
+    Effect.provide(BookMetadataSourcesLive),
       Effect.provide(Layer.succeed(BookRepository, bookRepository)),
       Effect.provide(Layer.succeed(BookEnrichmentRepository, {} as BookEnrichmentRepositoryInterface)),
       Effect.provide(Layer.succeed(CanonicalBookEnrichmentRepository, canonicalRepository)),
@@ -383,6 +389,7 @@ describe('canonical ISBN enrichment', () => {
 
     const patch = await Effect.runPromise(enrichOpenLibraryBook('book-1').pipe(
       Effect.provide(BookServiceLive),
+    Effect.provide(BookMetadataSourcesLive),
       Effect.provide(Layer.succeed(BookRepository, bookRepository)),
       Effect.provide(Layer.succeed(BookEnrichmentRepository, {} as BookEnrichmentRepositoryInterface)),
       Effect.provide(Layer.succeed(CanonicalBookEnrichmentRepository, canonicalRepository)),
@@ -445,6 +452,7 @@ describe('canonical ISBN enrichment', () => {
     try {
       const result = await Effect.runPromise(recoverCanonicalEnrichment(2).pipe(
         Effect.provide(BookServiceLive),
+    Effect.provide(BookMetadataSourcesLive),
         Effect.provide(Layer.succeed(BookRepository, bookRepository)),
         Effect.provide(Layer.succeed(BookEnrichmentRepository, {} as BookEnrichmentRepositoryInterface)),
         Effect.provide(Layer.succeed(CanonicalBookEnrichmentRepository, canonicalRepository)),
@@ -498,6 +506,7 @@ describe('bulk ISBN lookup', () => {
       '9780141439518'
     ]).pipe(
       Effect.provide(BookServiceLive),
+    Effect.provide(BookMetadataSourcesLive),
       Effect.provide(Layer.succeed(BookRepository, bookRepository)),
       Effect.provide(Layer.succeed(BookEnrichmentRepository, {} as BookEnrichmentRepositoryInterface)),
       Effect.provide(Layer.succeed(CanonicalBookEnrichmentRepository, canonicalEnrichmentRepository)),
@@ -528,6 +537,7 @@ describe('bulk ISBN lookup', () => {
       '9780141439518'
     ]).pipe(
       Effect.provide(BookServiceLive),
+    Effect.provide(BookMetadataSourcesLive),
       Effect.provide(Layer.succeed(BookRepository, bookRepository)),
       Effect.provide(Layer.succeed(BookEnrichmentRepository, {} as BookEnrichmentRepositoryInterface)),
       Effect.provide(Layer.succeed(CanonicalBookEnrichmentRepository, canonicalEnrichmentRepository)),
@@ -569,6 +579,7 @@ describe('bulk ISBN lookup', () => {
 
     const result = await Effect.runPromise(bulkLookupBooks('user-1', isbns).pipe(
       Effect.provide(BookServiceLive),
+    Effect.provide(BookMetadataSourcesLive),
       Effect.provide(Layer.succeed(BookRepository, bookRepository)),
       Effect.provide(Layer.succeed(BookEnrichmentRepository, {} as BookEnrichmentRepositoryInterface)),
       Effect.provide(Layer.succeed(CanonicalBookEnrichmentRepository, canonicalEnrichmentRepository)),
@@ -615,6 +626,7 @@ describe('bulk ISBN lookup', () => {
 
     const result = await Effect.runPromise(bulkLookupBooks('user-1', isbns).pipe(
       Effect.provide(BookServiceLive),
+    Effect.provide(BookMetadataSourcesLive),
       Effect.provide(Layer.succeed(BookRepository, bookRepository)),
       Effect.provide(Layer.succeed(BookEnrichmentRepository, {} as BookEnrichmentRepositoryInterface)),
       Effect.provide(Layer.succeed(CanonicalBookEnrichmentRepository, canonicalEnrichmentRepository)),
@@ -657,6 +669,7 @@ describe('bulk ISBN lookup', () => {
 
     const result = await Effect.runPromise(bulkLookupBooks('user-1', isbns).pipe(
       Effect.provide(BookServiceLive),
+    Effect.provide(BookMetadataSourcesLive),
       Effect.provide(Layer.succeed(BookRepository, bookRepository)),
       Effect.provide(Layer.succeed(BookEnrichmentRepository, {} as BookEnrichmentRepositoryInterface)),
       Effect.provide(Layer.succeed(CanonicalBookEnrichmentRepository, canonical)),
@@ -713,6 +726,7 @@ describe('bulk ISBN add', () => {
     } as unknown as CanonicalBookEnrichmentRepositoryService['Service']
     const result = await Effect.runPromise(bulkAddBooks('user-1', inputs.map(isbn => ({ isbn }))).pipe(
       Effect.provide(BookServiceLive),
+    Effect.provide(BookMetadataSourcesLive),
       Effect.provide(Layer.succeed(BookRepository, bookRepository)),
       Effect.provide(Layer.succeed(BookEnrichmentRepository, {} as BookEnrichmentRepositoryInterface)),
       Effect.provide(Layer.succeed(CanonicalBookEnrichmentRepository, canonicalRepository)),
@@ -780,6 +794,7 @@ describe('bulk ISBN add', () => {
 
     const result = await Effect.runPromise(bulkAddBooks('user-1', inputs.map(isbn => ({ isbn }))).pipe(
       Effect.provide(BookServiceLive),
+    Effect.provide(BookMetadataSourcesLive),
       Effect.provide(Layer.succeed(BookRepository, bookRepository)),
       Effect.provide(Layer.succeed(BookEnrichmentRepository, {} as BookEnrichmentRepositoryInterface)),
       Effect.provide(Layer.succeed(CanonicalBookEnrichmentRepository, canonicalRepository)),

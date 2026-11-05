@@ -8,6 +8,8 @@ const appDir = fileURLToPath(new URL('./app/', import.meta.url))
 export default defineConfig({
   resolve: {
     alias: {
+      '#libroo-core': rootDir,
+      '#libroo-metadata-sources': fileURLToPath(new URL('./server/services/book-metadata-sources.ts', import.meta.url)),
       '~': appDir,
       '~~': rootDir,
       '@': appDir,

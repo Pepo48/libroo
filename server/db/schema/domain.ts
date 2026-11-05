@@ -6,7 +6,7 @@ import { user } from './auth'
 
 // Domain tables for Libroo
 
-// Book metadata. Open Library rows are deduplicated by ISBN; manual rows are private candidates
+// Book metadata. Canonical provider rows (legacy source "open_library") are deduplicated by ISBN; manual rows are private candidates
 // and may share an ISBN with other manual rows or the shared Open Library row.
 export const books = sqliteTable('books', {
   id: text('id').primaryKey(),
@@ -16,6 +16,7 @@ export const books = sqliteTable('books', {
   openLibraryKey: text('open_library_key'), // OpenLibrary edition key
   workKey: text('work_key'), // OpenLibrary works key (for description)
   // Original provider response retained for background enrichment and retries.
+  // metadataProvider distinguishes supplemental catalog seeds from Open Library editions.
   openLibraryMetadata: text('open_library_metadata', { mode: 'json' }).$type<OpenLibraryBookData | null>(),
 
   // Enhanced metadata from OpenLibrary

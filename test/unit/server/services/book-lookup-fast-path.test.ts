@@ -1,3 +1,4 @@
+import { BookMetadataSourcesLive } from '../../../../server/services/book-metadata-sources'
 import { Effect, Layer } from 'effect'
 import { describe, expect, it, vi } from 'vitest'
 import { BookRepository, type Book, type BookRepositoryInterface } from '../../../../server/repositories/book.repository'
@@ -34,6 +35,7 @@ function setup(overrides: Partial<BookRepositoryInterface> = {}) {
   const jobs = { ensurePending: vi.fn(() => Effect.succeed({ status: 'pending' })) }
   const run = () => Effect.runPromise(lookupBook('user-1', isbn).pipe(
     Effect.provide(BookServiceLive),
+    Effect.provide(BookMetadataSourcesLive),
     Effect.provide(Layer.succeed(BookRepository, repository as unknown as BookRepositoryInterface)),
     Effect.provide(Layer.succeed(OpenLibraryRepository, upstream as never)),
     Effect.provide(Layer.succeed(CanonicalBookEnrichmentRepository, jobs as never)),

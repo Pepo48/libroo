@@ -54,11 +54,14 @@ vi.mock('../../../../server/services/rate-limit.service', () => ({
   RateLimitServiceLive: Layer.empty
 }))
 
+vi.mock('../../../../server/repositories/catalog-request.repository', () => ({ CatalogRequestRepositoryLive: Layer.empty }))
+vi.mock('../../../../server/services/catalog-request.service', () => ({ CatalogRequestServiceLive: Layer.empty }))
+
 vi.mock('../../../../server/repositories/book-edit.repository', () => ({ BookEditRepositoryLive: Layer.empty }))
 vi.mock('../../../../server/services/book-edit.service', () => ({ BookEditServiceLive: Layer.empty }))
 
-vi.mock('../../../../server/repositories/catalog-request.repository', () => ({ CatalogRequestRepositoryLive: Layer.empty }))
-vi.mock('../../../../server/services/catalog-request.service', () => ({ CatalogRequestServiceLive: Layer.empty }))
+
+vi.mock('../../../../server/services/book-metadata-sources', () => ({ BookMetadataSourcesLive: Layer.empty }))
 
 describe('handleError', () => {
   beforeAll(() => {

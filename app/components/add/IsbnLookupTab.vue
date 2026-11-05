@@ -5,6 +5,8 @@ import { storeToRefs } from 'pinia'
 import { isValidIsbnChecksum } from '~~/shared/utils/schemas'
 import { normalizeIsbnIdentity, normalizeIsbnText } from '~~/shared/utils/isbn'
 
+const props = defineProps<{ initialIsbn?: string }>()
+
 const toast = useToast()
 const isbnLookupStore = useIsbnLookupStore()
 const { isLookingUp, isAdding } = storeToRefs(isbnLookupStore)
@@ -49,7 +51,7 @@ function scheduleSpeculativeLookup(value: string) {
 watch(() => formState.isbn, scheduleSpeculativeLookup)
 
 // Lookup book by ISBN
-async function lookupISBN(payload: FormSubmitEvent<BookIsbnSchema>) {
+async function lookupISBN(payload: Pick<FormSubmitEvent<BookIsbnSchema>, 'data'>) {
   inputVersion += 1
   if (speculativeLookupTimer) clearTimeout(speculativeLookupTimer)
   // Adopt the pending prefetch rather than aborting the request being reused.
@@ -71,7 +73,7 @@ async function lookupISBN(payload: FormSubmitEvent<BookIsbnSchema>) {
     } else if (!result.found) {
       toast.add({
         title: 'Book not found',
-        description: result.message || 'Could not find this book on OpenLibrary',
+        description: result.message || 'Could not find this book in the available catalogs',
         color: 'warning'
       })
     }
@@ -164,6 +166,13 @@ onBeforeUnmount(() => {
 
 const previewTitle = computed(() => lookupResult.value?.existsLocally ? 'Already in Library' : 'Book Found')
 const previewIconClass = computed(() => lookupResult.value?.existsLocally ? 'text-lg text-info' : 'text-lg text-success')
+
+onMounted(() => {
+  if (props.initialIsbn) {
+    formState.isbn = props.initialIsbn
+    void lookupISBN({ data: { isbn: props.initialIsbn } })
+  }
+})
 
 // Expose for parent to reset on tab change
 defineExpose({ reset })

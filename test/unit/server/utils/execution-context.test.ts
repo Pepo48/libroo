@@ -1,11 +1,20 @@
 import { describe, expect, it, vi } from 'vitest'
-import { getEventExecutionContext, getWaitUntil, runWithExecutionContext } from '../../../../server/utils/execution-context'
+import { executionContextStorage, getEventExecutionContext, getWaitUntil, runWithExecutionContext } from '../../../../server/utils/execution-context'
 
 describe('execution-context bridge', () => {
   type WaitUntilOwner = {
     scheduled: Promise<unknown>[]
     waitUntil: (this: WaitUntilOwner, promise: Promise<unknown>) => void
   }
+
+  it('propagates an optional static-assets binding without requiring a background-task context', async () => {
+    const assets = { fetch: vi.fn(async (_request: Request) => new Response('{}')) }
+    const context = getEventExecutionContext({ context: { cloudflare: { env: { ASSETS: assets } } } })
+    expect(context?.assets).toBe(assets)
+    await runWithExecutionContext(context, async () => {
+      expect(executionContextStorage.getStore()?.assets).toBe(assets)
+    })
+  })
 
   it('returns undefined outside an execution context scope', () => {
     expect(getWaitUntil()).toBeUndefined()
