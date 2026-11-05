@@ -4,13 +4,13 @@ The ISBN form prefetches after 220 ms of unchanged, checksum-valid input. Prefet
 
 ## First result
 
-Ownership and canonical-book reads run concurrently. An existing canonical record avoids the provider request. A catalog miss makes one Open Library ISBN search request, batches author persistence, and saves the core book and an enrichment job before returning an addable result. Work details remain deferred to enrichment. Persistence still resolves competing canonical inserts.
+Ownership and canonical-book reads run concurrently. An existing canonical record avoids the provider request. A catalog miss tries registered providers in order; the default Open Library provider makes one ISBN search request, batches author persistence, and saves the core book and an enrichment job before returning an addable result. Work details remain deferred to enrichment. Persistence still resolves competing canonical inserts.
 
 Migration `0019_durable_open_library_payload.sql` adds nullable `books.open_library_metadata`. It retains the initial edition payload for later requests and retries. Existing books without this payload continue using the legacy enrichment lookup.
 
 ## Bulk lookup
 
-Bulk lookup uses one batched Open Library edition-details request per provider chunk. It skips synchronous author fallback, work hydration, and cover downloads, then persists each canonical core row and queues enrichment serially to avoid SQLite writer contention. The response still preserves input order, duplicate markers, local ownership, and provider cover URLs for previews; richer details and stored covers arrive through the scheduled enrichment worker.
+Bulk lookup checks registered offline catalogs, then uses explicitly batch-capable providers. The default uses one batched Open Library edition-details request per provider chunk. It skips synchronous author fallback, work hydration, and cover downloads, then persists each canonical core row and queues enrichment serially to avoid SQLite writer contention. The response still preserves input order, duplicate markers, local ownership, and provider cover URLs for previews; richer details and stored covers arrive through the scheduled enrichment worker.
 
 The open bulk preview does not auto-refresh when enrichment completes; updated metadata and stored covers appear after the user refreshes the view.
 
@@ -34,8 +34,11 @@ No fixed latency improvement is assumed: Open Library response time, database lo
 
 Open a book from the library and choose **Edit book**. Imported, manually added
 and ISBN-added entries support title, ordered authors, ISBN, publisher,
-publication date, page count and description changes. **Find missing details by
-ISBN** fills empty fields for review; it preserves values already in the form.
+publication date, page count and description changes. **Refresh from sources**
+compares newly fetched metadata against the current draft and lets you select
+individual fields before applying them. Existing values are unchecked by default.
+Nothing is saved until **Save changes**. See the
+[refresh workflow and provider interface](book-metadata-providers.md).
 
 Upload a cover (up to 2 MB), remove it, or choose **Find cover by ISBN** to preview
 an Open Library image. A preview is not stored and does not change the entry.
@@ -50,3 +53,12 @@ rather than silently overwriting one another. Unreferenced older private metadat
 is removed; replaced private cover files are deleted only when no record uses
 them. Shared covers are retained. Explicit future CSV imports still follow the
 selected conflict policy.
+
+
+## Title search
+
+The Add Book page offers a Title tab. Search uses registered providers with title
+search support; Open Library is available by default. Results are ISBN-addressable
+editions, deduplicated and limited to 20. Selecting an edition opens the normal
+ISBN preview; it does not add a book automatically. Partial provider outages are
+shown alongside available results. Only requested edition fields are fetched.

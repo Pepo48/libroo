@@ -60,10 +60,11 @@ vi.mock('../../../../server/services/catalog-request.service', () => ({ CatalogR
 vi.mock('../../../../server/repositories/book-edit.repository', () => ({ BookEditRepositoryLive: Layer.empty }))
 vi.mock('../../../../server/services/book-edit.service', () => ({ BookEditServiceLive: Layer.empty }))
 
-
 vi.mock('../../../../server/services/book-metadata-sources', () => ({ BookMetadataSourcesLive: Layer.empty }))
 
 vi.mock('../../../../server/services/book-search.service', () => ({ BookSearchServiceLive: Layer.empty }))
+
+vi.mock('../../../../server/services/book-refresh.service', () => ({ BookRefreshServiceLive: Layer.empty }))
 
 describe('handleError', () => {
   beforeAll(() => {

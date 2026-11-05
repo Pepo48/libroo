@@ -4,6 +4,25 @@ Libroo includes Open Library for ISBN lookup, title search and refreshing saved
 books. Optional catalog adapters register through one Effect layer; the editor,
 search UI and book service do not import or name individual adapters.
 
+## Refresh a saved book
+
+1. Open the book and choose **Edit book**.
+2. Enter or confirm a valid ISBN, choose a metadata source, and select
+   **Refresh from sources** to look up metadata and a cover. Use the **Cover**
+   section to upload or remove a cover manually.
+3. Compare the current and fetched values. Existing values are unchecked;
+   missing fields are selected automatically. Select the fields you want and
+   choose **Apply selected fields**.
+4. Review the editor and choose **Save changes**. Cancel discards the draft.
+
+Refreshing bypasses stored canonical book metadata. Automatic refresh and interactive ISBN lookup use the configured provider order
+and stop at the first match. Interactive lookup checks saved books first.
+Provider caches, robots rules and request budgets still apply. Previews check
+ownership first, never insert or update books, never enqueue enrichment, and
+never store cover images. Request accounting can update operational counters.
+Saved changes use the existing private editing service and WebP conversion.
+Missing or invalid source fields never clear existing values.
+
 ## Add a provider
 
 Implement `BookMetadataSource` from
@@ -16,7 +35,7 @@ Implement `BookMetadataSource` from
 | `lookupCore(isbn)` | Optional lightweight ISBN lookup for adding books. |
 | `lookupMany(isbns)` | Optional batch capability; bulk import never fans out into individual remote scraping requests. |
 | `searchByTitle(query, limit)` | Optional title search returning ISBN-addressable editions. |
-| `local` | Mark offline catalogs so ordinary ISBN/bulk lookups check them before remote providers. Refresh previews prefer remote providers. |
+| `local` | Mark offline catalogs for bulk ISBN lookup and for priority in title search. Interactive ISBN lookup and refresh use the configured order. |
 | `attribution` | Optional source credit displayed with title results. |
 
 Keep external requests and format parsing in repositories. Services validate,

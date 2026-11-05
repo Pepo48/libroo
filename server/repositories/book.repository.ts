@@ -218,6 +218,10 @@ export interface BookRepositoryInterface {
     isbns: string[]
   ) => Effect.Effect<Map<string, { userBookId: string, libraryState: LibraryState }>, DatabaseError, DbService>
 
+  findStoredCatalogCover: (
+    isbn: string
+  ) => Effect.Effect<{ pathname: string, blob: Blob } | null, never, StorageService>
+
   findStoredOpenLibraryCover: (
     isbn: string
   ) => Effect.Effect<string | null, never, StorageService>
@@ -328,28 +332,29 @@ function validateManualCoverPath(userId: string, coverPath: string | null): stri
   return coverPath
 }
 
-function findStoredOpenLibraryCover(isbn: string) {
+function findStoredCatalogCover(isbn: string) {
   const normalizedISBN = normalizeISBN(isbn)
   const candidatePaths = [...TRUSTED_COVER_EXTENSIONS].map(extension => `covers/${normalizedISBN}.${extension}`)
 
   return Effect.gen(function* () {
     for (const candidatePath of candidatePaths) {
-      const foundPath = yield* getBlob(candidatePath).pipe(
-        Effect.map(blob => blob ? candidatePath : null),
+      const blob = yield* getBlob(candidatePath).pipe(
         Effect.catch(error =>
-          Effect.logWarning(`Stored Open Library cover ${candidatePath} could not be verified: ${String(error)}`).pipe(
+          Effect.logWarning(`Stored catalog cover ${candidatePath} could not be verified: ${String(error)}`).pipe(
             Effect.as(null)
           )
         )
       )
 
-      if (foundPath) {
-        return foundPath
-      }
+      if (blob) return { pathname: candidatePath, blob }
     }
 
     return null
   })
+}
+
+function findStoredOpenLibraryCover(isbn: string) {
+  return findStoredCatalogCover(isbn).pipe(Effect.map(cover => cover?.pathname ?? null))
 }
 
 const withDebugTiming = <A, E, R>(
@@ -1219,6 +1224,7 @@ export const BookRepositoryLive = Layer.effect(
       createCoreOpenLibraryBook,
       applyOpenLibraryEnrichment,
       ensureOpenLibraryBook,
+      findStoredCatalogCover,
       findStoredOpenLibraryCover,
       addSystemTagsToBook: (bookId, subjects) => hydrateSystemTagsForBook(bookId, subjects),
 
