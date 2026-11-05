@@ -1,3 +1,5 @@
+import { CatalogRequestRepositoryLive, type CatalogRequestRepository } from '../repositories/catalog-request.repository'
+import { CatalogRequestServiceLive, type CatalogRequestService } from '../services/catalog-request.service'
 import { BookEditRepositoryLive, type BookEditRepository } from '../repositories/book-edit.repository'
 import { BookEditServiceLive, type BookEditService } from '../services/book-edit.service'
 import { Cause, Effect, Exit, Layer, pipe } from 'effect'
@@ -18,6 +20,11 @@ import { StructuredLoggerLive } from './logger'
 const BaseServicesLive = Layer.mergeAll(
   AuthServiceLive,
   RuntimeInfrastructureLive
+)
+
+const CatalogRequestsLive = CatalogRequestServiceLive.pipe(
+  Layer.provideMerge(CatalogRequestRepositoryLive),
+  Layer.provideMerge(BaseServicesLive)
 )
 
 // Repository layer (depends on base services)
@@ -43,7 +50,7 @@ const RepositoriesLive = Layer.provideMerge(
     MetricsRepositoryLive,
     StorageUsageSnapshotRepositoryLive
   ),
-  BaseServicesLive
+  CatalogRequestsLive
 )
 
 // Service layer (depends on repositories)
@@ -65,7 +72,9 @@ export const MainLive = Layer.provideMerge(
 
 // Type for all available services
 export type MainServices
-  = BookEditService
+  = CatalogRequestService
+    | CatalogRequestRepository
+    | BookEditService
     | BookEditRepository
     | DbService
     | StorageService
