@@ -18,11 +18,12 @@ import borrowerSuggestionsMigration from '../../../../server/db/migrations/sqlit
 import enrichmentMigration from '../../../../server/db/migrations/sqlite/0012_imported_book_enrichment.sql?raw'
 import authFactorsMigration from '../../../../server/db/migrations/sqlite/0013_auth-two-factor-passkeys.sql?raw'
 import recentAuthMigration from '../../../../server/db/migrations/sqlite/0014_recent-auth.sql?raw'
+import canonicalEnrichmentMigration from '../../../../server/db/migrations/sqlite/0016_canonical_book_enrichment.sql?raw'
 import durableOpenLibraryPayloadMigration from '../../../../server/db/migrations/sqlite/0019_durable_open_library_payload.sql?raw'
 import editionFieldsMigration from '../../../../server/db/migrations/sqlite/0022_book_edition_fields.sql?raw'
 import libraryIndexesMigration from '../../../../server/db/migrations/sqlite/0004_add_user_books_library_indexes.sql?raw'
 import activeUserBookUniqueMigration from '../../../../server/db/migrations/sqlite/0005_add_active_user_book_unique.sql?raw'
-import { bookAuthors, books, loans, user, userBooks, userBookTags } from '../../../../server/db/schema'
+import { bookAuthors, bookEnrichmentJobs, books, canonicalBookEnrichmentJobs, loans, user, userBooks, userBookTags } from '../../../../server/db/schema'
 import { ActiveLoanRemovalError, BookCreateError, BookRepository, BookRepositoryLive } from '../../../../server/repositories/book.repository'
 import { DbService, type DbServiceInterface } from '../../../../server/services/db.service'
 
@@ -88,6 +89,27 @@ describe('BookRepository.createManualBook on D1', () => {
     expect(results.filter(Boolean)).toHaveLength(1)
     const [total] = await db.select({ count: count() }).from(books)
     expect(total!.count).toBe(1)
+  })
+
+  it('loads enrichment with details and keeps another owner’s import status private', async () => {
+    const original = await runRepository(db, Effect.flatMap(BookRepository, repo => repo.createManualBook('user-1', {
+      ...manualBookCreateSchema.parse({ title: 'Shared book', authors: ['Author'], isbn: '9780441172719' }), coverPath: null
+    })))
+    const now = new Date()
+    await db.insert(user).values({ id: 'user-2', name: 'Other', email: 'other@example.com', createdAt: now, updatedAt: now })
+    await db.insert(userBooks).values({ id: 'other-copy', userId: 'user-2', bookId: original.bookId, addedAt: now })
+    await db.insert(canonicalBookEnrichmentJobs).values({
+      bookId: original.bookId, isbn: '9780441172719', status: 'pending', createdAt: now, updatedAt: now
+    })
+    await db.insert(bookEnrichmentJobs).values({
+      id: 'import-job', batchId: 'batch', bookId: original.bookId, userId: 'user-1',
+      isbn: '9780441172719', status: 'retrying', createdAt: now, updatedAt: now
+    })
+
+    const readDetails = (id: string, userId: string) => runRepository(db, Effect.flatMap(BookRepository, repo => repo.getUserBookWithDetails(id, userId, true)))
+    await expect(readDetails(original.id, 'user-1')).resolves.toMatchObject({ jobStatus: 'retrying' })
+    await expect(readDetails('other-copy', 'user-2')).resolves.toMatchObject({ jobStatus: 'pending' })
+    await expect(readDetails(original.id, 'user-2')).rejects.toMatchObject({ _tag: 'BookNotFoundError' })
   })
 
   it('creates a manual book through D1 batch without opening a transaction', async () => {
@@ -371,6 +393,7 @@ async function applyMigrations(database: D1Database) {
     enrichmentMigration,
     authFactorsMigration,
     recentAuthMigration,
+    canonicalEnrichmentMigration,
     durableOpenLibraryPayloadMigration,
     editionFieldsMigration
   ]) {

@@ -15,5 +15,6 @@ export default effectHandler((event, user) =>
 
     // Get book details via BookService (verifies ownership)
     return yield* getBookDetails(userBookId, user.id)
-  })
+  }),
+{ timing: true }
 )

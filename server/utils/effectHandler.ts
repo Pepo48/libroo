@@ -7,6 +7,7 @@ import { getEventExecutionContext, runWithExecutionContext } from './execution-c
 type EffectHandlerUser = { id: string, name: string, email: string, role?: string | null }
 type EffectHandlerOptions = {
   auth?: 'verified' | 'session' | false
+  timing?: boolean
 }
 
 /**
@@ -32,7 +33,7 @@ export function effectHandler<A, E>(
     event: H3Event,
     user: EffectHandlerUser
   ) => Effect.Effect<A, E, MainServices>,
-  options?: { auth?: 'verified' }
+  options?: { auth?: 'verified' } & Pick<EffectHandlerOptions, 'timing'>
 ): EventHandler
 
 export function effectHandler<A, E>(
@@ -40,7 +41,7 @@ export function effectHandler<A, E>(
     event: H3Event,
     user: EffectHandlerUser
   ) => Effect.Effect<A, E, MainServices>,
-  options: { auth: 'session' }
+  options: { auth: 'session' } & Pick<EffectHandlerOptions, 'timing'>
 ): EventHandler
 
 export function effectHandler<A, E>(
@@ -48,7 +49,7 @@ export function effectHandler<A, E>(
     event: H3Event,
     user: null
   ) => Effect.Effect<A, E, MainServices>,
-  options: { auth: false }
+  options: { auth: false } & Pick<EffectHandlerOptions, 'timing'>
 ): EventHandler
 
 export function effectHandler<A, E>(
@@ -61,13 +62,22 @@ export function effectHandler<A, E>(
   options: EffectHandlerOptions = {}
 ): EventHandler {
   return defineEventHandler(async (event) => {
+    const started = options.timing ? performance.now() : 0
+    let authenticated = started
+    let handlerStarted = started
+    let databaseDuration = 0
     const executionContext = getEventExecutionContext(event)
+    const timedContext = options.timing
+      ? { ...executionContext, recordDatabaseDuration: (duration: number) => { databaseDuration += duration } }
+      : executionContext
     const effect = Effect.gen(function* () {
+      if (options.timing) handlerStarted = performance.now()
       const user = options.auth === false
         ? null
         : options.auth === 'session'
           ? yield* requireAuth(event)
           : yield* requireVerifiedAuth(event)
+      if (options.timing) authenticated = performance.now()
       return yield* handler(event, user)
     }).pipe(
       Effect.annotateLogs({ path: event.path })
@@ -77,6 +87,16 @@ export function effectHandler<A, E>(
     // 1. Provide dependencies (MainLive)
     // 2. Catch all errors and convert them to H3 errors (as success values)
     // 3. Run the promise
-    return runWithExecutionContext(executionContext, () => runEffect(effect))
+    const result = await runWithExecutionContext(timedContext, () => runEffect(effect))
+    if (options.timing) {
+      const finished = performance.now()
+      setHeader(event, 'Server-Timing', [
+        `auth;dur=${(authenticated - handlerStarted).toFixed(1)}`,
+        `data;dur=${(finished - authenticated).toFixed(1)}`,
+        `db;dur=${databaseDuration.toFixed(1)}`,
+        `worker;dur=${(finished - started).toFixed(1)}`
+      ].join(', '))
+    }
+    return result
   })
 }

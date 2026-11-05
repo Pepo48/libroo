@@ -1,8 +1,8 @@
-import { readIdsInBatches } from './batched-reads'
+import { readBatch, readIdsInBatches } from './batched-reads'
 import { Context, Effect, Layer, Data, Duration } from 'effect'
 import type * as HttpClient from 'effect/http/HttpClient'
-import { eq, and, count, desc, asc, inArray, or, sql, notInArray, exists, isNull, not } from 'drizzle-orm'
-import { books, authors, bookAuthors, userBooks, tags, bookSystemTags, userBookTags, loans, user, locations } from 'hub:db:schema'
+import { eq, and, count, desc, asc, inArray, or, sql, exists, isNull, not } from 'drizzle-orm'
+import { books, authors, bookAuthors, userBooks, tags, bookSystemTags, userBookTags, loans, user, locations, bookEnrichmentJobs, canonicalBookEnrichmentJobs } from 'hub:db:schema'
 import { normalizeTagInput, normalizeSuggestedTags } from '../../shared/utils/tag-ingestion'
 import type { LibraryQueryFilters } from '../../shared/utils/library-query'
 import { escapeLocationLikePattern } from '../../shared/utils/location-hierarchy'
@@ -13,8 +13,9 @@ import { getBlob, type StorageService } from '../services/storage.service'
 import { downloadCover, lookupByISBN } from './openLibrary.repository'
 import type { OpenLibraryApiError, OpenLibraryBookNotFoundError, OpenLibraryRepository } from './openLibrary.repository'
 import type { OpenLibraryBookData } from '../../shared/types/open-library'
-import type { LibraryState, TagWithCount } from '../../shared/types/book'
+import type { BookEnrichmentStatus, LibraryState, TagWithCount } from '../../shared/types/book'
 import { isbnIdentityAliases, normalizeIsbnIdentity } from '../../shared/utils/isbn'
+import { measureDatabase } from '../utils/execution-context'
 
 // Error types
 export class BookNotFoundError extends Data.TaggedError('BookNotFoundError')<{
@@ -2065,82 +2066,91 @@ export const BookRepositoryLive = Layer.effect(
           return rows
         }),
 
-      getUserBookWithDetails: (userBookId, userId) =>
+      getUserBookWithDetails: (userBookId, userId, includeEnrichment = false) =>
         Effect.gen(function* () {
-          const ref = yield* getOwnedUserBookRef(userBookId, userId)
-
-          const result = yield* Effect.tryPromise({
-            try: () =>
-              dbService.db
-                .select()
+          const ownedEntry = and(eq(userBooks.id, userBookId), eq(userBooks.userId, userId), isNull(userBooks.removedAt))
+          const [details, userTagRows, systemTagRows, bookAuthorList] = yield* Effect.tryPromise({
+            try: () => measureDatabase(() => readBatch(dbService, (database) => {
+              const ownedBook = database.select({ id: userBooks.bookId }).from(userBooks).where(ownedEntry)
+              // D1 batch results are keyed by column name, so joined columns need distinct names.
+              const details = database.select({
+                user_books: userBooks,
+                books: {
+                  id: sql<string>`${books.id}`.as('detail_book_id'),
+                  title: books.title,
+                  isbn: books.isbn,
+                  coverPath: books.coverPath,
+                  description: books.description,
+                  publishDate: books.publishDate,
+                  publishers: books.publishers,
+                  numberOfPages: books.numberOfPages,
+                  openLibraryKey: books.openLibraryKey,
+                  workKey: books.workKey
+                },
+                locationId: sql<string | null>`${locations.id}`.as('detail_location_id'),
+                locationName: locations.name,
+                locationParentId: locations.parentLocationId,
+                locationPath: locations.path,
+                locationDepth: locations.depth,
+                loanId: sql<string | null>`${loans.id}`.as('detail_loan_id'),
+                borrowerDisplayName: loans.borrowerDisplayName,
+                loanNote: sql<string | null>`${loans.note}`.as('detail_loan_note'),
+                acceptedByName: sql<string | null>`${user.name}`.as('detail_borrower_name'),
+                loanedAt: loans.loanedAt,
+                dueAt: loans.dueAt,
+                acceptedAt: loans.acceptedAt,
+                jobStatus: includeEnrichment
+                  ? sql<BookEnrichmentStatus | null>`coalesce(
+                      (select ${bookEnrichmentJobs.status} from ${bookEnrichmentJobs}
+                        where ${bookEnrichmentJobs.bookId} = ${books.id} and ${bookEnrichmentJobs.userId} = ${userId}),
+                      (select ${canonicalBookEnrichmentJobs.status} from ${canonicalBookEnrichmentJobs}
+                        where ${canonicalBookEnrichmentJobs.bookId} = ${books.id})
+                    )`
+                  : sql<null>`null`
+              })
                 .from(userBooks)
                 .innerJoin(books, eq(userBooks.bookId, books.id))
                 .leftJoin(locations, eq(userBooks.locationId, locations.id))
-                .where(and(eq(userBooks.id, ref.userBookId), eq(userBooks.userId, userId), isNull(userBooks.removedAt)))
-                .limit(1),
+                .leftJoin(loans, and(eq(loans.userBookId, userBooks.id), eq(loans.status, 'active')))
+                .leftJoin(user, eq(loans.borrowerUserId, user.id))
+                .where(ownedEntry)
+                .limit(1)
+
+              return [
+                details,
+                database.select({ id: tags.id, name: tags.name })
+                  .from(userBookTags)
+                  .innerJoin(tags, eq(userBookTags.tagId, tags.id))
+                  .where(and(eq(userBookTags.userBookId, userBookId), exists(ownedBook)))
+                  .orderBy(tags.name),
+                database.select({ id: tags.id, name: tags.name })
+                  .from(bookSystemTags)
+                  .innerJoin(tags, eq(bookSystemTags.tagId, tags.id))
+                  .where(inArray(bookSystemTags.bookId, ownedBook))
+                  .orderBy(tags.name),
+                database.select({ id: authors.id, name: authors.name })
+                  .from(bookAuthors)
+                  .innerJoin(authors, eq(bookAuthors.authorId, authors.id))
+                  .where(inArray(bookAuthors.bookId, ownedBook))
+                  .orderBy(asc(bookAuthors.sortOrder), asc(authors.name))
+              ] as const
+            })),
             catch: error => new DatabaseError({
               message: `Failed to get book details: ${error}`,
               operation: 'getUserBookWithDetails'
             })
           })
 
-          const row = result[0]
+          const row = details[0]
           if (!row) {
             return yield* Effect.fail(new BookNotFoundError({ bookId: userBookId }))
           }
 
-          const userTagRows = yield* Effect.tryPromise({
-            try: () => dbService.db
-              .select({
-                id: tags.id,
-                name: tags.name
-              })
-              .from(userBookTags)
-              .innerJoin(tags, eq(userBookTags.tagId, tags.id))
-              .where(eq(userBookTags.userBookId, ref.userBookId))
-              .orderBy(tags.name),
-            catch: error => new DatabaseError({
-              message: `Failed to load user tags: ${error}`,
-              operation: 'getUserBookWithDetails.userTags'
-            })
-          })
-
-          const userTagIds = userTagRows.map(tag => tag.id)
-
-          const suggestedRows = yield* Effect.tryPromise({
-            try: () => {
-              if (userTagIds.length === 0) {
-                return dbService.db
-                  .select({
-                    id: tags.id,
-                    name: tags.name
-                  })
-                  .from(bookSystemTags)
-                  .innerJoin(tags, eq(bookSystemTags.tagId, tags.id))
-                  .where(eq(bookSystemTags.bookId, ref.bookId))
-                  .orderBy(tags.name)
-              }
-
-              return dbService.db
-                .select({
-                  id: tags.id,
-                  name: tags.name
-                })
-                .from(bookSystemTags)
-                .innerJoin(tags, eq(bookSystemTags.tagId, tags.id))
-                .where(and(eq(bookSystemTags.bookId, ref.bookId), notInArray(bookSystemTags.tagId, userTagIds)))
-                .orderBy(tags.name)
-            },
-            catch: error => new DatabaseError({
-              message: `Failed to load suggested tags: ${error}`,
-              operation: 'getUserBookWithDetails.suggestedTags'
-            })
-          })
-
+          const userTagIds = new Set(userTagRows.map(tag => tag.id))
           const bookData = row.books
-          const authorsByBook = yield* hydrateAuthorsForBookIds([bookData.id])
-          const bookAuthorList = authorsByBook.get(bookData.id) || []
-          const activeLoansByUserBook = yield* hydrateActiveLoansByUserBookIds([ref.userBookId])
+          const location = row.locationId && row.locationName !== null && row.locationPath !== null && row.locationDepth !== null
+            ? { id: row.locationId, name: row.locationName, parentLocationId: row.locationParentId, path: row.locationPath, depth: row.locationDepth }
+            : null
 
           return {
             id: row.user_books.id,
@@ -2154,7 +2164,7 @@ export const BookRepositoryLive = Layer.effect(
             description: bookData.description ?? null,
             rating: row.user_books.rating ?? null,
             note: row.user_books.note ?? null,
-            location: toLocationModel(row.locations),
+            location,
             lastKnownLocation: row.user_books.lastKnownLocation ?? null,
             readingProgress: {
               status: row.user_books.readingStatus,
@@ -2167,14 +2177,25 @@ export const BookRepositoryLive = Layer.effect(
             series: row.user_books.series,
             seriesPosition: row.user_books.seriesPosition,
             userTags: userTagRows,
-            suggestedTags: suggestedRows,
+            suggestedTags: systemTagRows.filter(tag => !userTagIds.has(tag.id)),
             publishDate: bookData.publishDate ?? null,
             publishers: bookData.publishers ?? null,
             numberOfPages: bookData.numberOfPages ?? null,
             openLibraryKey: bookData.openLibraryKey,
             workKey: bookData.workKey ?? null,
             addedAt: row.user_books.addedAt,
-            activeLoan: activeLoansByUserBook.get(ref.userBookId) ?? null
+            activeLoan: row.loanId && row.borrowerDisplayName !== null && row.loanedAt
+              ? {
+                  id: row.loanId,
+                  borrowerDisplayName: row.borrowerDisplayName,
+                  note: row.loanNote,
+                  acceptedByName: row.acceptedByName,
+                  loanedAt: row.loanedAt,
+                  dueAt: row.dueAt,
+                  acceptedAt: row.acceptedAt
+                }
+              : null,
+            ...(row.jobStatus ? { jobStatus: row.jobStatus } : {})
           }
         }),
 

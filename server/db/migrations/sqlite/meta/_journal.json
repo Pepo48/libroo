@@ -162,6 +162,13 @@
       "when": 1793892901121,
       "tag": "0022_book_edition_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1793908632971,
+      "tag": "0023_index_loan_lists",
+      "breakpoints": true
     }
   ]
 }
