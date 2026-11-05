@@ -260,10 +260,10 @@ export const loans = sqliteTable('loans', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull()
 }, table => [
   check('loans_status_check', sql`${table.status} IN ('active', 'returned', 'canceled')`),
-  index('loans_owner_user_id_idx').on(table.ownerUserId),
+  index('loans_owner_loaned_idx').on(table.ownerUserId, table.loanedAt),
   index('loans_owner_borrower_name_loaned_idx').on(table.ownerUserId, table.borrowerNameNormalized, table.loanedAt),
   index('loans_user_book_id_idx').on(table.userBookId),
-  index('loans_borrower_user_id_idx').on(table.borrowerUserId),
+  index('loans_borrower_loaned_idx').on(table.borrowerUserId, table.loanedAt),
   uniqueIndex('loans_active_user_book_unique').on(table.userBookId).where(sql`${table.status} = 'active'`),
   uniqueIndex('loans_accept_token_hash_unique').on(table.acceptTokenHash).where(sql`${table.acceptTokenHash} IS NOT NULL`)
 ])

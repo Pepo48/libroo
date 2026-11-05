@@ -193,8 +193,9 @@ describe('optional enrichment status decoration', () => {
 
     expect(library.items[0]?.enrichmentStatus).toBeNull()
     expect(bookDetails.enrichmentStatus).toBeNull()
-    expect(enrichmentRepository.getStatusesForUserBooks).toHaveBeenCalledTimes(2)
-    expect(getStatuses).toHaveBeenCalledTimes(2)
+    expect(bookRepository.getUserBookWithDetails).toHaveBeenCalledWith('user-book-1', 'user-1', true)
+    expect(enrichmentRepository.getStatusesForUserBooks).toHaveBeenCalledTimes(1)
+    expect(getStatuses).toHaveBeenCalledTimes(1)
     expect(getStatuses).toHaveBeenNthCalledWith(1, [userBook.bookId, 'book-2'])
   })
 })

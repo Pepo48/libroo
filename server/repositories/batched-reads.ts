@@ -1,5 +1,14 @@
 import type { AtomicDbStatement, AtomicDbStatements, DbServiceInterface } from '../services/db.service'
 
+type ReadQuery = AtomicDbStatement & PromiseLike<unknown[]>
+
+export async function readBatch<const Queries extends readonly [ReadQuery, ...ReadQuery[]]>(
+  database: DbServiceInterface,
+  build: (db: DbServiceInterface['db']) => Queries
+): Promise<{ [Index in keyof Queries]: Awaited<Queries[Index]> }> {
+  return await database.executeAtomic(build) as { [Index in keyof Queries]: Awaited<Queries[Index]> }
+}
+
 /** Keep each SELECT below D1's parameter limit, with one round trip for large reads. */
 export async function readIdsInBatches<Row>(
   database: DbServiceInterface,

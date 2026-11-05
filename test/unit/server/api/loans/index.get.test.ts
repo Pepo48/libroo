@@ -37,8 +37,10 @@ describe('server/api/loans/index.get', () => {
     }]
     serviceMocks.listLoansForOwner.mockReturnValueOnce(Effect.succeed(loans))
     const handler = await importRoute(route)
+    const event = makeEvent()
 
-    await expect(handler(makeEvent())).resolves.toBe(loans)
+    await expect(handler(event)).resolves.toBe(loans)
     expect(serviceMocks.listLoansForOwner).toHaveBeenCalledWith('user-1')
+    expect(event.responseHeaders['Server-Timing']).toMatch(/auth;dur=.*data;dur=.*db;dur=.*worker;dur=/)
   })
 })

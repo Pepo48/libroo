@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 type RuntimeExecutionContext = {
   assets?: { fetch: (request: Request) => Promise<Response> }
   waitUntil?: (promise: Promise<unknown>) => void
+  recordDatabaseDuration?: (milliseconds: number) => void
 }
 
 export const executionContextStorage = new AsyncLocalStorage<RuntimeExecutionContext>()
@@ -57,4 +58,16 @@ export function getWaitUntil() {
   return typeof waitUntil === 'function'
     ? waitUntil.bind(store)
     : undefined
+}
+
+export async function measureDatabase<T>(query: () => PromiseLike<T>): Promise<T> {
+  const record = executionContextStorage.getStore()?.recordDatabaseDuration
+  if (!record) return await query()
+
+  const started = performance.now()
+  try {
+    return await query()
+  } finally {
+    record(performance.now() - started)
+  }
 }

@@ -689,11 +689,12 @@ export const BookServiceLive = Layer.effect(
 
       getBookDetails: (userBookId, userId) =>
         Effect.gen(function* () {
-          const details = yield* bookRepo.getUserBookWithDetails(userBookId, userId)
-          const statuses = yield* getEnrichmentStatuses(userId, [details.bookId])
+          const { jobStatus, ...details } = yield* bookRepo.getUserBookWithDetails(userBookId, userId, true).pipe(
+            Effect.catchTag('DatabaseError', () => bookRepo.getUserBookWithDetails(userBookId, userId))
+          )
           return {
             ...details,
-            enrichmentStatus: toBookEnrichmentUiStatus(statuses.get(details.bookId))
+            enrichmentStatus: toBookEnrichmentUiStatus(jobStatus)
           }
         }),
 

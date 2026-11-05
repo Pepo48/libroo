@@ -1,3 +1,4 @@
+import { measureDatabase } from '../utils/execution-context'
 import { Context, Data, Effect, Layer } from 'effect'
 import { and, desc, eq, exists, isNotNull, isNull, not, or, sql } from 'drizzle-orm'
 import { authors, bookAuthors, books, loans, user, userBooks } from 'hub:db:schema'
@@ -142,7 +143,25 @@ export const LendingRepositoryLive = Layer.effect(
         } satisfies LoanSnapshotSource
       })
 
-    const toOwnerLoan = (row: typeof loans.$inferSelect & { acceptedByName?: string | null }): OwnerLoan => ({
+    const ownerLoanColumns = {
+      id: loans.id,
+      userBookId: loans.userBookId,
+      snapshotOwnerName: loans.snapshotOwnerName,
+      borrowerDisplayName: loans.borrowerDisplayName,
+      status: loans.status,
+      loanedAt: loans.loanedAt,
+      dueAt: loans.dueAt,
+      returnedAt: loans.returnedAt,
+      canceledAt: loans.canceledAt,
+      acceptedAt: loans.acceptedAt,
+      note: loans.note,
+      inviteEmailStatus: loans.inviteEmailStatus,
+      snapshotBookTitle: loans.snapshotBookTitle,
+      snapshotBookAuthor: loans.snapshotBookAuthor,
+      snapshotCoverPath: loans.snapshotCoverPath
+    }
+
+    const toOwnerLoan = (row: Pick<typeof loans.$inferSelect, keyof typeof ownerLoanColumns> & { acceptedByName?: string | null }): OwnerLoan => ({
       id: row.id,
       userBookId: row.userBookId,
       ownerDisplayName: row.snapshotOwnerName,
@@ -435,38 +454,12 @@ export const LendingRepositoryLive = Layer.effect(
       listOwnerLoans: ownerUserId =>
         Effect.gen(function* () {
           const rows = yield* Effect.tryPromise({
-            try: () => dbService.db
-              .select({
-                id: loans.id,
-                ownerUserId: loans.ownerUserId,
-                userBookId: loans.userBookId,
-                borrowerUserId: loans.borrowerUserId,
-                borrowerDisplayName: loans.borrowerDisplayName,
-                borrowerNameNormalized: loans.borrowerNameNormalized,
-                borrowerEmail: loans.borrowerEmail,
-                borrowerEmailNormalized: loans.borrowerEmailNormalized,
-                note: loans.note,
-                inviteEmailStatus: loans.inviteEmailStatus,
-                inviteEmailLastAttemptAt: loans.inviteEmailLastAttemptAt,
-                status: loans.status,
-                loanedAt: loans.loanedAt,
-                dueAt: loans.dueAt,
-                returnedAt: loans.returnedAt,
-                canceledAt: loans.canceledAt,
-                snapshotBookTitle: loans.snapshotBookTitle,
-                snapshotBookAuthor: loans.snapshotBookAuthor,
-                snapshotCoverPath: loans.snapshotCoverPath,
-                snapshotOwnerName: loans.snapshotOwnerName,
-                acceptTokenHash: loans.acceptTokenHash,
-                acceptedAt: loans.acceptedAt,
-                createdAt: loans.createdAt,
-                updatedAt: loans.updatedAt,
-                acceptedByName: user.name
-              })
+            try: () => measureDatabase(() => dbService.db
+              .select({ ...ownerLoanColumns, acceptedByName: user.name })
               .from(loans)
               .leftJoin(user, eq(loans.borrowerUserId, user.id))
               .where(eq(loans.ownerUserId, ownerUserId))
-              .orderBy(desc(loans.loanedAt)),
+              .orderBy(desc(loans.loanedAt))),
             catch: error => new DatabaseError({
               message: `Failed to list owner loans: ${error}`,
               operation: 'listOwnerLoans'
@@ -479,7 +472,7 @@ export const LendingRepositoryLive = Layer.effect(
       listBorrowedBooks: borrowerUserId =>
         Effect.gen(function* () {
           const rows = yield* Effect.tryPromise({
-            try: () => dbService.db
+            try: () => measureDatabase(() => dbService.db
               .select({
                 id: loans.id,
                 status: loans.status,
@@ -496,7 +489,7 @@ export const LendingRepositoryLive = Layer.effect(
               .from(loans)
               .leftJoin(userBooks, eq(loans.userBookId, userBooks.id))
               .where(and(eq(loans.borrowerUserId, borrowerUserId), isNotNull(loans.acceptedAt)))
-              .orderBy(desc(loans.loanedAt)),
+              .orderBy(desc(loans.loanedAt))),
             catch: error => new DatabaseError({
               message: `Failed to list borrowed books: ${error}`,
               operation: 'listBorrowedBooks'
