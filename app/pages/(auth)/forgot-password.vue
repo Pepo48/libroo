@@ -13,7 +13,7 @@ usePageTitle(() => t('ui.resetPasswordText'))
 
 const toast = useToast()
 const config = useRuntimeConfig()
-const { data: emailCapabilities } = await useEmailCapabilities()
+const { data: emailCapabilities, status } = useEmailCapabilities({ lazy: true })
 const isSubmitting = ref(false)
 const requestSent = ref(false)
 const turnstileToken = ref('')
@@ -97,8 +97,10 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
 
 <template>
   <UContainer class="py-12 max-w-md">
+    <PageDataLoading v-if="status === 'idle' || status === 'pending'" />
+
     <AuthStateCard
-      v-if="!emailCapabilities.passwordResetEnabled"
+      v-else-if="!emailCapabilities.passwordResetEnabled"
       :title="$t('ui.resetPassword')"
       :description="$t('ui.passwordResetEmailIsUnavailableContactYour')"
       icon="i-lucide-mail-x"

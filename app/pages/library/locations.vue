@@ -22,9 +22,11 @@ const deleteTarget = ref<BookLocationWithCount | null>(null)
 const deleteMode = ref<'block' | 'clear' | 'move'>('block')
 const deleteTargetLocationId = ref<string>()
 
-const { data: locations, status } = await useFetch<BookLocationWithCount[]>('/api/locations', {
+const { data: locations, status, refresh } = await useFetch<BookLocationWithCount[]>('/api/locations', {
+  lazy: true,
   headers: useRequestHeaders(['cookie'])
 })
+const isLoadingLocations = computed(() => status.value === 'idle' || status.value === 'pending')
 
 const locationTree = computed<BookLocationTreeNode[]>(() => {
   const nodes = new Map<string, BookLocationTreeNode>()
@@ -297,28 +299,28 @@ function showErrorToast(title: string, err: unknown) {
           icon="i-lucide-map-pin-plus"
           size="lg"
           :placeholder="$t('ui.newTopLevelLocation')"
+          :disabled="isLoadingLocations"
           @keyup.enter="createLocation(null, newLocationName)"
         />
         <UButton
           icon="i-lucide-plus"
           size="lg"
           :loading="isCreating"
-          :disabled="!newLocationName.trim() || isCreating || isMutating"
+          :disabled="!newLocationName.trim() || isLoadingLocations || isCreating || isMutating"
           @click="createLocation(null, newLocationName)"
         >
           {{ $t('ui.addLocation') }}
         </UButton>
       </div>
 
-      <div
-        v-if="status === 'pending'"
-        class="flex justify-center py-12"
-      >
-        <UIcon
-          name="i-lucide-loader-2"
-          class="animate-spin text-4xl text-muted"
-        />
-      </div>
+      <PageDataLoading v-if="isLoadingLocations" />
+
+      <UAlert
+        v-else-if="status === 'error'"
+        color="error"
+        :title="$t('library.locationsLoadFailed')"
+        :actions="[{ label: $t('ui.retry'), onClick: () => refresh() }]"
+      />
 
       <UCard
         v-else-if="locationTree.length === 0"

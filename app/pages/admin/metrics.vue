@@ -9,7 +9,8 @@ usePageTitle(() => t('ui.adminMetrics'))
 const requestFetch = useRequestFetch()
 const { data: metrics, status, error } = await useAsyncData<AdminMetrics>(
   'admin-metrics',
-  () => requestFetch('/api/admin/metrics')
+  () => requestFetch('/api/admin/metrics'),
+  { lazy: true }
 )
 
 const isLoading = computed(() => ['idle', 'pending'].includes(status.value))

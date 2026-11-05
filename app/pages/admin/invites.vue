@@ -14,11 +14,12 @@ const config = useRuntimeConfig()
 const route = useRoute()
 const router = useRouter()
 const requestFetch = useRequestFetch()
-const { data: emailCapabilities } = await useEmailCapabilities()
 
 if (booleanConfigValue(config.public.registrationEnabled, true)) {
   await navigateTo('/admin/users', { replace: true })
 }
+
+const { data: emailCapabilities } = useEmailCapabilities({ lazy: true })
 
 const inviteEmail = ref('')
 const inviteExpiresInDays = ref(7)
@@ -48,6 +49,7 @@ const { data: signupInvitesPage, status: invitesStatus, error: invitesError, ref
     }
   }),
   {
+    lazy: true,
     default: () => emptyInvitesPage(currentPage.value),
     watch: [currentPage]
   }

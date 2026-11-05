@@ -14,7 +14,9 @@ if (externalUrl) {
   await navigateTo(externalUrl, { external: true })
 }
 
-const { data, error } = await useFetch<LegalDocument>('/api/legal/privacy', {
+const { data, error, status } = await useFetch<LegalDocument>('/api/legal/privacy', {
+  lazy: true,
+  immediate: !externalUrl,
   default: () => ({
     markdown: null,
     configured: false
@@ -36,6 +38,7 @@ useHead({
     :title="$t('ui.privacyPolicy')"
     :description="$t('ui.privacyInformationForLibroo')"
     :text="text"
+    :loading="status === 'idle' || status === 'pending'"
     :error-message="errorMessage"
   />
 </template>

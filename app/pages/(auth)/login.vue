@@ -20,8 +20,8 @@ const authStore = useAuthStore()
 const { user, pendingMfa } = storeToRefs(authStore)
 const { signIn } = authStore
 const toast = useToast()
-const { data: emailCapabilities } = await useEmailCapabilities()
-const { data: authCapabilities } = await useAuthCapabilities()
+const { data: emailCapabilities } = useEmailCapabilities({ lazy: true })
+const { data: authCapabilities, status: authStatus } = useAuthCapabilities({ lazy: true })
 
 const isLoading = ref(false)
 const error = ref('')
@@ -238,7 +238,9 @@ async function signInWithOAuth() {
 
 <template>
   <UContainer class="py-12 max-w-md">
-    <UPageCard v-if="pendingMfa">
+    <PageDataLoading v-if="!pendingMfa && (authStatus === 'idle' || authStatus === 'pending')" />
+
+    <UPageCard v-else-if="pendingMfa">
       <div class="space-y-5">
         <div class="space-y-1 text-center">
           <UIcon

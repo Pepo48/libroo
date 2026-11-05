@@ -31,6 +31,7 @@ const { data: usersPage, status, error } = await useAsyncData<AdminUsersPage>(
   'admin-users',
   () => loadUsers(currentPage.value),
   {
+    lazy: true,
     default: () => emptyUsersPage(currentPage.value),
     watch: [currentPage]
   }

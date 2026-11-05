@@ -113,13 +113,13 @@ watch(inputMode, (mode, previousMode) => {
           />
 
           <!-- Camera Scan Mode -->
-          <AddCameraScanTab
+          <LazyAddCameraScanTab
             v-else-if="inputMode === 'scan'"
             ref="cameraScanRef"
           />
 
           <!-- Bulk Import Mode -->
-          <AddBulkImportTab
+          <LazyAddBulkImportTab
             v-else-if="inputMode === 'bulk'"
             ref="bulkImportRef"
           />

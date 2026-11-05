@@ -39,17 +39,30 @@ async function setView(nextView: LoansView) {
   })
 }
 
-const { data: ownerLoans, status: ownerStatus, refresh: refreshOwnerLoans } = await useFetch<OwnerLoan[]>('/api/loans', {
-  headers: useRequestHeaders(['cookie']),
+const headers = useRequestHeaders(['cookie'])
+const { data: ownerLoans, status: ownerStatus, refresh: refreshOwnerLoans } = useFetch<OwnerLoan[]>('/api/loans', {
+  headers,
+  lazy: true,
+  immediate: initialView === 'loaned',
   default: () => []
 })
 
-const { data: borrowedBooks, status: borrowedStatus } = await useFetch<BorrowedBook[]>('/api/borrowed', {
-  headers: useRequestHeaders(['cookie']),
+const { data: borrowedBooks, status: borrowedStatus, refresh: refreshBorrowedBooks } = useFetch<BorrowedBook[]>('/api/borrowed', {
+  headers,
+  lazy: true,
+  immediate: initialView === 'borrowed',
   default: () => []
 })
 
-const isPending = computed(() => view.value === 'loaned' ? ownerStatus.value === 'pending' : borrowedStatus.value === 'pending')
+const activeStatus = computed(() => view.value === 'loaned' ? ownerStatus.value : borrowedStatus.value)
+
+function refreshActiveView() {
+  return view.value === 'loaned' ? refreshOwnerLoans() : refreshBorrowedBooks()
+}
+
+watch(view, () => {
+  if (activeStatus.value === 'idle') void refreshActiveView()
+})
 
 interface LoanActionOptions {
   endpoint: string
@@ -171,15 +184,17 @@ async function saveLoanNote(loan: OwnerLoan, note: string | null) {
         </UFieldGroup>
       </div>
 
-      <div
-        v-if="isPending"
-        class="flex justify-center py-12"
-      >
-        <UIcon
-          name="i-lucide-loader-2"
-          class="animate-spin text-4xl text-muted"
-        />
-      </div>
+      <PageDataLoading
+        v-if="activeStatus === 'idle' || activeStatus === 'pending'"
+      />
+
+      <UAlert
+        v-else-if="activeStatus === 'error'"
+        color="error"
+        variant="subtle"
+        :title="$t('lending.loadFailed')"
+        :actions="[{ label: $t('ui.retry'), onClick: refreshActiveView }]"
+      />
 
       <LoanedOutLoansSection
         v-else-if="view === 'loaned'"

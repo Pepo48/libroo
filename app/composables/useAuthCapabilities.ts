@@ -7,10 +7,10 @@ const defaultAuthCapabilities = (): AuthCapabilities => ({
   oauthProvider: null
 })
 
-export function useAuthCapabilities() {
+export function useAuthCapabilities({ lazy = false } = {}) {
   return useAsyncData<AuthCapabilities>(
     'auth-capabilities',
     () => $fetch<AuthCapabilities>('/api/capabilities/auth'),
-    { default: defaultAuthCapabilities }
+    { default: defaultAuthCapabilities, lazy }
   )
 }

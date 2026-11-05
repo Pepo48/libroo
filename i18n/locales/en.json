@@ -25,6 +25,7 @@
     "yourShelves": "Your shelves",
     "searchResults": "Search results",
     "refreshFailed": "Unable to refresh your library",
+    "locationsLoadFailed": "Unable to load locations",
     "loadMoreFailed": "Unable to load more books",
     "retryShelf": "Use the shelf arrow to try again.",
     "reloadRemainingFailed": "Unable to reload remaining books",
@@ -197,6 +198,7 @@
     "never": "Never"
   },
   "lending": {
+    "loadFailed": "Unable to load loans",
     "noEmail": "No email saved",
     "saved": "Book marked as lent out",
     "sentWithLink": "An invitation email was sent. The share link is also ready below.",

@@ -174,6 +174,7 @@ function openBook(loan: OwnerLoan) {
                 <UTextarea
                   v-if="editingLoanId === loan.id"
                   v-model="draftNote"
+                  name="loan-note"
                   :aria-label="$t('ui.loanNote')"
                   data-testid="loan-note-field"
                   class="w-full"

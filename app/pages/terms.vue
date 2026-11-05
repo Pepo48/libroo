@@ -14,7 +14,9 @@ if (externalUrl) {
   await navigateTo(externalUrl, { external: true })
 }
 
-const { data, error } = await useFetch<LegalDocument>('/api/legal/terms', {
+const { data, error, status } = await useFetch<LegalDocument>('/api/legal/terms', {
+  lazy: true,
+  immediate: !externalUrl,
   default: () => ({
     markdown: null,
     configured: false
@@ -36,6 +38,7 @@ useHead({
     :title="$t('ui.termsOfService')"
     :description="$t('ui.termsForUsingLibroo')"
     :text="text"
+    :loading="status === 'idle' || status === 'pending'"
     :error-message="errorMessage"
   />
 </template>

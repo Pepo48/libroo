@@ -22,9 +22,9 @@ const authStore = useAuthStore()
 const { user } = storeToRefs(authStore)
 const { signUp } = authStore
 const toast = useToast()
-const { data: emailCapabilities } = await useEmailCapabilities()
-const { data: authCapabilities } = await useAuthCapabilities()
-const { data: legalStatus, error: legalStatusError } = await useFetch<LegalStatus>('/api/legal/status')
+const { data: emailCapabilities, status: emailStatus } = useEmailCapabilities({ lazy: true })
+const { data: authCapabilities, status: authStatus } = useAuthCapabilities({ lazy: true })
+const { data: legalStatus, error: legalStatusError, status: legalRequestStatus } = useFetch<LegalStatus>('/api/legal/status', { lazy: true })
 
 const isLoading = ref(false)
 const error = ref('')
@@ -57,16 +57,24 @@ const termsConfigured = computed(() => Boolean(termsUrl.value || legalStatus.val
 const termsStatusUnknown = computed(() => !termsUrl.value && Boolean(legalStatusError.value))
 const authFormKey = computed(() => `${inviteEmail.value}:${termsConfigured.value}`)
 
-const { data: invitePreview } = await useAsyncData<SignupInvitePreview | null>(
+const { data: invitePreview, status: inviteRequestStatus } = useAsyncData<SignupInvitePreview | null>(
   'signup-invite-preview',
   () => inviteToken.value
     ? $fetch<SignupInvitePreview>(`/api/signup-invites/${inviteToken.value}`)
     : Promise.resolve(null),
   {
+    lazy: true,
+    immediate: Boolean(inviteToken.value),
     default: () => null,
     watch: [inviteToken]
   }
 )
+const registrationLoading = computed(() => [
+  emailStatus.value,
+  authStatus.value,
+  legalRequestStatus.value,
+  ...(inviteToken.value ? [inviteRequestStatus.value] : [])
+].some(status => status === 'idle' || status === 'pending'))
 const inviteEmail = computed(() => invitePreview.value?.email ?? '')
 const inviteStatus = computed(() => invitePreview.value?.status ?? null)
 const inviteUnavailable = computed(() =>
@@ -282,8 +290,10 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
 
 <template>
   <UContainer class="py-12 max-w-md">
+    <PageDataLoading v-if="registrationLoading && !registrationRequiresInvite && !isVerificationEmailSent" />
+
     <AuthStateCard
-      v-if="isVerificationEmailSent"
+      v-else-if="isVerificationEmailSent"
       :title="$t('ui.verifyYourEmail')"
       icon="i-lucide-mail-check"
       :description="$t('copy.sentVerificationLink', { email: verificationEmail })"
