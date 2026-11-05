@@ -2,9 +2,9 @@ import { CanonicalBookEnrichmentRepository, CanonicalBookEnrichmentRepositoryLiv
 import { BookEnrichmentRepository, BookEnrichmentRepositoryLive } from '../../../../server/repositories/book-enrichment.repository'
 import canonicalEnrichmentMigration from '../../../../server/db/migrations/sqlite/0016_canonical_book_enrichment.sql?raw'
 import { BookRepository, BookRepositoryLive } from '../../../../server/repositories/book.repository'
+import { removeLibraryRecords } from '../../../../server/repositories/library-removal-batch'
 /// <reference types="@cloudflare/vitest-plugin" />
 
-import { removeLibraryRecords } from '../../../../server/repositories/library-removal-batch'
 import { env } from 'cloudflare:workers'
 import { Effect, Layer } from 'effect'
 import { drizzle } from 'drizzle-orm/d1'
@@ -24,6 +24,7 @@ import recentAuthMigration from '../../../../server/db/migrations/sqlite/0014_re
 import durableOpenLibraryPayloadMigration from '../../../../server/db/migrations/sqlite/0019_durable_open_library_payload.sql?raw'
 import { authors, bookAuthors, bookEnrichmentJobs, books, loans, locations, tags, user, userBooks, userBookTags } from '../../../../server/db/schema'
 import { LibraryTransferRepository, LibraryTransferRepositoryLive } from '../../../../server/repositories/library-transfer.repository'
+import { LibraryCleanupRepository, LibraryCleanupRepositoryLive } from '../../../../server/repositories/library-cleanup.repository'
 import { DbService, type DbServiceInterface } from '../../../../server/services/db.service'
 import type { LibraryImportBookInput, LibraryImportConflictStrategy } from '../../../../shared/types/library-transfer'
 
@@ -133,6 +134,31 @@ describe('LibraryTransferRepository.importRecords on D1', () => {
     expect(exported[0]).toMatchObject({ title: 'Export 000', authors: ['Second Author', 'First Author'], tags: ['Alpha', 'Zulu'] })
     expect(exported.at(-1)?.title).toBe('Export 124')
     expect(exported.some(book => book.title === 'Other user private title')).toBe(false)
+  })
+
+  it('removes only the user’s records without active loans and safely acknowledges retries', async () => {
+    await seedExistingBook(db)
+    const now = new Date()
+    await db.insert(user).values({ id: 'other-user', name: 'Other', email: 'other@example.com', createdAt: now, updatedAt: now })
+    await db.insert(books).values({ id: 'other-book', title: 'Private other book', source: 'manual', createdByUserId: 'other-user', createdAt: now })
+    await db.insert(userBooks).values([
+      { id: 'other-copy', userId: 'other-user', bookId: 'other-book', addedAt: now },
+      { id: 'already-removed', userId: 'user-1', bookId: 'book-existing', addedAt: now, removedAt: now }
+    ])
+    await importRecords([importRecord({ title: 'Loan protected', isbn: null })], 'csv')
+    const [protectedBook] = await db.select({ id: userBooks.id }).from(userBooks).innerJoin(books, eq(books.id, userBooks.bookId)).where(eq(books.title, 'Loan protected'))
+    const protectedId = protectedBook!.id
+    await db.insert(loans).values({ id: 'guarded-loan', ownerUserId: 'user-1', userBookId: protectedId, borrowerDisplayName: 'Borrower', status: 'active', loanedAt: now, snapshotBookTitle: 'Loan protected', snapshotBookAuthor: 'Writer', snapshotOwnerName: 'Reader', createdAt: now, updatedAt: now })
+    const run = <A, E>(effect: Effect.Effect<A, E, LibraryCleanupRepository>) => Effect.runPromise(effect.pipe(Effect.provide(LibraryCleanupRepositoryLive), Effect.provide(Layer.succeed(DbService, { db, executeAtomic: (buildStatements: Parameters<DbServiceInterface['executeAtomic']>[0]) => (db as unknown as DbServiceInterface['db']).batch(buildStatements(db as unknown as DbServiceInterface['db'])) } as DbServiceInterface))))
+    const candidates = await run(Effect.flatMap(LibraryCleanupRepository, repo => repo.removalCandidates('user-1')))
+    expect(candidates).toContainEqual({ id: protectedId, activeLoan: 1 })
+    expect(candidates.some(row => ['other-copy', 'already-removed'].includes(row.id))).toBe(false)
+    const ids = ['ub-existing', 'already-removed', protectedId, 'other-copy', 'missing']
+    const remove = () => run(Effect.flatMap(LibraryCleanupRepository, repo => repo.removeChunk('user-1', ids)))
+    expect((await remove()).sort()).toEqual(['already-removed', 'ub-existing'])
+    expect((await remove()).sort()).toEqual(['already-removed', 'ub-existing'])
+    const remaining = await run(Effect.flatMap(LibraryCleanupRepository, repo => repo.removalCandidates('user-1')))
+    expect(remaining).toEqual([{ id: protectedId, activeLoan: 1 }])
   })
 
   it('imports 25 ordinary rows using one lookup batch and one write batch, then skips without writes', async () => {

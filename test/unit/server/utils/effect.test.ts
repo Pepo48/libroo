@@ -65,6 +65,8 @@ vi.mock('../../../../server/services/book-metadata-sources', () => ({ BookMetada
 vi.mock('../../../../server/services/book-search.service', () => ({ BookSearchServiceLive: Layer.empty }))
 
 vi.mock('../../../../server/services/book-refresh.service', () => ({ BookRefreshServiceLive: Layer.empty }))
+vi.mock('../../../../server/repositories/library-cleanup.repository', () => ({ LibraryCleanupRepositoryLive: Layer.empty }))
+vi.mock('../../../../server/services/library-cleanup.service', () => ({ LibraryCleanupServiceLive: Layer.empty }))
 
 describe('handleError', () => {
   beforeAll(() => {

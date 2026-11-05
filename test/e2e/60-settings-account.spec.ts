@@ -76,7 +76,7 @@ test('deletes an account and removes private library data', async ({ page }, tes
   const dialog = page.getByRole('dialog', { name: 'Delete your account?' })
   await dialog.getByLabel('Type DELETE MY ACCOUNT').fill('DELETE MY ACCOUNT')
   await dialog.getByRole('button', { name: 'Delete permanently' }).click()
-  await expect(page.getByText('Your library is empty')).toBeVisible()
+  await expect(page.getByText('No books in this view')).toBeVisible()
   await expect(page.getByText(title)).not.toBeVisible()
   await page.getByRole('button', { name: 'Sign Out' }).click()
   await expect(page).toHaveURL(/\/login\?signout=true/)

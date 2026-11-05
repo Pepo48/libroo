@@ -16,7 +16,7 @@ test('does not show account A library state after signing in as account B', asyn
   await logout(page)
   await login(page, accountB.email)
 
-  await expect(page.getByText('Your library is empty')).toBeVisible()
+  await expect(page.getByText('No books in this view')).toBeVisible()
   await expect(page.getByText(accountATitle, { exact: true })).not.toBeVisible()
 
   expect(accountA.email).not.toBe(accountB.email)

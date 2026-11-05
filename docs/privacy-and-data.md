@@ -131,7 +131,6 @@ The Settings importer sends sequential requests of up to 25 rows, reduced for ro
 
 Duplicate detection matches ISBN, or title plus a matching author when no ISBN is supplied, across all locations. Title and author matching use consistent Unicode-aware case and whitespace normalization; SQLite ASCII-only `lower()` is not used for title comparisons. This prevents repeated imports of Slovak titles from creating new copies. Existing duplicate records are not automatically merged or deleted. A skipped duplicate does not create another physical copy or another location. Location values containing ` - ` represent a hierarchy, such as `Miša - BK` for the BK child under Miša. Wishlisted books are separate from owned inventory and do not receive a physical location.
 
-
 Key retention nuances:
 
 - Borrowed-loan rows can remain after a borrower account is deleted, with the borrower account link and accepted state cleared.
@@ -139,13 +138,22 @@ Key retention nuances:
 - Shared Open Library metadata can remain after account deletion because it is shared catalog data.
 - Backups can retain deleted data until the operator's retention window expires.
 
-
 Saved-book refresh previews contact only registered metadata providers using the
 ISBN supplied in the editor. Existing titles, descriptions, notes, locations,
 ratings and lending records are not sent. Results stay in the editor until the
 user selects fields and explicitly saves. Preview requests do not persist books,
 images or enrichment jobs; provider caches and operational request counters may
 be updated. Optional cover lookup contacts Open Library separately.
+
+### Library cleanup
+
+To start over, export a CSV backup, then open **Settings → Library data → Clear library**. The preview counts your records across all pages, locations and library states. Records with active loans are excluded and counted separately. Type `DELETE LIBRARY` and confirm to remove the previewed records. Books added after the preview are not silently included.
+
+Use **My Library → Select books** to select individual records or all currently loaded results, then choose **Delete selected**. Loading more does not silently select additional books. Changing filters clears the selection. Deletion asks for confirmation, runs in bounded SQL batches, and reports failures; the database guards against removing active loans. Repeating a request safely acknowledges already removed records. After a bulk operation, the library reloads from page 1 because deletions shift pagination offsets. A request failure shows its HTTP status when available and allows retrying the remaining selection. Export a CSV backup in Settings first.
+
+Library cleanup uses the existing removal behavior: records leave the active library without deleting shared book metadata, covers or loan history. There is no restore button in the app. CSV import adds or updates records; neither conflict option removes existing duplicates or records missing from the CSV.
+
+The default **Owned** view can be empty while wishlist or previously owned records remain. **Show all books** reveals every library state. Use **Settings → Library data → Clear library** to remove records across states, rather than selecting only the books visible in one view.
 
 ### Library layout
 

@@ -9,14 +9,14 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="min-w-0">
+  <div class="relative min-w-0">
     <div
       v-if="selectionMode"
-      class="mb-2 rounded-lg border border-default bg-elevated p-2"
+      class="absolute top-2 right-2 z-20 rounded-md bg-default/90 p-1.5 shadow-sm ring-1 ring-default"
     >
       <UCheckbox
         :model-value="selected"
-        :label="`Select ${book.title}`"
+        :aria-label="`Select ${book.title}`"
         @update:model-value="emit('select', book.id, $event)"
       />
     </div>
