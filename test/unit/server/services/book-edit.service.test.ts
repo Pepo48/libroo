@@ -11,7 +11,7 @@ import type { BookDetails } from '../../../../shared/types/book'
 function setup() {
   const current = { id: 'entry', bookId: 'old-book', title: 'Original', coverPath: 'old.webp' } as BookDetails
   const books = { getUserBookWithDetails: vi.fn(() => Effect.succeed(current)) }
-  const edits = { isCoverReferenced: vi.fn(() => Effect.succeed(false)), replace: vi.fn(() => Effect.succeed(true)) }
+  const edits = { restoreCover: vi.fn(() => Effect.succeed(true)), isCoverReferenced: vi.fn(() => Effect.succeed(false)), replace: vi.fn(() => Effect.succeed(true)) }
   const storage = { putCoverImage: vi.fn(() => Effect.succeed({ pathname: 'new.webp' })), delete: vi.fn(() => Effect.void) }
   const provider = { fetchCoverImage: vi.fn(() => Effect.succeed(null as ArrayBuffer | null)) }
   const run = <A>(operation: (service: BookEditService['Service']) => Effect.Effect<A, unknown, unknown>) => Effect.runPromise(Effect.flatMap(BookEditService, operation).pipe(

@@ -78,6 +78,11 @@ export const LibraryTransferRepositoryLive = Layer.effect(
                 userBookId: userBooks.id,
                 bookId: books.id,
                 title: books.title,
+                coverPath: books.coverPath,
+                description: books.description,
+                publishers: books.publishers,
+                publishDate: books.publishDate,
+                numberOfPages: books.numberOfPages,
                 isbn: books.isbn,
                 source: books.source,
                 openLibraryKey: books.openLibraryKey,
@@ -156,6 +161,11 @@ export const LibraryTransferRepositoryLive = Layer.effect(
             return rows.map(row => ({
               userBookId: row.userBookId,
               title: row.title,
+              coverPath: row.coverPath,
+              description: row.description,
+              publishers: row.publishers,
+              publishDate: row.publishDate,
+              numberOfPages: row.numberOfPages,
               authors: authorsByBook.get(row.bookId) ?? ['Unknown Author'],
               isbn: row.isbn ?? null,
               tags: tagsByUserBook.get(row.userBookId) ?? [],
@@ -434,13 +444,13 @@ export const LibraryTransferRepositoryLive = Layer.effect(
                                   coverPath: existing.coverPath?.startsWith('covers/manual/') ? existing.coverPath : null,
                                   openLibraryKey: null,
                                   workKey: null,
-                                  description: null,
-                                  publishDate: null,
-                                  publishers: null,
-                                  numberOfPages: null,
                                   metadataProviderIsbn: null
                                 }
-                              : {})
+                              : {}),
+                            description: record.description ?? (providerMetadataIsStale ? null : undefined),
+                            publishDate: record.publishDate ?? (providerMetadataIsStale ? null : undefined),
+                            publishers: record.publishers ?? (providerMetadataIsStale ? null : undefined),
+                            numberOfPages: record.numberOfPages ?? (providerMetadataIsStale ? null : undefined)
                           })
                           .where(and(eq(books.id, existing.bookId), eq(books.source, 'manual'), eq(books.createdByUserId, userId))))
                       }
@@ -452,10 +462,10 @@ export const LibraryTransferRepositoryLive = Layer.effect(
                         coverPath: null,
                         openLibraryKey: null,
                         workKey: null,
-                        description: null,
-                        publishDate: null,
-                        publishers: null,
-                        numberOfPages: null,
+                        description: record.description ?? null,
+                        publishDate: record.publishDate ?? null,
+                        publishers: record.publishers ?? null,
+                        numberOfPages: record.numberOfPages ?? null,
                         source: 'manual',
                         entrySource: 'csv_import',
                         metadataProviderIsbn: null,

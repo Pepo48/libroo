@@ -1,3 +1,4 @@
+import { BookEditRepository, BookEditRepositoryLive } from '../../../../server/repositories/book-edit.repository'
 import { CanonicalBookEnrichmentRepository, CanonicalBookEnrichmentRepositoryLive } from '../../../../server/repositories/canonical-book-enrichment.repository'
 import { BookEnrichmentRepository, BookEnrichmentRepositoryLive } from '../../../../server/repositories/book-enrichment.repository'
 import canonicalEnrichmentMigration from '../../../../server/db/migrations/sqlite/0016_canonical_book_enrichment.sql?raw'
@@ -58,6 +59,39 @@ describe('LibraryTransferRepository.importRecords on D1', () => {
     await seedUser(db)
   })
 
+  it('restores a cover without changing the shared book or dropping its metadata', async () => {
+    await seedExistingBook(db)
+    await db.update(books).set({
+      source: 'open_library',
+      createdByUserId: null,
+      coverPath: 'covers/9781111111111.webp',
+      description: 'Shared description',
+      openLibraryKey: '/books/OL1M'
+    }).where(eq(books.id, 'book-existing'))
+    const now = new Date()
+    await db.insert(user).values({ id: 'other-user', name: 'Other', email: 'other@example.com', createdAt: now, updatedAt: now })
+    await db.insert(userBooks).values({ id: 'other-copy', userId: 'other-user', bookId: 'book-existing', addedAt: now })
+    const database = db as unknown as DbServiceInterface['db']
+    const restore = (userId: string, bookId: string, oldPath: string, path: string) => Effect.runPromise(Effect.flatMap(
+      BookEditRepository, repo => repo.restoreCover(userId, 'ub-existing', bookId, oldPath, path)
+    ).pipe(Effect.provide(BookEditRepositoryLive), Effect.provide(Layer.succeed(DbService, {
+      db: database, executeAtomic: build => database.batch(build(database))
+    }))))
+    const firstPath = 'covers/manual/user-1/first.webp'
+    const secondPath = 'covers/manual/user-1/second.webp'
+    expect(await restore('other-user', 'book-existing', 'covers/9781111111111.webp', firstPath)).toBe(false)
+    expect(await restore('user-1', 'book-existing', 'covers/9781111111111.webp', firstPath)).toBe(true)
+    const [copy] = await db.select().from(userBooks).where(eq(userBooks.id, 'ub-existing'))
+    const [saved] = await db.select().from(books).where(eq(books.id, copy!.bookId))
+    const [shared] = await db.select().from(books).where(eq(books.id, 'book-existing'))
+    expect(shared!.coverPath).toBe('covers/9781111111111.webp')
+    expect(saved).toMatchObject({ coverPath: firstPath, description: 'Shared description', openLibraryKey: '/books/OL1M', createdByUserId: 'user-1' })
+    expect(await db.select().from(bookAuthors).where(eq(bookAuthors.bookId, saved!.id))).toMatchObject([{ authorId: 'author-existing' }])
+    expect(await restore('user-1', saved!.id, firstPath, secondPath)).toBe(true)
+    expect(await restore('user-1', saved!.id, firstPath, secondPath)).toBe(false)
+    expect(await db.select().from(books).where(eq(books.id, saved!.id))).toMatchObject([{ coverPath: secondPath }])
+  })
+
   it('pages every matching shelf independently and excludes removed and other-user records', async () => {
     const records = [
       ...Array.from({ length: 20 }, (_, i) => importRecord({ title: `Alpha ${String(i).padStart(2, '0')}`, locationPath: 'Alpha' })),
@@ -114,6 +148,28 @@ describe('LibraryTransferRepository.importRecords on D1', () => {
       repository.getStatusesForUserBooks('user-1', result.items.map(item => item.bookId))
     ).pipe(Effect.provide(BookEnrichmentRepositoryLive), Effect.provide(dbLayer)))
     expect(imported.size).toBe(0)
+  })
+
+  it('round-trips edited book details through ZIP export data and the batched CSV importer', async () => {
+    await seedExistingBook(db)
+    const metadata = { description: 'Description\nwith two lines', publishers: 'Example Press', publishDate: '2020', numberOfPages: 222 }
+    await db.update(books).set({ ...metadata, isbn: null }).where(eq(books.id, 'book-existing'))
+    const now = new Date()
+    await db.insert(user).values({ id: 'restore-target', name: 'Second reader', email: 'second@example.com', createdAt: now, updatedAt: now })
+    const transfer = await import('../../../../server/services/library-transfer.service')
+    const { StorageService } = await import('../../../../server/services/storage.service')
+    const { importLibraryCsvInBatches } = await import('../../../../shared/utils/library-import-batches')
+    const archive = await runRepository(db, transfer.exportLibraryBackup('user-1').pipe(Effect.provide(transfer.LibraryTransferServiceLive)))
+    const restored = await importLibraryCsvInBatches({ csv: archive.csv, conflictStrategy: 'csv', enrich: false }, body =>
+      runRepository(db, transfer.importLibraryCsv('restore-target', body.csv, body.conflictStrategy, body.enrich, body.continueOnInvalidRows).pipe(
+        Effect.provide(transfer.LibraryTransferServiceLive),
+        Effect.provide(BookEnrichmentRepositoryLive),
+        Effect.provide(Layer.succeed(StorageService, {} as never))
+      ))
+    )
+    expect(restored.result).toMatchObject({ created: 1, failed: [] })
+    const [entry] = await db.select().from(books).where(eq(books.createdByUserId, 'restore-target'))
+    expect(entry).toMatchObject(metadata)
   })
 
   it('exports more than 100 books with ordered authors and tags, excluding removed and other users’ records', async () => {

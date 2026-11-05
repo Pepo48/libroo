@@ -121,6 +121,8 @@ The library CSV export is a versioned transfer format for the current user's lib
 
 Interactive ISBN lookup uses registered metadata providers. Open Library is included by default. Offline provider snapshots are checked locally; remote providers receive the ISBN and the server's network address, but no user account email, session cookies, loans, locations, notes or ratings.
 
+The ZIP library export also includes saved covers, descriptions, publishers, publication dates and page counts. If a cover cannot be downloaded, the book stays in the archive and Libroo reports the missing cover. For restoring loan history or account data, use the operator backup. See [Backup And Restore](./backup-restore.md).
+
 Editing a saved book creates private metadata for that library entry. Other users’ shared catalog metadata is not changed. The stable library entry keeps its personal data and loans; background enrichment on the old metadata cannot overwrite the edit. Unreferenced older private metadata is removed, and replaced private cover files are cleaned up only when no book references them.
 
 The `catalog_request_state` table holds one operational row per supplemental provider: request timing and lease, daily count, failure/cooldown state, and cached public robots policy. It contains no ISBNs, account identifiers or reading history. It coordinates outbound requests across application instances and keeps block decisions after restarts.
