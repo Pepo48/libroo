@@ -1,13 +1,13 @@
 <script setup lang="ts">
 // Input mode tabs
-type InputMode = 'isbn' | 'manual' | 'scan' | 'bulk'
+type InputMode = 'isbn' | 'title' | 'manual' | 'scan' | 'bulk'
 
 usePageTitle('Add Book')
 
 const route = useRoute()
 const router = useRouter()
 
-const validInputModes = ['isbn', 'manual', 'scan', 'bulk'] as const
+const validInputModes = ['isbn', 'title', 'manual', 'scan', 'bulk'] as const
 
 function isInputMode(value: unknown): value is InputMode {
   return typeof value === 'string' && validInputModes.includes(value as InputMode)
@@ -17,6 +17,7 @@ const inputMode = ref<InputMode>(isInputMode(route.query.tab) ? route.query.tab 
 
 // Refs to child components for resetting state on tab change
 const isbnLookupRef = ref<{ reset: () => void } | null>(null)
+const titleSearchRef = ref<{ reset: () => void } | null>(null)
 const manualEntryRef = ref<{ reset: () => void } | null>(null)
 const cameraScanRef = ref<{ reset: () => void } | null>(null)
 const bulkImportRef = ref<{ reset: () => void } | null>(null)
@@ -24,6 +25,7 @@ const bulkImportRef = ref<{ reset: () => void } | null>(null)
 // Tab items
 const modeItems = [
   { value: 'isbn', label: 'ISBN', icon: 'i-lucide-keyboard' },
+  { value: 'title', label: 'Title', icon: 'i-lucide-search' },
   { value: 'manual', label: 'Manual', icon: 'i-lucide-pencil-line' },
   { value: 'scan', label: 'Scan', icon: 'i-lucide-scan-barcode' },
   { value: 'bulk', label: 'Bulk', icon: 'i-lucide-list' }
@@ -52,6 +54,7 @@ watch(inputMode, (mode, previousMode) => {
   if (!previousMode || mode === previousMode) return
 
   isbnLookupRef.value?.reset()
+  titleSearchRef.value?.reset()
   manualEntryRef.value?.reset()
   cameraScanRef.value?.reset()
   bulkImportRef.value?.reset()
@@ -63,7 +66,7 @@ watch(inputMode, (mode, previousMode) => {
     <!-- Page Header -->
     <UPageHeader
       title="Add Book"
-      description="Add books to your library by entering details manually, looking up an ISBN, scanning a barcode, or importing multiple books at once."
+      description="Add books to your library by entering details manually, searching by title or ISBN, scanning a barcode, or importing multiple books at once."
     >
       <template #links>
         <UButton
@@ -94,6 +97,11 @@ watch(inputMode, (mode, previousMode) => {
           <AddIsbnLookupTab
             v-if="inputMode === 'isbn'"
             ref="isbnLookupRef"
+          />
+
+          <AddTitleSearchTab
+            v-else-if="inputMode === 'title'"
+            ref="titleSearchRef"
           />
 
           <!-- Manual Entry Mode -->

@@ -1,0 +1,177 @@
+<script setup lang="ts">
+import type { BookSearchEdition, BookSearchResult } from '~~/shared/types/book-search'
+import { getApiErrorMessage } from '~~/shared/utils/api-error'
+
+const state = reactive({ query: '' })
+const result = ref<BookSearchResult | null>(null)
+const attributions = computed(() => [...new Map((result.value?.books ?? []).flatMap(book => book.source?.attribution ? [[book.source.attribution.url, book.source.attribution] as const] : [])).values()])
+const selectedIsbn = ref<string | null>(null)
+const loading = ref(false)
+const error = ref<string | null>(null)
+let controller: AbortController | undefined
+let version = 0
+
+async function search() {
+  controller?.abort()
+  controller = new AbortController()
+  const requestVersion = ++version
+  loading.value = true
+  error.value = null
+  result.value = null
+  try {
+    const response = await $fetch<BookSearchResult>('/api/books/search', {
+      method: 'POST', body: { query: state.query.trim() }, signal: controller.signal
+    })
+    if (requestVersion === version) result.value = response
+  } catch (err) {
+    if (requestVersion === version) error.value = getApiErrorMessage(err, 'Could not search the catalog. Please try again.')
+  } finally {
+    if (requestVersion === version) loading.value = false
+  }
+}
+function select(book: BookSearchEdition) {
+  selectedIsbn.value = book.isbn
+}
+function reset() {
+  version++
+  controller?.abort()
+  state.query = ''
+  result.value = null
+  selectedIsbn.value = null
+  error.value = null
+  loading.value = false
+}
+onBeforeUnmount(reset)
+defineExpose({ reset })
+</script>
+
+<template>
+  <div class="space-y-4">
+    <template v-if="selectedIsbn">
+      <UButton
+        color="neutral"
+        variant="ghost"
+        icon="i-lucide-arrow-left"
+        @click="selectedIsbn = null"
+      >
+        Back to title results
+      </UButton>
+      <AddIsbnLookupTab :initial-isbn="selectedIsbn" />
+    </template>
+    <template v-else>
+      <UCard>
+        <template #header>
+          <span class="font-semibold">Find Book by Title</span>
+        </template>
+        <UForm
+          :state="state"
+          class="space-y-4"
+          @submit="search"
+        >
+          <UFormField
+            label="Book title"
+            name="query"
+            required
+          >
+            <UInput
+              v-model="state.query"
+              placeholder="e.g., Harry Potter"
+              :maxlength="120"
+              size="lg"
+              class="w-full"
+            />
+          </UFormField>
+          <p class="text-sm text-muted">
+            Search the available book catalogs. Enter at least three letters.
+          </p>
+          <UButton
+            type="submit"
+            icon="i-lucide-search"
+            block
+            size="lg"
+            :loading="loading"
+            :disabled="state.query.trim().length < 3"
+          >
+            Search by Title
+          </UButton>
+        </UForm>
+      </UCard>
+      <UAlert
+        v-if="result?.warnings?.length"
+        color="warning"
+        :description="result.warnings.join(' ')"
+      />
+      <UAlert
+        v-if="error"
+        color="error"
+        :description="error"
+      />
+      <UAlert
+        v-else-if="result && !result.books.length"
+        color="neutral"
+        title="No matching books"
+        :description="result.hasMore ? 'This search is too broad. Add more words to narrow it down.' : 'Try fewer words, search by ISBN, or add the book manually.'"
+      />
+      <UCard v-if="result?.books.length">
+        <template #header>
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-semibold">Choose an edition</span>
+            <UBadge
+              color="neutral"
+              variant="subtle"
+            >
+              Catalog results
+            </UBadge>
+          </div>
+        </template>
+        <ul class="divide-y divide-default">
+          <li
+            v-for="book in result.books"
+            :key="book.isbn"
+          >
+            <UButton
+              color="neutral"
+              variant="ghost"
+              block
+              class="justify-start py-3 text-left"
+              @click="select(book)"
+            >
+              <div class="min-w-0 whitespace-normal">
+                <p class="font-semibold">
+                  {{ book.title }}<span v-if="book.part"> — {{ book.part }}</span>
+                </p>
+                <p
+                  v-if="book.author"
+                  class="text-sm text-muted"
+                >
+                  {{ book.author }}
+                </p>
+                <p class="text-sm text-muted">
+                  {{ [book.publisher, book.year].filter(Boolean).join(' · ') }}
+                </p>
+                <p class="text-xs text-muted">
+                  ISBN {{ book.isbn }} · {{ book.source?.label }}
+                </p>
+              </div>
+            </UButton>
+          </li>
+        </ul>
+        <template #footer>
+          <p
+            v-if="result.hasMore"
+            class="text-sm text-muted"
+          >
+            More editions match. Add more words to narrow your search.
+          </p>
+          <ULink
+            v-for="credit in attributions"
+            :key="credit.url"
+            :to="credit.url"
+            target="_blank"
+            class="block text-xs text-muted"
+          >{{ credit.label }}</ULink>
+        </template>
+      </UCard>
+    </template>
+  </div>
+</template>
