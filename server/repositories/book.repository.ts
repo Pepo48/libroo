@@ -2150,6 +2150,9 @@ export const BookRepositoryLive = Layer.effect(
               startedAt: row.user_books.startedAt ?? null,
               finishedAt: row.user_books.finishedAt ?? null
             },
+            language: row.user_books.language,
+            series: row.user_books.series,
+            seriesPosition: row.user_books.seriesPosition,
             userTags: userTagRows,
             suggestedTags: suggestedRows,
             publishDate: bookData.publishDate ?? null,

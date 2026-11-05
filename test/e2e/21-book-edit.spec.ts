@@ -132,7 +132,7 @@ for (const mobile of [false, true]) {
       lookups++
       expect(route.request().postDataJSON()).toMatchObject({ source: 'example', includeCover: true })
       return route.fulfill({ json: { isbn: fixtureIsbn, source: { id: 'example', label: 'Example plugin' },
-        metadata: { title: 'Fetched title', authors: ['Fetched Author'], description: 'Fresh description', numberOfPages: 320 },
+        metadata: { title: 'Fetched title', authors: ['Fetched Author'], description: 'Fresh description', numberOfPages: 320, language: 'Slovak', series: 'Example series', seriesPosition: '6' },
         coverImage: null, suggestedTags: ['Space Opera', 'Adventure'],
         catalogUrl: 'https://example.com/record/1', warnings: [] } })
     })
@@ -153,6 +153,9 @@ for (const mobile of [false, true]) {
     await dialog.getByRole('button', { name: 'Apply selected fields', exact: true }).click()
     await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue(title)
     await expect(dialog.getByLabel('Description', { exact: true })).toHaveValue('Fresh description')
+    await expect(dialog.getByLabel('Language', { exact: true })).toHaveValue('Slovak')
+    await expect(dialog.getByLabel('Series', { exact: true })).toHaveValue('Example series')
+    await expect(dialog.getByLabel('Volume', { exact: true })).toHaveValue('6')
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
     expect((await (await context.request.get(`/api/books/${book.id}`)).json()).description).toBeNull()
     await page.getByRole('button', { name: 'Edit book', exact: true }).click()
@@ -171,13 +174,14 @@ for (const mobile of [false, true]) {
     await dialog.getByRole('button', { name: 'Save changes', exact: true }).click()
     await expect(dialog).toHaveCount(0)
     const saved = await (await context.request.get(`/api/books/${book.id}`)).json()
-    expect(saved).toMatchObject({ title: 'Fetched title', description: 'Fresh description', numberOfPages: 320, note: 'Keep my note', rating: 4 })
+    expect(saved).toMatchObject({ title: 'Fetched title', description: 'Fresh description', numberOfPages: 320, language: 'Slovak', series: 'Example series', seriesPosition: '6', note: 'Keep my note', rating: 4 })
     expect(saved.authors.map((author: { name: string }) => author.name)).toEqual(['Original Author'])
     expect(saved.coverPath).toBeNull()
     expect(saved.userTags.map((tag: { name: string }) => tag.name)).toEqual(['Space Opera'])
     expect(lookups).toBe(2)
     await page.reload()
     await expect(page.getByRole('heading', { name: 'Fetched title', exact: true })).toBeVisible()
+    await expect(page.getByText('Example series · Book 6', { exact: true })).toBeVisible()
     await context.close()
   })
 }

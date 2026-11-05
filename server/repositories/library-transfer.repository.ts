@@ -81,6 +81,9 @@ export const LibraryTransferRepositoryLive = Layer.effect(
                 isbn: books.isbn,
                 source: books.source,
                 openLibraryKey: books.openLibraryKey,
+                language: userBooks.language,
+                series: userBooks.series,
+                seriesPosition: userBooks.seriesPosition,
                 locationPath: locations.path,
                 lastKnownLocation: userBooks.lastKnownLocation,
                 libraryState: userBooks.libraryState,
@@ -168,6 +171,9 @@ export const LibraryTransferRepositoryLive = Layer.effect(
               addedAt: row.addedAt,
               source: row.source,
               openLibraryKey: row.openLibraryKey,
+              language: row.language,
+              series: row.series,
+              seriesPosition: row.seriesPosition,
               activeLoan: row.activeLoanBorrower && row.activeLoanLoanedAt
                 ? {
                     status: 'loaned' as const,
@@ -326,6 +332,9 @@ export const LibraryTransferRepositoryLive = Layer.effect(
                   }
                   const locationId = isWishlisted || isPreviouslyOwned ? null : await resolveLocationId(record.locationPath)
                   const userBookValues = {
+                    language: record.language ?? undefined,
+                    series: record.series ?? undefined,
+                    seriesPosition: record.seriesPosition ?? undefined,
                     locationId,
                     libraryState: record.libraryState,
                     lastKnownLocation: isPreviouslyOwned ? record.locationPath : null,

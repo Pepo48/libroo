@@ -1,8 +1,8 @@
-import type { LibraryState, ReadingStatus } from './book'
+import type { BookEditionFields, LibraryState, ReadingStatus } from './book'
 
 export type LibraryImportConflictStrategy = 'existing' | 'csv'
 
-export interface LibraryExportRecord {
+export interface LibraryExportRecord extends BookEditionFields {
   userBookId: string
   title: string
   authors: string[]
@@ -26,7 +26,7 @@ export interface LibraryExportRecord {
   } | null
 }
 
-export interface LibraryImportBookInput {
+export interface LibraryImportBookInput extends BookEditionFields {
   sourceUserBookId: string | null
   title: string
   authors: string[]

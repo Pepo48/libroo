@@ -6,7 +6,7 @@ export interface BookMetadataSourceInfo {
   label: string
   attribution?: { label: string, url: string }
 }
-export type BookRefreshFields = Pick<BookEditSchema, 'title' | 'authors' | 'publisher' | 'publishDate' | 'numberOfPages' | 'description'>
+export type BookRefreshFields = Pick<BookEditSchema, 'title' | 'authors' | 'publisher' | 'publishDate' | 'numberOfPages' | 'description' | 'language' | 'series' | 'seriesPosition'>
 export interface BookRefreshPreview {
   isbn: string
   source: BookMetadataSourceInfo | null

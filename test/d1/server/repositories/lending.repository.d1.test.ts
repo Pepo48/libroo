@@ -17,6 +17,7 @@ import enrichmentMigration from '../../../../server/db/migrations/sqlite/0012_im
 import authFactorsMigration from '../../../../server/db/migrations/sqlite/0013_auth-two-factor-passkeys.sql?raw'
 import recentAuthMigration from '../../../../server/db/migrations/sqlite/0014_recent-auth.sql?raw'
 import durableOpenLibraryPayloadMigration from '../../../../server/db/migrations/sqlite/0019_durable_open_library_payload.sql?raw'
+import editionFieldsMigration from '../../../../server/db/migrations/sqlite/0022_book_edition_fields.sql?raw'
 import { authors, bookAuthors, books, loans, user, userBooks } from '../../../../server/db/schema'
 import { BookNotOwnedError } from '../../../../server/repositories/book.repository'
 import {
@@ -202,7 +203,7 @@ describe('LendingRepository transitions on D1', () => {
 })
 
 async function applyMigrations(database: D1Database) {
-  for (const migration of [initialMigration, termsMigration, locationRestrictMigration, libraryStateMigration, previouslyOwnedMigration, inviteEmailMigration, loanNoteMigration, borrowerSuggestionsMigration, enrichmentMigration, authFactorsMigration, recentAuthMigration, durableOpenLibraryPayloadMigration]) {
+  for (const migration of [initialMigration, termsMigration, locationRestrictMigration, libraryStateMigration, previouslyOwnedMigration, inviteEmailMigration, loanNoteMigration, borrowerSuggestionsMigration, enrichmentMigration, authFactorsMigration, recentAuthMigration, durableOpenLibraryPayloadMigration, editionFieldsMigration]) {
     for (const statement of migration.split('--> statement-breakpoint')) {
       const migrationStatement = statement.trim()
       if (migrationStatement) {

@@ -30,19 +30,17 @@ const selected = reactive<Record<string, boolean>>({})
 const fields = computed(() => [
   { key: 'title', label: t('ui.title') }, { key: 'authors', label: t('ui.authors') },
   { key: 'publisher', label: t('ui.publisher') }, { key: 'publishDate', label: t('ui.publicationDate') },
-  { key: 'numberOfPages', label: t('ui.pages') }, { key: 'description', label: t('ui.description') }
+  { key: 'numberOfPages', label: t('ui.pages') }, { key: 'description', label: t('ui.description') },
+  { key: 'language', label: t('ui.language') }, { key: 'series', label: t('ui.series') },
+  { key: 'seriesPosition', label: t('ui.volume') }
 ] as const)
 const editionFacts = computed(() => {
   const edition = result.value?.editionDetails
   if (!edition) return []
-  const position = edition.seriesPosition
-  const series = [edition.series, position && /^\d+$/.test(position) ? t('refresh.seriesBook', { number: position }) : position].filter(Boolean).join(' · ')
   return [
     { label: t('ui.originalTitle'), value: edition.originalTitle },
-    { label: t('ui.language'), value: edition.language },
     { label: t('ui.edition'), value: edition.edition },
     { label: t('ui.translators'), value: edition.translators?.join(' · ') },
-    { label: t('ui.series'), value: series },
     { label: t('ui.format'), value: edition.format },
     { label: t('ui.binding'), value: edition.binding }
   ].filter(fact => fact.value)

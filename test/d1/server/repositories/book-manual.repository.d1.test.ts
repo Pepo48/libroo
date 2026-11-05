@@ -19,6 +19,7 @@ import enrichmentMigration from '../../../../server/db/migrations/sqlite/0012_im
 import authFactorsMigration from '../../../../server/db/migrations/sqlite/0013_auth-two-factor-passkeys.sql?raw'
 import recentAuthMigration from '../../../../server/db/migrations/sqlite/0014_recent-auth.sql?raw'
 import durableOpenLibraryPayloadMigration from '../../../../server/db/migrations/sqlite/0019_durable_open_library_payload.sql?raw'
+import editionFieldsMigration from '../../../../server/db/migrations/sqlite/0022_book_edition_fields.sql?raw'
 import libraryIndexesMigration from '../../../../server/db/migrations/sqlite/0004_add_user_books_library_indexes.sql?raw'
 import activeUserBookUniqueMigration from '../../../../server/db/migrations/sqlite/0005_add_active_user_book_unique.sql?raw'
 import { bookAuthors, books, loans, user, userBooks, userBookTags } from '../../../../server/db/schema'
@@ -65,7 +66,7 @@ describe('BookRepository.createManualBook on D1', () => {
       repo.isCoverReferenced('covers/manual/user-1/loan-only.webp')
     ).pipe(Effect.provide(BookEditRepositoryLive), Effect.provide(Layer.succeed(DbService, { db: database, executeAtomic: build => database.batch(build(database)) }))))
     expect(coverReferenced).toBe(true)
-    const input = bookEditSchema.parse({ expectedBookId: original.bookId, title: 'Corrected title', authors: ['New Author', 'Second Author'], isbn: '9780441172719', publisher: 'New Publisher', numberOfPages: 300, addTags: ['Space Opera', 'favourite', 'space opera'] })
+    const input = bookEditSchema.parse({ expectedBookId: original.bookId, title: 'Corrected title', authors: ['New Author', 'Second Author'], isbn: '9780441172719', publisher: 'New Publisher', numberOfPages: 300, language: 'Slovak', series: 'Example series', seriesPosition: '6', addTags: ['Space Opera', 'favourite', 'space opera'] })
     expect(await runEdit(db, 'user-1', original.id, input)).toBe(true)
     const [edited] = await db.select().from(userBooks).where(eq(userBooks.id, original.id))
     expect(edited).toMatchObject({ id: original.id, rating: 4, note: 'Keep note', currentPage: 12 })
@@ -75,7 +76,7 @@ describe('BookRepository.createManualBook on D1', () => {
     const [oldBook] = await db.select().from(books).where(eq(books.id, original.bookId))
     expect(oldBook!.title).toBe('Original')
     const details = await runRepository(db, Effect.flatMap(BookRepository, repo => repo.getUserBookWithDetails(original.id, 'user-1')))
-    expect(details).toMatchObject({ title: 'Corrected title', authors: [{ name: 'New Author' }, { name: 'Second Author' }], publishers: 'New Publisher', numberOfPages: 300, coverPath: null })
+    expect(details).toMatchObject({ title: 'Corrected title', authors: [{ name: 'New Author' }, { name: 'Second Author' }], publishers: 'New Publisher', numberOfPages: 300, language: 'Slovak', series: 'Example series', seriesPosition: '6', coverPath: null })
     expect(details.userTags.map(tag => tag.name).sort()).toEqual(['Favourite', 'Space Opera'])
     expect(details.activeLoan?.id).toBe('edit-loan')
     const [replacement] = await db.select().from(books).where(eq(books.id, edited!.bookId))
@@ -375,7 +376,8 @@ async function applyMigrations(database: D1Database) {
     enrichmentMigration,
     authFactorsMigration,
     recentAuthMigration,
-    durableOpenLibraryPayloadMigration
+    durableOpenLibraryPayloadMigration,
+    editionFieldsMigration
   ]) {
     for (const statement of migration.split('--> statement-breakpoint')) {
       const migrationStatement = statement.trim()

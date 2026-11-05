@@ -42,7 +42,7 @@ describe('book metadata refresh previews', () => {
     const subjects = ['Fiction', 'Space Opera', 'space opera', 'Electronic resource']
     const editionDetails = { language: 'Slovak', series: 'Seven Sisters', seriesPosition: '1', edition: '2. vyd.', translators: ['Jana Petrikovičová'] }
     lookup.mockReturnValue(Effect.succeed({ ...data, subjects, editionDetails, metadataSourceUrl: 'https://catalog.example/record/123' }))
-    expect(await run()).toMatchObject({ suggestedTags: ['Space Opera'], editionDetails, catalogUrl: 'https://catalog.example/record/123' })
+    expect(await run()).toMatchObject({ suggestedTags: ['Space Opera'], editionDetails, metadata: { language: 'Slovak', series: 'Seven Sisters', seriesPosition: '1' }, catalogUrl: 'https://catalog.example/record/123' })
     lookup.mockReturnValue(Effect.succeed({ ...data, metadataSourceUrl: 'javascript:alert(1)' }))
     expect((await run()).catalogUrl).toBeUndefined()
   })

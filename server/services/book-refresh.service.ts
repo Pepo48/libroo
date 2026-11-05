@@ -50,7 +50,9 @@ export const makeBookRefreshService = Effect.gen(function* () {
         const proposed = {
           title: data.title, authors: data.authors,
           publisher: data.publishers?.join(', '), publishDate: data.publishDate,
-          numberOfPages: data.numberOfPages, description: data.description
+          numberOfPages: data.numberOfPages, description: data.description,
+          language: data.editionDetails?.language, series: data.editionDetails?.series,
+          seriesPosition: data.editionDetails?.seriesPosition
         }
         for (const key of Object.keys(proposed) as Array<keyof typeof proposed>) {
           const value = proposed[key]
