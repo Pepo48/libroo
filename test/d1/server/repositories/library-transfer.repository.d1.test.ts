@@ -1,5 +1,6 @@
 /// <reference types="@cloudflare/vitest-plugin" />
 
+import { removeLibraryRecords } from '../../../../server/repositories/library-removal-batch'
 import { env } from 'cloudflare:workers'
 import { Effect, Layer } from 'effect'
 import { drizzle } from 'drizzle-orm/d1'
@@ -84,6 +85,22 @@ describe('LibraryTransferRepository.importRecords on D1', () => {
     } finally {
       await env.DB.prepare('DROP TRIGGER reject_bad_import').run()
     }
+  })
+
+  it('acknowledges 100 selected IDs in two parameter-safe database batches, including retries', async () => {
+    await importRecords(Array.from({ length: 100 }, (_, index) => importRecord({ title: `Removal batch ${index}` })), 'csv')
+    const ids = (await db.select({ id: userBooks.id }).from(userBooks)).map(row => row.id)
+    const database = db as unknown as DbServiceInterface['db']
+    const sizes: number[] = []
+    const service: DbServiceInterface = { db: database, executeAtomic: (build) => {
+      const statements = build(database)
+      sizes.push(statements.length)
+      return database.batch(statements)
+    } }
+    expect((await removeLibraryRecords(service, 'user-1', ids)).sort()).toEqual([...ids].sort())
+    expect(sizes).toEqual([2, 2])
+    expect((await removeLibraryRecords(service, 'user-1', ids)).sort()).toEqual([...ids].sort())
+    expect(sizes).toEqual([2, 2, 2, 2])
   })
 
   it('keeps repeated imports without authors idempotent within and across batches', async () => {
