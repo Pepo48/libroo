@@ -1144,7 +1144,7 @@ export const BookRepositoryLive = Layer.effect(
                 isbn: normalizedISBN,
                 title: data.title,
                 coverPath: null,
-                openLibraryKey: data.openLibraryKey,
+                openLibraryKey: data.openLibraryKey || null,
                 workKey: data.workKey,
                 openLibraryMetadata: data,
                 description: data.description || null,

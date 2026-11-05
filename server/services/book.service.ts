@@ -1,4 +1,5 @@
 import { removeLibraryRecords } from '../repositories/library-removal-batch'
+import { BookMetadataSources, lookupCoreMetadata, lookupBatchMetadata } from './book-metadata-sources'
 import { Context, Effect, Layer, Result, Data } from 'effect'
 import type * as HttpClient from 'effect/http/HttpClient'
 import { normalizeReadingProgress } from '../../shared/utils/reading-progress'
@@ -19,9 +20,10 @@ import type { Book } from '../repositories/book.repository'
 import { normalizeIsbnIdentity } from '../../shared/utils/isbn'
 import { BookEnrichmentRepository } from '../repositories/book-enrichment.repository'
 import { CanonicalBookEnrichmentRepository } from '../repositories/canonical-book-enrichment.repository'
+import type { OpenLibraryApiError } from '../repositories/openLibrary.repository'
 import { OpenLibraryBookNotFoundError } from '../repositories/openLibrary.repository'
 import { getBooksEnrichmentConfig } from '../utils/books-config'
-import { deleteBlob } from './storage.service'
+import { deleteBlob, putCoverImage } from './storage.service'
 
 interface UserBookViewModel {
   id: string
@@ -287,6 +289,7 @@ export const BookServiceLive = Layer.effect(
     const enrichmentRepo = yield* BookEnrichmentRepository
     const canonicalEnrichmentRepo = yield* CanonicalBookEnrichmentRepository
     const openLibraryRepo = yield* OpenLibraryRepository
+    const metadataSources = (yield* BookMetadataSources).sources
     const locationRepo = yield* LocationRepository
 
     const normalizeISBN = normalizeIsbnIdentity
@@ -375,7 +378,7 @@ export const BookServiceLive = Layer.effect(
             : null
           return { book: existing, job }
         }
-        const data = yield* withLookupTiming('core.openLibraryMetadata', normalizedISBN, openLibraryRepo.lookupCoreByISBN(normalizedISBN))
+        const data = yield* withLookupTiming('core.openLibraryMetadata', normalizedISBN, lookupCoreMetadata(metadataSources, normalizedISBN))
         const book = yield* withLookupTiming('core.minimumPersistence', normalizedISBN, bookRepo.createCoreOpenLibraryBook(normalizedISBN, data))
         const job = yield* withLookupTiming('core.pendingJobPersistence', normalizedISBN, canonicalEnrichmentRepo.ensurePending(book.id, normalizedISBN))
         return { book, job }
@@ -420,16 +423,42 @@ export const BookServiceLive = Layer.effect(
         let downloadedCoverPath: string | null = null
         const enrichment = yield* Effect.result(Effect.gen(function* () {
           const seed = current.openLibraryMetadata
-          const dataEffect = seed
-            ? openLibraryRepo.enrichMetadata(seed, 'enrichment')
-            : openLibraryRepo.lookupByISBN(current.isbn!, 'enrichment')
+          const dataEffect = seed?.metadataProvider
+            ? openLibraryRepo.lookupByISBN(current.isbn!, 'enrichment').pipe(
+                Effect.map(remote => ({
+                  ...remote,
+                  metadataProvider: seed.metadataProvider,
+                  metadataSourceUrl: seed.metadataSourceUrl,
+                  numberOfPages: seed.numberOfPages ?? remote.numberOfPages,
+                  title: seed.title,
+                  description: seed.description || remote.description,
+                  subjects: [...(seed.subjects ?? []), ...(remote.subjects ?? [])],
+                  authors: seed.authors.length ? seed.authors : remote.authors,
+                  publishDate: seed.publishDate || remote.publishDate,
+                  publishers: seed.publishers?.length ? seed.publishers : remote.publishers
+                })),
+                Effect.catchTag('OpenLibraryBookNotFoundError', () => Effect.succeed(seed))
+              )
+            : seed
+              ? openLibraryRepo.enrichMetadata(seed, 'enrichment')
+              : openLibraryRepo.lookupByISBN(current.isbn!, 'enrichment')
+          const fetchSourceCover = seed && metadataSources.find(source => source.id === seed.metadataProvider)?.fetchCover
           const coverSeed = seed?.coverUrl ?? null
           const parallel = yield* Effect.all({
             data: Effect.result(withLookupTiming('enrichment.workMetadata', current.isbn!, dataEffect)),
             cover: Effect.result(Effect.gen(function* () {
-              const stored = coverSeed
+              const stored = current.coverPath ?? (coverSeed || fetchSourceCover
                 ? yield* bookRepo.findStoredOpenLibraryCover(current.isbn!)
-                : null
+                : null)
+              if (!stored && seed && fetchSourceCover) {
+                const downloaded = yield* fetchSourceCover(seed).pipe(
+                  Effect.flatMap(image => image
+                    ? putCoverImage(`covers/${normalizeISBN(current.isbn!)}.webp`, image).pipe(Effect.map(blob => blob.pathname))
+                    : Effect.succeed(null)),
+                  Effect.catch(error => Effect.logWarning(`Catalog cover unavailable: ${error.message}`).pipe(Effect.as(null)))
+                )
+                if (downloaded) return { storedCover: null, downloadedCoverPath: downloaded }
+              }
               if (stored || !coverSeed) return { storedCover: stored, downloadedCoverPath: null }
               const downloaded = yield* withLookupTiming(
                 'enrichment.coverDownload',
@@ -705,7 +734,7 @@ export const BookServiceLive = Layer.effect(
           const core = yield* ensureCoreOpenLibraryBook(normalizedISBN, true).pipe(
             Effect.catchTag('OpenLibraryBookNotFoundError', () => Effect.succeed(null))
           )
-          if (!core) return { found: false, isbn: normalizedISBN, message: 'Book not found on OpenLibrary' } satisfies BookLookupResult
+          if (!core) return { found: false, isbn: normalizedISBN, message: 'Book not found in the available catalogs' } satisfies BookLookupResult
           return {
             ...toLookupResult(core.book, normalizedISBN, existingInUserLibrary, []),
             enrichment: core.job ? { status: toBookEnrichmentUiStatus(core.job.status) } : undefined
@@ -818,27 +847,24 @@ export const BookServiceLive = Layer.effect(
 
             const unresolved = uniqueIsbns.filter(isbn => !localBooks.has(isbn))
             if (unresolved.length > 0) {
-              const remoteLookup = yield* Effect.result(openLibraryRepo.lookupCoreByISBNs(unresolved))
-              if (Result.isFailure(remoteLookup)) {
-                yield* Effect.logError(remoteLookup.failure)
-                for (const isbn of unresolved) {
-                  outcomes.set(isbn, {
-                    status: 'error',
-                    errorCode: 'upstream_failure',
-                    message: 'Open Library is temporarily unavailable. Try again in a moment.'
-                  })
-                }
-              } else {
+              const { metadata, failedIsbns } = yield* lookupBatchMetadata(metadataSources, unresolved)
+              for (const isbn of failedIsbns) {
+                outcomes.set(isbn, {
+                  status: 'error', errorCode: 'upstream_failure',
+                  message: 'Book catalogs are temporarily unavailable. Try again in a moment.'
+                })
+              }
+              {
                 const persistLookup = (isbn: string): Effect.Effect<
                   readonly [string, UniqueOutcome],
                   never,
                   DbService | StorageService | OpenLibraryRepository | HttpClient.HttpClient
                 > => Effect.gen(function* () {
-                  const data = remoteLookup.success.get(isbn)
+                  const data = metadata.get(isbn)
                   if (!data) {
                     return [isbn, {
                       status: 'ok',
-                      result: { found: false, isbn, message: 'Book not found on OpenLibrary' }
+                      result: { found: false, isbn, message: 'Book not found in the available catalogs' }
                     }] as const
                   }
                   const result = yield* Effect.result(Effect.gen(function* () {
@@ -869,7 +895,7 @@ export const BookServiceLive = Layer.effect(
                   return [isbn, outcome] as const
                 })
                 const persisted = yield* Effect.forEach(
-                  unresolved,
+                  unresolved.filter(isbn => !outcomes.has(isbn)),
                   persistLookup,
                   // SQLite persistence remains serial to avoid writer
                   // contention; core rows are deliberately lightweight.

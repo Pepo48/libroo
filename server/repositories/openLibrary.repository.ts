@@ -1,3 +1,5 @@
+import { isValidIsbn, normalizeIsbnIdentity } from '../../shared/utils/isbn'
+import type { BookSearchResult } from '../../shared/types/book-search'
 import { Semaphore, Context, Effect, Layer, Data, Duration, Result, Stream } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
 import * as HCError from 'effect/http/HttpClientError'
@@ -49,6 +51,8 @@ interface OpenLibraryAuthorApiResponse {
 }
 
 interface OpenLibrarySearchResponse {
+  numFound?: number
+  num_found?: number
   docs?: Array<{
     key?: string
     title?: string
@@ -89,6 +93,7 @@ interface OpenLibraryWorksApiResponse {
 
 // Service interface
 export interface OpenLibraryRepositoryInterface {
+  searchByTitle: (query: string, limit: number) => Effect.Effect<BookSearchResult, OpenLibraryApiError, HttpClientType.HttpClient>
   // The interactive core path deliberately performs only this ISBN search request.
   lookupCoreByISBN: (isbn: string) => Effect.Effect<OpenLibraryBookData, OpenLibraryBookNotFoundError | OpenLibraryApiError, HttpClientType.HttpClient>
   lookupByISBN: (isbn: string, priority?: OpenLibraryRequestPriority) => Effect.Effect<OpenLibraryBookData, OpenLibraryBookNotFoundError | OpenLibraryApiError, HttpClientType.HttpClient>
@@ -681,6 +686,30 @@ export const OpenLibraryRepositoryLive = Layer.effect(
       })
 
     return {
+      searchByTitle: (query, limit) => Effect.gen(function* () {
+        const url = new URL(`${getOpenLibraryApiBase()}/search.json`)
+        url.searchParams.set('title', query)
+        url.searchParams.set('fields', SEARCH_FIELDS)
+        url.searchParams.set('limit', String(Math.min(20, limit)))
+        const response = yield* fetchJson<OpenLibrarySearchResponse>(url.href, acquireSlot('interactive'), 'metadata')
+        const books: BookSearchResult['books'] = []
+        const seen = new Set<string>()
+        for (const work of response.docs ?? []) {
+          // Only display a concrete, ISBN-addressable edition. Work-level ISBNs
+          // can describe another edition and must not be used as its identifier.
+          for (const edition of work.editions?.docs ?? []) {
+            const identifier = edition.isbn?.find(isValidIsbn)
+            if (!identifier) continue
+            const isbn = normalizeIsbnIdentity(identifier)
+            if (seen.has(isbn)) continue
+            seen.add(isbn)
+            books.push({ isbn, title: edition.title || work.title || 'Unknown Title',
+              author: (edition.author_name ?? work.author_name ?? []).join(', '),
+              publisher: (edition.publisher ?? []).join(', '), year: edition.publish_date?.[0] ?? '', part: '' })
+          }
+        }
+        return { books: books.slice(0, limit), hasMore: books.length > limit || (response.numFound ?? response.num_found ?? 0) > (response.docs?.length ?? 0) }
+      }),
       lookupCoreByISBN,
       lookupCoreByISBNs,
       enrichMetadata,

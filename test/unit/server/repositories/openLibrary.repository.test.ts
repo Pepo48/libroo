@@ -79,6 +79,27 @@ describe('OpenLibraryRepository details lookup', () => {
     else await body.cancel()
   })
 
+  it('searches titles using concrete ISBN editions, with a bounded result set', async () => {
+    vi.stubGlobal('useRuntimeConfig', () => ({ openLibraryRequestTimeoutSeconds: 12, openLibraryCoverTimeoutSeconds: 20, openLibraryContactEmail: '' }))
+    const requestedUrls: string[] = []
+    const httpClient = HttpClient.make((request) => {
+      requestedUrls.push(request.url)
+      return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(JSON.stringify({ numFound: 30, docs: [
+        { title: 'Work title', isbn: ['9780441172719'], author_name: ['Work author'], editions: { docs: [{ title: 'Edition title', isbn: ['9780441172719'], publisher: ['Edition publisher'], publish_date: ['2001'] }] } },
+        { title: 'Unaddressable edition', isbn: ['9780141439518'], editions: { docs: [{ title: 'No edition ISBN' }] } }
+      ] }))))
+    })
+    const result = await Effect.runPromise(Effect.flatMap(OpenLibraryRepository, repo => repo.searchByTitle('Dune', 20)).pipe(
+      Effect.provide(OpenLibraryRepositoryLive),
+      Effect.provide(Layer.succeed(DbService, { executeAtomic: vi.fn() } as never)),
+      Effect.provide(Layer.succeed(HttpClient.HttpClient, httpClient))
+    ))
+    expect(result.books).toEqual([{ isbn: '9780441172719', title: 'Edition title', author: 'Work author', publisher: 'Edition publisher', year: '2001', part: '' }])
+    expect(result.hasMore).toBe(true)
+    expect(new URL(requestedUrls[0]!).searchParams.get('title')).toBe('Dune')
+    expect(new URL(requestedUrls[0]!).searchParams.get('limit')).toBe('20')
+  })
+
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.unstubAllEnvs()

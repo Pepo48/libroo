@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 
 type RuntimeExecutionContext = {
+  assets?: { fetch: (request: Request) => Promise<Response> }
   waitUntil?: (promise: Promise<unknown>) => void
 }
 
@@ -16,9 +17,14 @@ export function getEventExecutionContext(event: unknown): RuntimeExecutionContex
   const context = event.context
   if (!isRecord(context)) return
 
+  const cloudflareContext = isRecord(context.cloudflare) ? context.cloudflare : undefined
+  const env = cloudflareContext && isRecord(cloudflareContext.env) ? cloudflareContext.env : undefined
+  const assets = env?.ASSETS as RuntimeExecutionContext['assets']
+
   const waitUntil = context.waitUntil
   if (typeof waitUntil === 'function') {
     return {
+      assets,
       waitUntil: waitUntil.bind(context) as (promise: Promise<unknown>) => void
     }
   }
@@ -27,12 +33,13 @@ export function getEventExecutionContext(event: unknown): RuntimeExecutionContex
   if (!isRecord(cloudflare)) return
 
   const ctx = cloudflare.ctx
-  if (!isRecord(ctx)) return
+  if (!isRecord(ctx)) return assets ? { assets } : undefined
 
   const legacyWaitUntil = ctx.waitUntil
-  if (typeof legacyWaitUntil !== 'function') return
+  if (typeof legacyWaitUntil !== 'function') return assets ? { assets } : undefined
 
   return {
+    assets,
     waitUntil: legacyWaitUntil.bind(ctx) as (promise: Promise<unknown>) => void
   }
 }

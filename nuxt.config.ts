@@ -1,5 +1,10 @@
+import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import { MAX_BULK_ISBN_COUNT } from './shared/utils/schemas'
+
+const coreRoot = fileURLToPath(new URL('.', import.meta.url))
+const metadataModules = (process.env.LIBROO_METADATA_MODULES ?? '').split(',').map(value => value.trim()).filter(Boolean).map(value => resolve(coreRoot, value))
 
 const runtimeProfile = process.env.NUXT_LIBROO_RUNTIME_PROFILE === 'cloudflare'
   ? 'cloudflare'
@@ -87,7 +92,8 @@ export default defineNuxtConfig({
     '@nuxt/scripts',
     '@nuxtjs/turnstile',
     '@nuxt/test-utils',
-    '@comark/nuxt'
+    '@comark/nuxt',
+    ...metadataModules
   ],
 
   devtools: {
@@ -176,6 +182,8 @@ export default defineNuxtConfig({
   },
 
   alias: {
+    '#libroo-core': coreRoot,
+    '#libroo-metadata-sources': resolve(coreRoot, 'server/services/book-metadata-sources.ts'),
     '../runtime/active': `./server/runtime/${runtimeProfile}.ts`,
     '../runtime/auth-db.active': `./server/runtime/auth-db.${runtimeProfile}.ts`,
     '../runtime/background-tasks.active': `./server/runtime/background-tasks.${runtimeProfile}.ts`,
