@@ -33,6 +33,17 @@ const menuItems = computed(() => [
         <h1 class="text-3xl font-bold tracking-tight md:text-4xl">
           {{ book.title }}
         </h1>
+        <dl
+          v-if="book.originalTitle"
+          class="mt-1 flex flex-wrap items-baseline gap-x-2 text-base"
+        >
+          <dt class="text-muted">
+            {{ $t('ui.originalTitle') }}
+          </dt>
+          <dd class="wrap-anywhere italic">
+            {{ book.originalTitle }}
+          </dd>
+        </dl>
         <p class="mt-2 text-lg text-muted">
           <template v-if="book.authors.length">
             <template

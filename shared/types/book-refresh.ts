@@ -9,7 +9,7 @@ export interface BookMetadataSourceInfo {
 export type BookMetadataSourceOption = BookMetadataSourceInfo & {
   pageOrigin?: string
 }
-export type BookRefreshFields = Pick<BookEditSchema, 'title' | 'authors' | 'publisher' | 'publishDate' | 'numberOfPages' | 'description' | 'language' | 'series' | 'seriesPosition'>
+export type BookRefreshFields = Pick<BookEditSchema, 'title' | 'originalTitle' | 'authors' | 'publisher' | 'publishDate' | 'numberOfPages' | 'description' | 'language' | 'series' | 'seriesPosition'>
 export interface BookRefreshPreview {
   isbn: string
   source: BookMetadataSourceInfo | null

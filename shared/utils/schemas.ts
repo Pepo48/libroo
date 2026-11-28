@@ -419,6 +419,7 @@ export const manualBookCreateSchema = z.object({
       })
     })
     .pipe(z.array(z.string()).min(1, { error: 'At least one author is required' }).max(20, { error: 'Too many authors' })),
+  originalTitle: trimmedNullableString(500, 'Original title').optional(),
   isbn: optionalManualIsbnSchema,
   libraryState: libraryStateSchema.optional().default('owned'),
   coverImage: z.object({
@@ -627,6 +628,7 @@ export const removeBookSchema = z.object({
 export type RemoveBookSchema = z.infer<typeof removeBookSchema>
 
 export const bookEditionFieldsSchema = z.object({
+  originalTitle: manualBookCreateSchema.shape.originalTitle,
   language: trimmedNullableString(100, 'Language').optional(),
   series: trimmedNullableString(300, 'Series').optional(),
   seriesPosition: trimmedNullableString(50, 'Volume').optional()

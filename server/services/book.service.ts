@@ -597,6 +597,7 @@ export const BookServiceLive = Layer.effect(
 
           const userBook = yield* bookRepo.createManualBook(userId, {
             title: input.title,
+            originalTitle: input.originalTitle,
             authors: input.authors,
             isbn: input.isbn,
             coverPath,

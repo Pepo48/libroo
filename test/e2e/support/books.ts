@@ -22,7 +22,7 @@ export async function addFixtureIsbnBook(page: Page) {
 
 export async function addManualBook(page: Page, title: string) {
   await addBookTabs(page).gotoManual()
-  await page.getByLabel('Title').fill(title)
+  await page.getByLabel('Title', { exact: true }).fill(title)
   await page.getByPlaceholder('Author name').fill('Manual Author')
   await page.getByLabel('Publisher').fill('Libroo Manual Press')
   await page.locator('input[type="file"]').setInputFiles({

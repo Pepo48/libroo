@@ -15,6 +15,7 @@ import type { OpenLibraryApiError, OpenLibraryBookNotFoundError, OpenLibraryRepo
 import type { OpenLibraryBookData } from '../../shared/types/open-library'
 import type { BookEnrichmentStatus, LibraryState, TagWithCount } from '../../shared/types/book'
 import { isbnIdentityAliases, normalizeIsbnIdentity } from '../../shared/utils/isbn'
+import { bookEditionFieldsSchema } from '../../shared/utils/schemas'
 import { measureDatabase } from '../utils/execution-context'
 
 // Error types
@@ -109,6 +110,7 @@ interface OwnedUserBookRef {
 }
 
 export interface ManualBookRepositoryInput {
+  originalTitle?: string | null
   title: string
   authors: string[]
   isbn: string | null
@@ -1281,6 +1283,8 @@ export const BookRepositoryLive = Layer.effect(
             ? toBookModel(storedBook, authorMap?.get(storedBook.id) || [])
             : yield* ensureOpenLibraryBook(normalizedISBN)
 
+          const originalTitle = bookEditionFieldsSchema.shape.originalTitle.safeParse(book.openLibraryMetadata?.editionDetails?.originalTitle)
+
           // Create userBooks entry
           const userBookId = generateId()
           const addedAt = new Date()
@@ -1291,6 +1295,7 @@ export const BookRepositoryLive = Layer.effect(
                 id: userBookId,
                 userId,
                 bookId: book.id,
+                originalTitle: originalTitle.success ? originalTitle.data : null,
                 libraryState,
                 addedAt
               }),
@@ -1398,6 +1403,7 @@ export const BookRepositoryLive = Layer.effect(
                   bookId,
                   rating: isWishlisted ? null : input.rating,
                   note: input.note,
+                  originalTitle: input.originalTitle,
                   libraryState: input.libraryState,
                   readingStatus: isWishlisted ? 'unread' : input.readingStatus,
                   currentPage: isWishlisted ? null : input.currentPage,
@@ -2173,6 +2179,7 @@ export const BookRepositoryLive = Layer.effect(
               startedAt: row.user_books.startedAt ?? null,
               finishedAt: row.user_books.finishedAt ?? null
             },
+            originalTitle: row.user_books.originalTitle,
             language: row.user_books.language,
             series: row.user_books.series,
             seriesPosition: row.user_books.seriesPosition,

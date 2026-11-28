@@ -24,6 +24,7 @@ import authFactorsMigration from '../../../../server/db/migrations/sqlite/0013_a
 import recentAuthMigration from '../../../../server/db/migrations/sqlite/0014_recent-auth.sql?raw'
 import durableOpenLibraryPayloadMigration from '../../../../server/db/migrations/sqlite/0019_durable_open_library_payload.sql?raw'
 import editionFieldsMigration from '../../../../server/db/migrations/sqlite/0022_book_edition_fields.sql?raw'
+import originalTitleMigration from '../../../../server/db/migrations/sqlite/0024_book_original_title.sql?raw'
 import { authors, bookAuthors, bookEnrichmentJobs, books, loans, locations, tags, user, userBooks, userBookTags } from '../../../../server/db/schema'
 import { LibraryTransferRepository, LibraryTransferRepositoryLive } from '../../../../server/repositories/library-transfer.repository'
 import { LibraryCleanupRepository, LibraryCleanupRepositoryLive } from '../../../../server/repositories/library-cleanup.repository'
@@ -269,7 +270,7 @@ describe('LibraryTransferRepository.importRecords on D1', () => {
   })
 
   it('imports and exports edition fields and preserves them on a legacy CSV update', async () => {
-    const edition = { language: 'Slovak', series: 'S láskou z…', seriesPosition: '6' }
+    const edition = { originalTitle: 'From Paris with Love', language: 'Slovak', series: 'S láskou z…', seriesPosition: '6' }
     const record = importRecord({ title: 'Edition details', ...edition })
     expect(await importRecords([record], 'csv')).toMatchObject({ created: 1, failed: [] })
     expect(await importRecords([importRecord({ title: record.title })], 'csv')).toMatchObject({ updated: 1, failed: [] })
@@ -747,7 +748,7 @@ describe('LibraryTransferRepository.importRecords on D1', () => {
 })
 
 async function applyMigrations(database: D1Database) {
-  for (const migration of [initialMigration, termsMigration, locationRestrictMigration, libraryStateMigration, previouslyOwnedMigration, inviteEmailMigration, loanNoteMigration, borrowerSuggestionsMigration, enrichmentMigration, authFactorsMigration, recentAuthMigration, canonicalEnrichmentMigration, durableOpenLibraryPayloadMigration, editionFieldsMigration]) {
+  for (const migration of [initialMigration, termsMigration, locationRestrictMigration, libraryStateMigration, previouslyOwnedMigration, inviteEmailMigration, loanNoteMigration, borrowerSuggestionsMigration, enrichmentMigration, authFactorsMigration, recentAuthMigration, canonicalEnrichmentMigration, durableOpenLibraryPayloadMigration, editionFieldsMigration, originalTitleMigration]) {
     for (const statement of migration.split('--> statement-breakpoint')) {
       const migrationStatement = statement.trim()
       if (migrationStatement) {

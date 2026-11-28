@@ -132,7 +132,7 @@ for (const mobile of [false, true]) {
       lookups++
       expect(route.request().postDataJSON()).toMatchObject({ source: 'example', includeCover: true })
       return route.fulfill({ json: { isbn: fixtureIsbn, source: { id: 'example', label: 'Example plugin' },
-        metadata: { title: 'Fetched title', authors: ['Fetched Author'], description: 'Fresh description', numberOfPages: 320, language: 'Slovak', series: 'Example series', seriesPosition: '6' },
+        metadata: { title: 'Sedem sestier', originalTitle: 'The Seven Sisters', authors: ['Fetched Author'], description: 'Fresh description', numberOfPages: 320, language: 'Slovak', series: 'Example series', seriesPosition: '6' },
         coverImage: null, suggestedTags: ['Space Opera', 'Adventure'],
         catalogUrl: 'https://example.com/record/1', warnings: [] } })
     })
@@ -146,6 +146,7 @@ for (const mobile of [false, true]) {
     await expect(dialog.getByRole('checkbox', { name: 'Also look for a cover on Open Library' })).toHaveCount(0)
     await expect(dialog.getByRole('button', { name: 'Save changes', exact: true })).toBeDisabled()
     await expect(dialog.getByRole('checkbox', { name: 'Use title', exact: true })).not.toBeChecked()
+    await expect(dialog.getByRole('checkbox', { name: 'Use original title', exact: true })).toBeChecked()
     await expect(dialog.getByRole('checkbox', { name: 'Use authors', exact: true })).not.toBeChecked()
     await expect(dialog.getByRole('checkbox', { name: 'Use description', exact: true })).toBeChecked()
     expect((await (await context.request.get(`/api/books/${book.id}`)).json()).description).toBeNull()
@@ -153,6 +154,7 @@ for (const mobile of [false, true]) {
     await dialog.getByRole('button', { name: 'Apply selected fields', exact: true }).click()
     await expect(dialog.getByLabel('Title', { exact: true })).toHaveValue(title)
     await expect(dialog.getByLabel('Description', { exact: true })).toHaveValue('Fresh description')
+    await expect(dialog.getByLabel('Original title', { exact: true })).toHaveValue('The Seven Sisters')
     await expect(dialog.getByLabel('Language', { exact: true })).toHaveValue('Slovak')
     await expect(dialog.getByLabel('Series', { exact: true })).toHaveValue('Example series')
     await expect(dialog.getByLabel('Volume', { exact: true })).toHaveValue('6')
@@ -174,13 +176,15 @@ for (const mobile of [false, true]) {
     await dialog.getByRole('button', { name: 'Save changes', exact: true }).click()
     await expect(dialog).toHaveCount(0)
     const saved = await (await context.request.get(`/api/books/${book.id}`)).json()
-    expect(saved).toMatchObject({ title: 'Fetched title', description: 'Fresh description', numberOfPages: 320, language: 'Slovak', series: 'Example series', seriesPosition: '6', note: 'Keep my note', rating: 4 })
+    expect(saved).toMatchObject({ title: 'Sedem sestier', originalTitle: 'The Seven Sisters', description: 'Fresh description', numberOfPages: 320, language: 'Slovak', series: 'Example series', seriesPosition: '6', note: 'Keep my note', rating: 4 })
     expect(saved.authors.map((author: { name: string }) => author.name)).toEqual(['Original Author'])
     expect(saved.coverPath).toBeNull()
     expect(saved.userTags.map((tag: { name: string }) => tag.name)).toEqual(['Space Opera'])
     expect(lookups).toBe(2)
     await page.reload()
-    await expect(page.getByRole('heading', { name: 'Fetched title', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Sedem sestier', exact: true })).toBeVisible()
+    await expect(page.getByText('Original title', { exact: true })).toBeVisible()
+    await expect(page.getByText('The Seven Sisters', { exact: true })).toBeVisible()
     await expect(page.getByText('Example series · Book 6', { exact: true })).toBeVisible()
     await context.close()
   })
@@ -203,4 +207,29 @@ test('Open Library refresh previews are read-only and limited to the book owner'
   expect(after).toEqual(before)
   await owner.close()
   await other.close()
+})
+
+test('shows the original title under the Slovak title and lets the reader clear it', async ({ browser, baseURL }, testInfo) => {
+  const context = await browser.newContext({ storageState: await storageState(browser, 'user'), locale: 'sk-SK' })
+  await context.addCookies([{ name: 'libroo_locale', value: 'sk', url: baseURL! }])
+  const response = await context.request.post('/api/books/manual', { data: {
+    title: 'Sedem sestier', originalTitle: 'The Seven Sisters', authors: ['Lucinda Riley']
+  } })
+  expect(response.ok()).toBe(true)
+  const { id } = await response.json()
+  const page = await context.newPage()
+  await page.goto(`/library/${id}`)
+  const header = page.locator('header').filter({ has: page.getByRole('heading', { name: 'Sedem sestier', exact: true }) })
+  await expect(header.getByText('Pôvodný názov', { exact: true })).toBeVisible()
+  await expect(header.getByText('The Seven Sisters', { exact: true })).toBeVisible()
+  await header.screenshot({ path: testInfo.outputPath('original-title-sk.png') })
+  await header.getByRole('button', { name: 'Upraviť knihu', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Pôvodný názov', { exact: true }).fill('')
+  await dialog.getByRole('button', { name: 'Uložiť zmeny', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await page.reload()
+  await expect(header.getByRole('heading', { name: 'Sedem sestier' })).toBeVisible()
+  await expect(header.getByText('Pôvodný názov', { exact: true })).toHaveCount(0)
+  await context.close()
 })

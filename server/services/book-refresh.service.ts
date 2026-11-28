@@ -62,7 +62,7 @@ export const makeBookRefreshService = Effect.gen(function* () {
         const suggestedTags = normalizeSuggestedTags(data.subjects).map(tag => tag.displayName)
         if (suggestedTags.length) result.suggestedTags = suggestedTags
         const proposed = {
-          title: data.title, authors: data.authors,
+          title: data.title, originalTitle: data.editionDetails?.originalTitle, authors: data.authors,
           publisher: data.publishers?.join(', '), publishDate: data.publishDate,
           numberOfPages: data.numberOfPages, description: data.description,
           language: data.editionDetails?.language, series: data.editionDetails?.series,

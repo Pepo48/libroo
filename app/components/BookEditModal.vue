@@ -23,7 +23,7 @@ const refreshPreviewPending = ref(false)
 const coverFile = ref<File | null>(null)
 let version = 0
 const state = reactive({
-  expectedBookId: '', title: '', authors: [''], isbn: '', publisher: '', publishDate: '',
+  expectedBookId: '', title: '', originalTitle: '', authors: [''], isbn: '', publisher: '', publishDate: '',
   language: '', series: '', seriesPosition: '', numberOfPages: null as number | null, addTags: [] as string[], description: '',
   coverImage: null as BookEditSchema['coverImage'], removeCover: false
 })
@@ -49,7 +49,7 @@ watch(open, (value) => {
     savedToastId = undefined
   }
   Object.assign(state, {
-    expectedBookId: props.book.bookId, title: props.book.title,
+    expectedBookId: props.book.bookId, title: props.book.title, originalTitle: props.book.originalTitle ?? '',
     authors: props.book.authors.length ? props.book.authors.map(author => author.name) : [props.book.author || ''],
     isbn: props.book.isbn || '', publisher: props.book.publishers || '', publishDate: props.book.publishDate || '',
     language: props.book.language ?? '', series: props.book.series ?? '', seriesPosition: props.book.seriesPosition ?? '',
@@ -144,6 +144,15 @@ async function save(event: FormSubmitEvent<BookEditSchema>) {
               v-model="state.title"
               class="w-full"
               autofocus
+            />
+          </UFormField>
+          <UFormField
+            :label="$t('ui.originalTitle')"
+            name="originalTitle"
+          >
+            <UInput
+              v-model="state.originalTitle"
+              class="w-full"
             />
           </UFormField>
           <UFormField

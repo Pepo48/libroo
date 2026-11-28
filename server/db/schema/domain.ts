@@ -94,6 +94,7 @@ export const userBooks = sqliteTable('user_books', {
   locationId: text('location_id').references(() => locations.id, { onDelete: 'set null' }),
   rating: integer('rating'), // 1–5 star rating, null = unrated
   note: text('note'), // Private user note
+  originalTitle: text('original_title'),
   language: text('language'),
   series: text('series'),
   seriesPosition: text('series_position'),

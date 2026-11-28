@@ -19,6 +19,7 @@ import recentAuthMigration from '../../../../server/db/migrations/sqlite/0014_re
 import canonicalEnrichmentMigration from '../../../../server/db/migrations/sqlite/0016_canonical_book_enrichment.sql?raw'
 import durableOpenLibraryPayloadMigration from '../../../../server/db/migrations/sqlite/0019_durable_open_library_payload.sql?raw'
 import editionFieldsMigration from '../../../../server/db/migrations/sqlite/0022_book_edition_fields.sql?raw'
+import originalTitleMigration from '../../../../server/db/migrations/sqlite/0024_book_original_title.sql?raw'
 import { authors, bookAuthors, bookEnrichmentJobs, books, canonicalBookEnrichmentJobs, user, userBooks, tags, userBookTags, bookSystemTags } from '../../../../server/db/schema'
 import {
   BookEnrichmentRepository,
@@ -599,7 +600,8 @@ async function applyMigrations(database: D1Database) {
     recentAuthMigration,
     canonicalEnrichmentMigration,
     durableOpenLibraryPayloadMigration,
-    editionFieldsMigration
+    editionFieldsMigration,
+    originalTitleMigration
   ]) {
     for (const statement of migration.split('--> statement-breakpoint')) {
       const migrationStatement = statement.trim()

@@ -18,6 +18,7 @@ import authFactorsMigration from '../../../../server/db/migrations/sqlite/0013_a
 import recentAuthMigration from '../../../../server/db/migrations/sqlite/0014_recent-auth.sql?raw'
 import durableOpenLibraryPayloadMigration from '../../../../server/db/migrations/sqlite/0019_durable_open_library_payload.sql?raw'
 import editionFieldsMigration from '../../../../server/db/migrations/sqlite/0022_book_edition_fields.sql?raw'
+import originalTitleMigration from '../../../../server/db/migrations/sqlite/0024_book_original_title.sql?raw'
 import accountIssuerMigration from '../../../../server/db/migrations/sqlite/0017_better_auth_account_issuer.sql?raw'
 import accountIdentityMigration from '../../../../server/db/migrations/sqlite/0020_better_auth_restore_account_identity.sql?raw'
 import { account, books, locations, loans, session, signupInvites, tags, user, userBookTags, userBooks, verification } from '../../../../server/db/schema'
@@ -171,7 +172,7 @@ describe('AccountDeletionRepository on D1', () => {
 })
 
 async function applyMigrations(database: D1Database) {
-  for (const migration of [initialMigration, termsMigration, locationRestrictMigration, libraryStateMigration, previouslyOwnedMigration, inviteEmailMigration, loanNoteMigration, borrowerSuggestionsMigration, enrichmentMigration, authFactorsMigration, recentAuthMigration, accountIssuerMigration, durableOpenLibraryPayloadMigration, accountIdentityMigration, editionFieldsMigration]) {
+  for (const migration of [initialMigration, termsMigration, locationRestrictMigration, libraryStateMigration, previouslyOwnedMigration, inviteEmailMigration, loanNoteMigration, borrowerSuggestionsMigration, enrichmentMigration, authFactorsMigration, recentAuthMigration, accountIssuerMigration, durableOpenLibraryPayloadMigration, accountIdentityMigration, editionFieldsMigration, originalTitleMigration]) {
     for (const statement of migration.split('--> statement-breakpoint')) {
       const migrationStatement = statement.trim()
       if (migrationStatement) {

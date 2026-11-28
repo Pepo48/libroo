@@ -10,6 +10,7 @@ import enrichmentMigration from '../../../../server/db/migrations/sqlite/0012_im
 import authFactorsMigration from '../../../../server/db/migrations/sqlite/0013_auth-two-factor-passkeys.sql?raw'
 import durableOpenLibraryPayloadMigration from '../../../../server/db/migrations/sqlite/0019_durable_open_library_payload.sql?raw'
 import editionFieldsMigration from '../../../../server/db/migrations/sqlite/0022_book_edition_fields.sql?raw'
+import originalTitleMigration from '../../../../server/db/migrations/sqlite/0024_book_original_title.sql?raw'
 import { Effect, Layer } from 'effect'
 import { createClient } from '@libsql/client'
 import { drizzle } from 'drizzle-orm/libsql'
@@ -32,7 +33,7 @@ describe('cover access repository helpers', () => {
     testDb = db
     await client.execute('PRAGMA foreign_keys = ON')
 
-    for (const migration of [initialMigration, termsAcceptanceMigration, locationRestrictMigration, libraryStateMigration, previouslyOwnedMigration, inviteEmailMigration, loanNoteMigration, borrowerSuggestionsMigration, enrichmentMigration, authFactorsMigration, durableOpenLibraryPayloadMigration, editionFieldsMigration]) {
+    for (const migration of [initialMigration, termsAcceptanceMigration, locationRestrictMigration, libraryStateMigration, previouslyOwnedMigration, inviteEmailMigration, loanNoteMigration, borrowerSuggestionsMigration, enrichmentMigration, authFactorsMigration, durableOpenLibraryPayloadMigration, editionFieldsMigration, originalTitleMigration]) {
       for (const statement of migration.split('--> statement-breakpoint')) {
         const sql = statement.trim()
         if (sql) {

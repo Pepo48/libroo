@@ -21,6 +21,9 @@ Provider caches, robots rules and request budgets still apply. Previews check
 ownership first, never insert or update books, never enqueue enrichment, and
 never store cover images. Request accounting can update operational counters.
 Saved changes use the existing private editing service and WebP conversion.
+An edition’s original title can be selected independently of its translated title.
+Libroo shows the saved original title beneath the main title on the book detail page
+and includes it in CSV and ZIP exports as `original_title`.
 Missing or invalid source fields never clear existing values.
 
 ## Add a provider

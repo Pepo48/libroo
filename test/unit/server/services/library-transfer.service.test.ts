@@ -183,6 +183,7 @@ describe('LibraryTransferService.importLibraryCsv', () => {
       source: 'open_library',
       open_library_key: '/books/OL1M',
       libroo_user_book_id: 'ub-source',
+      original_title: ' Original title ',
       language: ' Slovak ',
       series: 'Dune',
       series_position: '1'
@@ -194,6 +195,7 @@ describe('LibraryTransferService.importLibraryCsv', () => {
       'user-1',
       [expect.objectContaining({
         sourceUserBookId: 'ub-source',
+        originalTitle: 'Original title',
         language: 'Slovak',
         series: 'Dune',
         seriesPosition: '1',

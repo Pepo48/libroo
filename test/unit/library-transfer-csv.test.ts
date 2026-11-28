@@ -83,7 +83,8 @@ describe('library transfer CSV', () => {
       libroo_user_book_id: 'ub-1',
       language: 'English',
       series: 'Hainish Cycle',
-      series_position: '4'
+      series_position: '4',
+      original_title: 'An Original, in Translation'
     }])
 
     expect(parseLibraryCsv(csv)).toEqual([{
@@ -109,7 +110,8 @@ describe('library transfer CSV', () => {
       libroo_user_book_id: 'ub-1',
       language: 'English',
       series: 'Hainish Cycle',
-      series_position: '4'
+      series_position: '4',
+      original_title: 'An Original, in Translation'
     }])
   })
 

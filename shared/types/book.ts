@@ -163,6 +163,7 @@ export interface BatchDeleteResult {
 }
 
 export interface BookEditionFields {
+  originalTitle?: string | null
   language?: string | null
   series?: string | null
   seriesPosition?: string | null

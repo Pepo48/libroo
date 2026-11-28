@@ -128,6 +128,7 @@ function toImportRecord(row: LibraryCsvRow): LibraryImportBookInput {
   }
 
   const edition = bookEditionFieldsSchema.parse({
+    originalTitle: row.original_title?.trim() || undefined,
     language: row.language?.trim() || undefined,
     series: row.series?.trim() || undefined,
     seriesPosition: row.series_position?.trim() || undefined
@@ -182,6 +183,7 @@ function toExportRow(record: LibraryExportRecord): LibraryCsvRow {
     source: record.source,
     open_library_key: record.openLibraryKey ?? '',
     libroo_user_book_id: record.userBookId,
+    original_title: record.originalTitle ?? '',
     language: record.language ?? '',
     series: record.series ?? '',
     series_position: record.seriesPosition ?? ''

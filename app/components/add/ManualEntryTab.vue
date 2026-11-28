@@ -17,6 +17,7 @@ const coverPreviewUrl = ref<string | null>(null)
 
 const formState = reactive({
   title: '',
+  originalTitle: '',
   authors: [''],
   isbn: '',
   libraryState: 'owned' as LibraryState,
@@ -189,6 +190,7 @@ async function createBook(payload: FormSubmitEvent<ManualBookCreateSchema>) {
 
 function reset() {
   formState.title = ''
+  formState.originalTitle = ''
   formState.authors = ['']
   formState.isbn = ''
   formState.libraryState = 'owned'
@@ -236,6 +238,16 @@ defineExpose({ reset })
           v-model="formState.title"
           class="w-full"
           :placeholder="$t('ui.bookTitle')"
+        />
+      </UFormField>
+
+      <UFormField
+        :label="$t('ui.originalTitle')"
+        name="originalTitle"
+      >
+        <UInput
+          v-model="formState.originalTitle"
+          class="w-full"
         />
       </UFormField>
 
