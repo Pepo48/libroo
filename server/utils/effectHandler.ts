@@ -8,6 +8,7 @@ type EffectHandlerUser = { id: string, name: string, email: string, role?: strin
 type EffectHandlerOptions = {
   auth?: 'verified' | 'session' | false
   timing?: boolean
+  cancelOnDisconnect?: boolean
 }
 
 /**
@@ -33,7 +34,7 @@ export function effectHandler<A, E>(
     event: H3Event,
     user: EffectHandlerUser
   ) => Effect.Effect<A, E, MainServices>,
-  options?: { auth?: 'verified' } & Pick<EffectHandlerOptions, 'timing'>
+  options?: { auth?: 'verified' } & Pick<EffectHandlerOptions, 'timing' | 'cancelOnDisconnect'>
 ): EventHandler
 
 export function effectHandler<A, E>(
@@ -41,7 +42,7 @@ export function effectHandler<A, E>(
     event: H3Event,
     user: EffectHandlerUser
   ) => Effect.Effect<A, E, MainServices>,
-  options: { auth: 'session' } & Pick<EffectHandlerOptions, 'timing'>
+  options: { auth: 'session' } & Pick<EffectHandlerOptions, 'timing' | 'cancelOnDisconnect'>
 ): EventHandler
 
 export function effectHandler<A, E>(
@@ -49,7 +50,7 @@ export function effectHandler<A, E>(
     event: H3Event,
     user: null
   ) => Effect.Effect<A, E, MainServices>,
-  options: { auth: false } & Pick<EffectHandlerOptions, 'timing'>
+  options: { auth: false } & Pick<EffectHandlerOptions, 'timing' | 'cancelOnDisconnect'>
 ): EventHandler
 
 export function effectHandler<A, E>(
@@ -87,7 +88,20 @@ export function effectHandler<A, E>(
     // 1. Provide dependencies (MainLive)
     // 2. Catch all errors and convert them to H3 errors (as success values)
     // 3. Run the promise
-    const result = await runWithExecutionContext(timedContext, () => runEffect(effect))
+    const result = await runWithExecutionContext(timedContext, async () => {
+      if (!options.cancelOnDisconnect) return runEffect(effect)
+      const request: Request | undefined = event.context.cloudflare?.request ?? event.web?.request
+      if (request?.signal) return runEffect(effect, request.signal)
+      const controller = new AbortController()
+      const close = () => controller.abort()
+      event.node.res.once('close', close)
+      try {
+        if (event.node.res.destroyed) close()
+        return await runEffect(effect, controller.signal)
+      } finally {
+        event.node.res.off('close', close)
+      }
+    })
     if (options.timing) {
       const finished = performance.now()
       setHeader(event, 'Server-Timing', [

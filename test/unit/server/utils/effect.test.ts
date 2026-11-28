@@ -81,6 +81,19 @@ describe('handleError', () => {
     })
   })
 
+  it('interrupts a read when its client disconnects', async () => {
+    const { runEffect } = await import('../../../../server/utils/effect')
+    const caller = new AbortController()
+    const interrupted = vi.fn()
+    const result = runEffect(Effect.tryPromise({
+      try: signal => new Promise<void>(() => { signal.addEventListener('abort', interrupted, { once: true }) }),
+      catch: () => new Error('Request failed')
+    }), caller.signal)
+    caller.abort()
+    await expect(result).rejects.toMatchObject({ statusCode: 499 })
+    expect(interrupted).toHaveBeenCalledOnce()
+  })
+
   it('logs tagged error context and preserves HTTP conversion', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { runEffect } = await import('../../../../server/utils/effect')

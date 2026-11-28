@@ -290,17 +290,19 @@ export function handleError(error: unknown): Effect.Effect<never> {
  * 5. On success, we return the value directly (no isError check needed)
  */
 export async function runEffect<A, E>(
-  effect: Effect.Effect<A, E, MainServices>
+  effect: Effect.Effect<A, E, MainServices>,
+  signal?: AbortSignal
 ): Promise<A> {
   const exit = await pipe(
     effect,
     Effect.provide(MainLive),
     Effect.catch(handleError),
-    Effect.runPromiseExit
+    effect => Effect.runPromiseExit(effect, { signal })
   )
 
   return Exit.match(exit, {
     onFailure: (cause) => {
+      if (signal?.aborted && Cause.hasInterruptsOnly(cause)) throw createError({ statusCode: 499, message: 'Request cancelled' })
       // handleError uses Effect.die() to throw H3Errors as defects.
       // Extract the first defect (which should be our H3Error) and throw it.
       const defects = [...cause.reasons.filter(Cause.isDieReason).map(reason => reason.defect)]

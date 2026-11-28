@@ -9,4 +9,4 @@ export default effectHandler((event, user) => Effect.gen(function* () {
   })
   const service = yield* BookRefreshService
   return yield* service.preview(user.id, getRouterParam(event, 'id')!, input)
-}))
+}), { cancelOnDisconnect: true })
