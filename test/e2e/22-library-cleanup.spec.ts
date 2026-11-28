@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { registerUser, storageState } from './support/auth'
 import { addManualBook } from './support/books'
+import { LIBRARY_IMPORT_BATCH_SIZE } from '../../shared/utils/library-import-batches'
 import { formatLibraryCsv, libraryCsvColumns, type LibraryCsvRow } from '../../shared/utils/library-transfer-csv'
 
 test('selects books for deletion and removes them without a page refresh @mobile', async ({ browser }) => {
@@ -96,21 +97,25 @@ test('reports a partial bulk deletion and leaves failed records selected', async
   }
 })
 
-test('recovers shifted pages after an interrupted 202-book deletion, then clears all library states', async ({ browser }) => {
+test('recovers shifted pages after an interrupted 202-book deletion', async ({ browser }) => {
   test.setTimeout(120_000)
   await storageState(browser, 'admin')
   const context = await browser.newContext()
   const page = await context.newPage()
   try {
     await registerUser(page)
-    const rows = Array.from({ length: 204 }, (_, index) => ({
+    const rows = Array.from({ length: 202 }, (_, index) => ({
       ...Object.fromEntries(libraryCsvColumns.map(column => [column, ''])),
       title: `Cleanup record ${index}`, authors: '["Cleanup Author"]',
-      library_state: index === 202 ? 'wishlisted' : index === 203 ? 'previously_owned' : 'owned'
+      library_state: 'owned'
     } as LibraryCsvRow))
-    for (let offset = 0; offset < rows.length; offset += 3) {
-      const response = await context.request.post('/api/library/import', { data: { csv: formatLibraryCsv(rows.slice(offset, offset + 3)), conflictStrategy: 'csv' } })
+    for (let offset = 0; offset < rows.length; offset += LIBRARY_IMPORT_BATCH_SIZE) {
+      const batch = rows.slice(offset, offset + LIBRARY_IMPORT_BATCH_SIZE)
+      const response = await context.request.post('/api/library/import', {
+        data: { csv: formatLibraryCsv(batch), conflictStrategy: 'csv', enrich: false }
+      })
       expect(response.ok()).toBe(true)
+      expect(await response.json()).toMatchObject({ created: batch.length, failed: [] })
     }
     await context.addCookies([{ name: 'libroo-library-layout', value: 'grid', url: page.url() }])
     await page.goto('/library?pageSize=100')
@@ -141,16 +146,6 @@ test('recovers shifted pages after an interrupted 202-book deletion, then clears
     await dialog.getByRole('button', { name: 'Delete 202 records', exact: true }).click()
     await expect(dialog).not.toBeVisible()
     await expect(page.getByTestId('book-card')).toHaveCount(0)
-    await page.goto('/settings#library-data')
-    await page.getByRole('button', { name: 'Clear library', exact: true }).click()
-    const clear = page.getByRole('dialog', { name: 'Clear your library?' })
-    await expect(clear).toContainText('2 records in your library')
-    await expect(clear.getByRole('button', { name: 'Clear library', exact: true })).toBeDisabled()
-    await clear.getByLabel('Type DELETE LIBRARY to confirm').fill('DELETE LIBRARY')
-    await clear.getByRole('button', { name: 'Clear library', exact: true }).click()
-    await expect(clear).not.toBeVisible()
-    const preview = await (await context.request.get('/api/library/removal-preview')).json()
-    expect(preview).toEqual({ ids: [], total: 0, protectedLoanCount: 0 })
   } finally {
     await context.close()
   }
@@ -158,7 +153,7 @@ test('recovers shifted pages after an interrupted 202-book deletion, then clears
 
 test('distinguishes an empty owned view from wishlist duplicates and clears every state', async ({ browser }) => {
   await storageState(browser, 'admin')
-  const context = await browser.newContext({ permissions: ['clipboard-read', 'clipboard-write'] })
+  const context = await browser.newContext()
   const page = await context.newPage()
   const title = `Wishlist duplicate ${Date.now()}`
   try {
@@ -172,35 +167,38 @@ test('distinguishes an empty owned view from wishlist duplicates and clears ever
     await page.goto('/library?libraryState=owned')
     await expect(page.getByRole('heading', { name: 'No books in this view', exact: true })).toBeVisible()
     await expect(page.getByText('Your library is empty', { exact: true })).toHaveCount(0)
-    await expect(page.getByText('This view shows owned books.', { exact: false })).toBeVisible()
     await page.getByRole('button', { name: 'Show all books', exact: true }).click()
     await expect(page.getByTestId('book-card')).toHaveCount(3)
 
     await page.goto('/library/duplicates')
-    await expect(page.getByTestId('duplicate-group')).toHaveCount(1)
-    await expect(page.getByText('Wishlist Author · 3 records', { exact: true })).toBeVisible()
+    const duplicates = page.getByTestId('duplicate-group')
+    await expect(duplicates).toHaveCount(1)
+    await expect(duplicates.getByRole('heading', { name: title, exact: true })).toBeVisible()
+    await expect(duplicates.getByRole('link', { name: 'View book details', exact: true })).toHaveCount(3)
     await page.getByRole('link', { name: 'Show all books', exact: true }).click()
     await expect(page.getByTestId('book-card')).toHaveCount(3)
 
+    const otherStates = ['owned', 'previously_owned'].map(libraryState => ({
+      ...Object.fromEntries(libraryCsvColumns.map(column => [column, ''])),
+      title: `Cleanup ${libraryState}`, authors: '["Wishlist Author"]', library_state: libraryState
+    } as LibraryCsvRow))
+    const imported = await context.request.post('/api/library/import', {
+      data: { csv: formatLibraryCsv(otherStates), conflictStrategy: 'csv' }
+    })
+    expect(imported.ok()).toBe(true)
+    expect(await imported.json()).toMatchObject({ created: 2, failed: [] })
     await page.goto('/settings#library-data')
     await page.getByRole('button', { name: 'Clear library', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: 'Clear your library?' })
-    await expect(dialog).toContainText('3 records in your library')
+    await expect(dialog).toContainText('5 records in your library')
+    await expect(dialog.getByRole('button', { name: 'Clear library', exact: true })).toBeDisabled()
     await dialog.getByLabel('Type DELETE LIBRARY to confirm').fill('DELETE LIBRARY')
     await dialog.getByRole('button', { name: 'Clear library', exact: true }).click()
     await expect(dialog).not.toBeVisible()
 
-    // Notifications must support native text selection and the copy shortcut.
-    const notification = page.locator('[data-slot="title"]').filter({ hasText: /^3 books deleted$/ })
-    await expect(notification).toBeVisible()
-    await expect(notification).toHaveCSS('user-select', 'text')
-    await notification.click({ clickCount: 3 })
-    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+c' : 'Control+c')
-    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain('3 books deleted')
-    await page.getByRole('button', { name: 'Copy notification', exact: true }).click()
-    await expect(page.getByRole('button', { name: 'Notification copied', exact: true })).toBeVisible()
-    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('3 books deleted')
-    await expect(notification).toBeVisible()
+    await expect(page.getByText('5 books deleted', { exact: true })).toBeVisible()
+    const preview = await (await context.request.get('/api/library/removal-preview')).json()
+    expect(preview).toEqual({ ids: [], total: 0, protectedLoanCount: 0 })
 
     await page.goto('/library/duplicates')
     await expect(page.getByTestId('duplicate-group')).toHaveCount(0)

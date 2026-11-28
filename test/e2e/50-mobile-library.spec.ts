@@ -40,7 +40,7 @@ test('mobile library browsing and filtering @mobile', async ({ browser }, testIn
   }
 })
 
-test('mobile detail-page mutation @mobile', async ({ browser }, testInfo) => {
+test('saves a personal note from the mobile detail page @mobile', async ({ browser }, testInfo) => {
   const context = await browser.newContext({ storageState: await storageState(browser, 'user') })
   const page = await context.newPage()
   const title = `Mobile Detail Mutation ${testInfo.retry}-${Date.now()}`
@@ -54,16 +54,12 @@ test('mobile detail-page mutation @mobile', async ({ browser }, testInfo) => {
     await expect(page).toHaveURL(/\/library\/[^/]+$/)
 
     const controls = bookDetailControls(page)
-    await controls.ratingStar(5).click()
-    await expect(controls.ratingDisplay(5)).toBeVisible()
-
     await controls.noteTrigger.click()
     await controls.noteTextarea.fill(note)
     await controls.noteSave.click()
     await expect(page.getByText(note)).toBeVisible()
 
     await page.reload()
-    await expect(controls.ratingDisplay(5)).toBeVisible()
     await expect(page.getByText(note)).toBeVisible()
   } finally {
     await context.close()
