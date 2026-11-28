@@ -43,6 +43,7 @@
     "pages": "Strana {current} z {total}"
   },
   "refresh": {
+    "editionUrl": "Odkaz na vydanie",
     "coverFrom": "Obal zo zdroja {source}",
     "currentField": "Aktuálny údaj: {field}",
     "fetchedField": "Načítaný údaj: {field}",

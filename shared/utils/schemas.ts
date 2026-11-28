@@ -654,6 +654,7 @@ export type BookEditSchema = z.infer<typeof bookEditSchema>
 
 export const bookRefreshRequestSchema = bookIsbnSchema.extend({
   source: z.string().regex(/^[a-z][a-z0-9-]{0,63}$/).default('auto'),
+  pageUrl: z.string().trim().url().max(1500).optional(),
   includeCover: z.boolean().default(true)
 })
 export type BookRefreshRequest = z.infer<typeof bookRefreshRequestSchema>

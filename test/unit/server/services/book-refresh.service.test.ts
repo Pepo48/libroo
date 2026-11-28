@@ -10,7 +10,7 @@ import type { OpenLibraryBookData } from '../../../../shared/types/open-library'
 
 const isbn = '9780441172719'
 const data: OpenLibraryBookData = { isbn, title: 'Dune', authors: ['Frank Herbert'], description: 'Fetched description', publishers: ['Publisher'], numberOfPages: 300, openLibraryKey: '/books/OL1M', workKey: null, coverUrl: null }
-function setup() {
+function setup(extra: Omit<BookMetadataSources['Service'], 'sources'> = {}) {
   const books = { getUserBookWithDetails: vi.fn(() => Effect.succeed({ id: 'entry', coverPath: null as string | null })),
     findStoredCatalogCover: vi.fn(() => Effect.succeed(null as { pathname: string, blob: Blob } | null))
   }
@@ -19,7 +19,7 @@ function setup() {
   const sources: BookMetadataSource[] = [{ id: 'example', label: 'Example source', lookup }]
   const withService = <A, E>(use: (service: BookRefreshService['Service']) => Effect.Effect<A, E, HttpClient.HttpClient>) => Effect.flatMap(BookRefreshService, use).pipe(
     Effect.provide(BookRefreshServiceLive),
-    Effect.provide(Layer.succeed(BookMetadataSources, { sources })),
+    Effect.provide(Layer.succeed(BookMetadataSources, { sources, ...extra })),
     Effect.provide(Layer.succeed(BookRepository, books as never)),
     Effect.provide(Layer.succeed(OpenLibraryRepository, { fetchCoverImage: cover } as never)),
     Effect.provide(FetchHttpClient.layer)
@@ -37,6 +37,22 @@ describe('book metadata refresh previews', () => {
     expect(result).toMatchObject({ source: { id: 'example', label: 'Example source' }, metadata: { title: 'Dune', authors: ['Frank Herbert'], description: 'Fetched description', publisher: 'Publisher' } })
     expect(cover).not.toHaveBeenCalled()
   })
+  it('only opens a linked edition when selected and canonicalizes the path on the server', async () => {
+    const lookupPage = vi.fn(() => Effect.succeed(data))
+    const origin = 'https://catalog.example'
+    const { run, cover } = setup({ linkedSources: [{ id: 'edition', label: 'Edition', origin, editionPath: url => url.pathname === '/book' ? '/book/details' : null, lookupPage }] })
+    await run()
+    for (const pageUrl of [origin + '/search', 'https://elsewhere.example/book', 'https://user@catalog.example/book']) {
+      await expect(run(bookRefreshRequestSchema.parse({ isbn, source: 'edition', pageUrl }))).rejects.toMatchObject({ _tag: 'InvalidMetadataSourceError' })
+    }
+    await expect(run(bookRefreshRequestSchema.parse({ isbn, source: 'edition' }))).rejects.toMatchObject({ _tag: 'InvalidMetadataSourceError' })
+    await expect(run(bookRefreshRequestSchema.parse({ isbn, source: 'example', pageUrl: origin + '/book' }))).rejects.toMatchObject({ _tag: 'InvalidMetadataSourceError' })
+    expect(lookupPage).not.toHaveBeenCalled()
+    expect(await run(bookRefreshRequestSchema.parse({ isbn, source: 'edition', pageUrl: origin + '/book' }))).toMatchObject({ metadata: { title: 'Dune' } })
+    expect(lookupPage).toHaveBeenCalledExactlyOnceWith(isbn, '/book/details')
+    expect(cover).not.toHaveBeenCalled()
+  })
+
   it('filters catalog subjects into useful tags and only exposes safe catalog links', async () => {
     const { run, lookup } = setup()
     const subjects = ['Fiction', 'Space Opera', 'space opera', 'Electronic resource']

@@ -8,7 +8,10 @@ export interface CatalogTarget {
   id: string
   origin: string
   spacingMs?: number
+  maxWaitMs?: number
   dailyLimit?: number
+  /** Optional restriction on edition paths, also checked on redirects. */
+  acceptsPath?: (url: URL) => boolean
 }
 const USER_AGENT = 'Libroo/1.0 (personal library ISBN lookup)'
 const DAY_MS = 86_400_000
@@ -82,7 +85,7 @@ export function makeCatalogRequestService(repository: Repository, transport: Tra
       if (current.leaseExpiresAt > time) throw new CatalogRequestError({ message: `${provider.id} already has an active request`, retryAt: current.leaseExpiresAt })
       const retryAt = Math.max(current.nextRequestAt, current.lastRequestAt + spacingMs)
       const delay = Math.max(1, retryAt - time)
-      if (now() - started + delay > 8000) throw new CatalogRequestError({ message: `${provider.id} request deferred`, retryAt })
+      if (now() - started + delay > (provider.maxWaitMs ?? 8000)) throw new CatalogRequestError({ message: `${provider.id} request deferred`, retryAt })
       await wait(delay, signal)
     }
     throw new CatalogRequestError({ message: `${provider.id} request contention` })
@@ -125,7 +128,10 @@ export function makeCatalogRequestService(repository: Repository, transport: Tra
       const ceiling = blocked ? DAY_MS : response.status === 429 ? 3_600_000 : 900_000
       cooldownUntil = Math.max(now() + Math.min(base * 2 ** permit.failures, ceiling), retryAfterUntil(response.headers.get('retry-after'), now()))
     }
+    const redirected = [301, 302, 303, 307, 308].includes(response.status)
+    if (redirected && !failed) cooldownUntil = retryAfterUntil(response.headers.get('retry-after'), now())
     await repository.complete(provider.id, permit.leaseId, cooldownUntil, failed)
+    if (redirected && !failed && cooldownUntil) throw new CatalogRequestError({ message: `${provider.id} redirect deferred`, retryAt: cooldownUntil })
     if (failed) {
       console.warn('Catalog request entered cooldown', {
         provider: provider.id,
@@ -143,6 +149,7 @@ export function makeCatalogRequestService(repository: Repository, transport: Tra
   async function fetchPath(provider: CatalogTarget, path: string, signal: AbortSignal, spacingMs: number, allowed?: (url: string) => boolean, image = false) {
     let url = validate(provider, path)
     for (let redirect = 0; redirect <= 3; redirect++) {
+      if (allowed && provider.acceptsPath && !provider.acceptsPath(url)) throw new CatalogRequestError({ message: 'Unsupported catalog edition URL' })
       if (allowed && !allowed(url.href)) throw new CatalogRequestError({ message: `${provider.id} robots.txt disallows this URL` })
       const response = await read(provider, url, spacingMs + Math.floor(random() * 251), signal, image)
       if ([301, 302, 303, 307, 308].includes(response.status)) {
@@ -159,7 +166,8 @@ export function makeCatalogRequestService(repository: Repository, transport: Tra
   }
 
   async function getResource(provider: CatalogTarget, path: string, signal: AbortSignal, image = false) {
-    validate(provider, path)
+    const url = validate(provider, path)
+    if (provider.acceptsPath && !provider.acceptsPath(url)) throw new CatalogRequestError({ message: 'Unsupported catalog edition URL' })
     let state = await repository.get(provider.id)
     if (!state || state.robotsExpiresAt <= now()) {
       const robots = await fetchPath(provider, '/robots.txt', signal, config(provider).spacingMs)

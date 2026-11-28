@@ -43,6 +43,7 @@
     "pages": "{current} of {total} pages"
   },
   "refresh": {
+    "editionUrl": "Edition page URL",
     "coverFrom": "Cover from {source}",
     "currentField": "Current {field}",
     "fetchedField": "Fetched {field}",

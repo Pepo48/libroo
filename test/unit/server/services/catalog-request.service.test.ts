@@ -38,6 +38,24 @@ describe('shared catalog request policy', () => {
     await expect(client.get(provider, url, new AbortController().signal)).resolves.toMatchObject({ text: 'next record' })
   })
 
+  it('persists a redirect Retry-After across clients before contacting another page', async () => {
+    const { get, request, rows, now } = setup([new Response(null, { status: 302, headers: { 'location': '/edition', 'retry-after': '120' } })])
+    await expect(get()).rejects.toMatchObject({ retryAt: now() + 120_000 })
+    await expect(get()).rejects.toThrow('cooling down')
+    expect(rows.get('example')?.dailyCount).toBe(1)
+    expect(request).toHaveBeenCalledOnce()
+  })
+
+  it('applies edition path restrictions both before reading robots and after redirects', async () => {
+    const { client, request } = setup(['User-agent: *', new Response(null, { status: 302, headers: { location: '/search' } })], null)
+    const provider = { id: 'example', origin: 'https://catalog.example', acceptsPath: (url: URL) => url.pathname === '/edition' }
+    const get = (path: string) => client().get(provider, path, new AbortController().signal)
+    await expect(get('/search')).rejects.toThrow('Unsupported catalog edition URL')
+    expect(request).not.toHaveBeenCalled()
+    await expect(get('/edition')).rejects.toThrow('Unsupported catalog edition URL')
+    expect(request).toHaveBeenCalledTimes(2)
+  })
+
   it('spaces requests across independently constructed clients', async () => {
     const { client, starts } = setup(['first', 'second'])
     await client().get({ id: 'example', origin: 'https://catalog.example' }, url, AbortSignal.timeout(1000))
@@ -164,6 +182,15 @@ describe('catalog robots policy and redirects', () => {
     const { get, starts } = setup(['User-agent: *\nCrawl-delay: 4', 'book'], null)
     await get()
     expect(starts[1]! - starts[0]!).toBe(4000)
+  })
+
+  it('lets a catalog with a longer wait budget read a search result and its edition', async () => {
+    const { client, starts } = setup(['User-agent: *\nCrawl-delay: 10', 'search', 'edition'], null)
+    const provider = { id: 'example', origin: 'https://catalog.example', maxWaitMs: 12_000 }
+    const signal = new AbortController().signal
+    await client().get(provider, '/search', signal)
+    await client().get(provider, '/edition', signal)
+    expect(starts.map(time => time - starts[0]!)).toEqual([0, 10_000, 20_000])
   })
 
   it('skips a provider whose Crawl-delay exceeds the foreground wait budget', async () => {

@@ -18,7 +18,17 @@ export interface BookMetadataSource extends BookMetadataSourceInfo {
   fetchCover?: (book: BookMetadata) => Effect.Effect<ArrayBuffer | null, BookMetadataSourceError, HttpClient.HttpClient>
   lookup: (isbn: string) => Effect.Effect<BookMetadata | null, BookMetadataSourceError, HttpClient.HttpClient>
 }
-export class BookMetadataSources extends Context.Service<BookMetadataSources, { sources: ReadonlyArray<BookMetadataSource> }>()('BookMetadataSources') {}
+export interface LinkedBookMetadataSource extends BookMetadataSourceInfo {
+  origin: string
+  editionPath: (url: URL) => string | null
+  lookupPage: (isbn: string, path: string) => ReturnType<BookMetadataSource['lookup']>
+}
+
+interface MetadataRegistry {
+  sources: ReadonlyArray<BookMetadataSource>
+  linkedSources?: ReadonlyArray<LinkedBookMetadataSource>
+}
+export class BookMetadataSources extends Context.Service<BookMetadataSources, MetadataRegistry>()('BookMetadataSources') {}
 
 export const makeOpenLibraryMetadataSource = Effect.gen(function* () {
   const repository = yield* OpenLibraryRepository

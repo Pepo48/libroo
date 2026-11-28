@@ -1,13 +1,22 @@
 <script setup lang="ts">
 import { normalizeTagInput } from '~~/shared/utils/tag-ingestion'
-import type { BookMetadataSourceInfo, BookRefreshFields, BookRefreshPreview, BookRefreshSelection } from '~~/shared/types/book-refresh'
+import type { BookMetadataSourceOption, BookRefreshFields, BookRefreshPreview, BookRefreshSelection } from '~~/shared/types/book-refresh'
 
 const { t } = useI18n()
 
 const props = defineProps<{ userBookId: string, isbn: string, current: BookRefreshFields, currentCover: string | null, currentTags: string[], active: boolean, disabled: boolean, validIsbn: boolean }>()
 const emit = defineEmits<{ apply: [value: BookRefreshSelection], busy: [value: boolean], pending: [value: boolean] }>()
-const sources = ref<BookMetadataSourceInfo[]>([])
+const sources = ref<BookMetadataSourceOption[]>([])
 const source = ref('auto')
+const editionUrl = ref('')
+const selectedSource = computed(() => sources.value.find(item => item.id === source.value))
+const validPage = computed(() => {
+  const option = selectedSource.value
+  if (!option?.pageOrigin) return true
+  if (!URL.canParse(editionUrl.value)) return false
+  const url = new URL(editionUrl.value)
+  return option.pageOrigin === url.origin && !url.username && !url.password
+})
 const loading = ref(false)
 const sourceError = ref(false)
 const error = ref('')
@@ -62,19 +71,22 @@ function clear() {
   emit('busy', false)
   emit('pending', false)
 }
-watch([() => props.active, () => props.isbn, () => props.userBookId, source], clear)
+watch([() => props.userBookId, source], () => {
+  editionUrl.value = ''
+})
+watch([() => props.active, () => props.isbn, () => props.userBookId, source, editionUrl], clear)
 onBeforeUnmount(clear)
 watch(() => props.active, async (active) => {
   if (!active) return
   try {
-    sources.value = await $fetch<BookMetadataSourceInfo[]>('/api/books/metadata-sources')
+    sources.value = await $fetch<BookMetadataSourceOption[]>('/api/books/metadata-sources')
     sourceError.value = false
   } catch {
     sourceError.value = true
   }
 }, { immediate: true })
 async function refresh() {
-  if (!props.validIsbn || loading.value || props.disabled) return
+  if (!props.validIsbn || !validPage.value || loading.value || props.disabled) return
   clear()
   const current = requestId
   controller = new AbortController()
@@ -82,7 +94,7 @@ async function refresh() {
   emit('busy', true)
   try {
     const preview = await $fetch<BookRefreshPreview>(`/api/books/${props.userBookId}/metadata-preview`, {
-      method: 'POST', body: { isbn: props.isbn, source: source.value, includeCover: true }, signal: controller.signal
+      method: 'POST', body: { isbn: props.isbn, source: source.value, includeCover: true, ...(editionUrl.value.trim() ? { pageUrl: editionUrl.value.trim() } : {}) }, signal: controller.signal
     })
     if (current !== requestId || !props.active) return
     result.value = preview
@@ -136,11 +148,25 @@ function apply() {
           :disabled="disabled"
         />
       </UFormField>
+      <UFormField
+        v-if="selectedSource?.pageOrigin"
+        :label="$t('refresh.editionUrl')"
+        class="min-w-0 flex-1"
+      >
+        <UInput
+          v-model="editionUrl"
+          type="url"
+          name="editionUrl"
+          :placeholder="selectedSource.pageOrigin"
+          :disabled="disabled"
+          class="w-full"
+        />
+      </UFormField>
       <UButton
         :label="$t('ui.refreshFromSources')"
         icon="i-lucide-refresh-cw"
         :loading="loading"
-        :disabled="!validIsbn || disabled"
+        :disabled="!validIsbn || !validPage || disabled"
         @click="refresh"
       />
     </div>
@@ -184,6 +210,15 @@ function apply() {
         color="neutral"
         class="p-0"
       />
+      <a
+        v-if="result.source?.attribution"
+        :href="result.source.attribution.url"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="text-sm underline"
+      >
+        {{ result.source.attribution.label }}
+      </a>
       <div
         v-if="editionFacts.length"
         class="space-y-2 border-t border-default pt-3"

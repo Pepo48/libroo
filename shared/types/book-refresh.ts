@@ -6,6 +6,9 @@ export interface BookMetadataSourceInfo {
   label: string
   attribution?: { label: string, url: string }
 }
+export type BookMetadataSourceOption = BookMetadataSourceInfo & {
+  pageOrigin?: string
+}
 export type BookRefreshFields = Pick<BookEditSchema, 'title' | 'authors' | 'publisher' | 'publishDate' | 'numberOfPages' | 'description' | 'language' | 'series' | 'seriesPosition'>
 export interface BookRefreshPreview {
   isbn: string

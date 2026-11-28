@@ -1,7 +1,7 @@
 import { Context, Effect, Layer } from 'effect'
 import { BookRepository } from '../repositories/book.repository'
 import { OpenLibraryRepository } from '../repositories/openLibrary.repository'
-import { BookMetadataSources, InvalidMetadataSourceError } from './book-metadata-sources'
+import { BookMetadataSources, InvalidMetadataSourceError, type BookMetadataSource } from './book-metadata-sources'
 import { normalizeSuggestedTags } from '../../shared/utils/tag-ingestion'
 import { normalizeIsbnIdentity } from '../../shared/utils/isbn'
 import { bookEditSchema, MANUAL_COVER_MAX_BYTES, type BookRefreshRequest } from '../../shared/utils/schemas'
@@ -13,13 +13,27 @@ export const makeBookRefreshService = Effect.gen(function* () {
   const openLibrary = yield* OpenLibraryRepository
   const registry = yield* BookMetadataSources
   return {
-    listSources: () => Effect.succeed(registry.sources.map(({ id, label }) => ({ id, label }))),
+    listSources: () => Effect.succeed([
+      ...registry.sources.map(({ id, label }) => ({ id, label })),
+      ...(registry.linkedSources ?? []).map(({ id, label, origin }) => ({ id, label, pageOrigin: origin }))
+    ]),
     preview: (userId: string, userBookId: string, input: BookRefreshRequest) => Effect.gen(function* () {
       // Authorize before any provider request. Preview never persists book metadata or images.
       const current = yield* books.getUserBookWithDetails(userBookId, userId)
       const isbn = normalizeIsbnIdentity(input.isbn)
       const result: BookRefreshPreview = { isbn, source: null, metadata: {}, coverImage: null, warnings: [] }
-      const sources = input.source === 'auto' ? registry.sources : registry.sources.filter(source => source.id === input.source)
+      let sources: readonly BookMetadataSource[] = input.source === 'auto' ? registry.sources : registry.sources.filter(source => source.id === input.source)
+      const linked = registry.linkedSources?.find(source => source.id === input.source)
+      if (linked) {
+        const page = input.pageUrl && URL.canParse(input.pageUrl) ? new URL(input.pageUrl) : null
+        const path = page && page.protocol === 'https:' && linked.origin === page.origin && !page.username && !page.password
+          ? linked.editionPath(page)
+          : null
+        if (!path) return yield* Effect.fail(new InvalidMetadataSourceError({ message: `Choose an edition page from ${linked.label}.` }))
+        sources = [{ id: linked.id, label: linked.label, attribution: linked.attribution, lookup: isbn => linked.lookupPage(isbn, path) }]
+      } else if (input.pageUrl) {
+        return yield* Effect.fail(new InvalidMetadataSourceError({ message: 'This source does not accept edition URLs.' }))
+      }
       if (sources.length === 0) return yield* Effect.fail(new InvalidMetadataSourceError({ message: 'This metadata source is not available.' }))
       // Shared ISBN covers have no provider attribution. Reuse them in automatic mode.
       const storedCover = input.includeCover && input.source === 'auto' ? yield* books.findStoredCatalogCover(isbn) : null
@@ -36,7 +50,7 @@ export const makeBookRefreshService = Effect.gen(function* () {
           return Effect.succeed(null)
         }))
         if (!data) continue
-        result.source = { id: source.id, label: source.label }
+        result.source = { id: source.id, label: source.label, ...(source.attribution ? { attribution: source.attribution } : {}) }
         const catalogUrl = data.metadataSourceUrl || (source.id === 'openlibrary' && /^\/books\/OL\d+M$/.test(data.openLibraryKey)
           ? `https://openlibrary.org${data.openLibraryKey}`
           : undefined)

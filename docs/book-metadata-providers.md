@@ -74,6 +74,15 @@ an official API can retain their API-specific limiter; Open Library keeps its
 existing identified-client request accounting rather than website robots rules.
 
 
+## Edition links
+
+A module can register `linkedSources` for sites that support reading an edition
+page supplied by the user. Give each source an HTTPS `origin`, an `editionPath`
+validator and a `lookupPage(isbn, path)` function. Verify the edition’s ISBN in
+the response. Use the shared request service’s `acceptsPath` setting to validate
+redirect destinations as well. Linked sources appear in the saved-book refresh
+preview and run only when explicitly selected.
+
 ## Load an external module
 
 Keep optional adapters in their own checkout. Install that module's dependencies,
